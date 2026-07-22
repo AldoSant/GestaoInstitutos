@@ -1,0 +1,38 @@
+services:
+  database:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: instituto_folha
+      POSTGRES_USER: instituto
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-instituto-local}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U instituto -d instituto_folha"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  web:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://instituto:${POSTGRES_PASSWORD:-instituto-local}@database:5432/instituto_folha
+      DATABASE_SSL: "false"
+      AUTH_SECRET: ${AUTH_SECRET:-somente-desenvolvimento-troque-em-producao}
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_data:
