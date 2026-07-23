@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   checksum,
+  numeroDecimalBrasileiro,
   somenteDigitos,
+  validarSnapshotAtividades,
+  validarSnapshotGiw,
+  validarSnapshotLotacoes,
   validarSnapshotPessoas,
 } from "../lib/importacao-giw";
 
@@ -67,4 +71,84 @@ test("somenteDigitos aceita valores vazios sem inventar documento", () => {
   assert.equal(somenteDigitos(""), null);
   assert.equal(somenteDigitos(null), null);
   assert.equal(somenteDigitos("12.3"), "123");
+});
+
+test("normaliza carga horária e valor monetário de Atividades", () => {
+  const result = validarSnapshotAtividades({
+    schemaVersion: "1.0",
+    source: {
+      system: "GIW",
+      formId: "464569252",
+      extractedAt: "2026-07-22T12:00:00.000Z",
+    },
+    entity: "atividades",
+    records: [
+      {
+        legacyId: "174",
+        descricao: " Enfermeira ",
+        cargaHoraria: "200",
+        valor: "2.922,48",
+        ativo: true,
+      },
+    ],
+  });
+
+  assert.equal(result.issues.length, 0);
+  assert.deepEqual(result.snapshot?.records[0], {
+    legacyId: "174",
+    descricao: "Enfermeira",
+    cargaHoraria: "200",
+    valor: "2922.48",
+    ativo: true,
+  });
+});
+
+test("preserva lotação inativa e rejeita decimal inválido", () => {
+  const lotacao = validarSnapshotLotacoes({
+    schemaVersion: "1.0",
+    source: {
+      system: "GIW",
+      formId: "464569449",
+      extractedAt: "2026-07-22T12:00:00.000Z",
+    },
+    entity: "lotacoes",
+    records: [{ legacyId: "10", descricao: "Hospital", ativo: false }],
+  });
+  assert.equal(lotacao.snapshot?.records[0].ativo, false);
+
+  const atividade = validarSnapshotAtividades({
+    schemaVersion: "1.0",
+    source: {
+      system: "GIW",
+      formId: "464569252",
+      extractedAt: "2026-07-22T12:00:00.000Z",
+    },
+    entity: "atividades",
+    records: [{ legacyId: "1", descricao: "Teste", valor: "inválido" }],
+  });
+  assert.equal(atividade.snapshot, null);
+  assert.ok(atividade.issues.some((issue) => issue.field === "valor"));
+});
+
+test("dispatcher reconhece as três entidades suportadas", () => {
+  assert.equal(validarSnapshotGiw(snapshot([])).snapshot?.entity, "pessoas");
+  assert.equal(
+    validarSnapshotGiw({
+      schemaVersion: "1.0",
+      source: {
+        system: "GIW",
+        formId: "464569449",
+        extractedAt: "2026-07-22T12:00:00.000Z",
+      },
+      entity: "lotacoes",
+      records: [],
+    }).snapshot?.entity,
+    "lotacoes",
+  );
+});
+
+test("numeroDecimalBrasileiro não aceita texto ou infinito", () => {
+  assert.equal(numeroDecimalBrasileiro("1.320,00"), "1320.00");
+  assert.equal(numeroDecimalBrasileiro("abc"), null);
+  assert.equal(numeroDecimalBrasileiro(Number.POSITIVE_INFINITY), null);
 });

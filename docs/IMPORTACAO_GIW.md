@@ -6,8 +6,8 @@ simulação, aplicação e conferência antes de liberar a próxima.
 
 ## Situação atual
 
-O primeiro fluxo implementado coleta e importa **Pessoas**. Ele já estabelece o padrão
-que será reutilizado por atividades, lotações, eventos, tabelas fiscais, termos,
+Os fluxos implementados coletam e importam **Pessoas**, **Atividades** e **Lotações**.
+Eles estabelecem o padrão que será reutilizado por eventos, tabelas fiscais, termos,
 produtividade, folhas e guias.
 
 Dados reais nunca são versionados. O coletor grava em `.private/importacoes/giw`, pasta
@@ -19,7 +19,7 @@ ignorada pelo Git. Usuário e senha são lidos exclusivamente de variáveis de a
 2. Aplicar as migrações com `npm run db:migrate`.
 3. Cadastrar ou atualizar a empresa-base.
 4. Instalar o Chromium do coletor com `npx playwright install chromium`.
-5. Coletar Pessoas do GIW.
+5. Coletar Pessoas, Atividades e Lotações do GIW.
 6. Validar o snapshot sem banco.
 7. Executar um dry-run contra o banco de destino.
 8. Conferir contagens e erros.
@@ -71,9 +71,27 @@ O coletor entra no GIW, abre Cadastro > Pessoa > Localizar, percorre todas as p�
 de 100 registros e produz um snapshot com versão e origem. Nenhuma tela de inclusão,
 edição ou exclusão é acionada.
 
+## Coletar Atividades e Lotações
+
+Com as mesmas variáveis `GIW_USUARIO` e `GIW_SENHA` configuradas:
+
+```bash
+npm run giw:coletar:cadastros
+```
+
+Uma única sessão coleta os grids Cadastro > Atividade e Cadastro > Lotação. São
+produzidos dois snapshots independentes para que cada importação possa ser simulada,
+aplicada ou repetida separadamente.
+
+Saídas opcionais:
+
+- `GIW_OUTPUT_ATIVIDADES`: caminho do snapshot de Atividades;
+- `GIW_OUTPUT_LOTACOES`: caminho do snapshot de Lotações.
+
 ## Validar e importar
 
-Validação estrutural, sem consultar o banco:
+Validação estrutural, sem consultar o banco, funciona para qualquer uma das três
+entidades suportadas:
 
 ```bash
 npm run giw:importar -- --arquivo .private/importacoes/giw/pessoas-ARQUIVO.json
@@ -116,8 +134,8 @@ final. Assim a simulação usa as mesmas consultas e validações da aplicação
 |---:|---|---:|---|---|
 | 1 | Parâmetros | 464569255 | empresa e regras | mapeado |
 | 2 | Pessoas | 464569402 | empresa | coletor e importador prontos |
-| 3 | Atividades | 464569252 | empresa | mapeado |
-| 4 | Lotações | 464569449 | empresa | mapeado |
+| 3 | Atividades | 464569252 | empresa | coletor e importador prontos |
+| 4 | Lotações | 464569449 | empresa | coletor e importador prontos |
 | 5 | Eventos/rubricas | 8716 | parâmetros | mapeado |
 | 6 | Tabela de IRRF | 8733 | regras por vigência | mapeado |
 | 7 | Limites de INSS | 464569398 | regras por vigência | mapeado |
@@ -135,8 +153,8 @@ chaves de domínio do sistema novo.
 
 ### Etapa A — cadastros-base
 
-Adicionar coletores/importadores de atividades, lotações, bancos, agências, tipos de
-pagamento, fontes de recurso e documentos.
+Atividades e lotações estão concluídas. Em seguida, adicionar bancos, agências, tipos
+de pagamento, fontes de recurso e documentos.
 
 Critério de saída: contagens conciliadas e 100% dos registros com chave legada.
 

@@ -29,6 +29,9 @@ detalhado da migração está em [Importação do GIW](IMPORTACAO_GIW.md).
 - coletores de cadastros do GIW;
 - CRUD de pessoas, prestadores, termos, metas e vínculos.
 
+Progresso: Pessoas, Atividades e Lotações já possuem coleta e importação; Atividades e
+Lotações também possuem tabelas relacionais próprias e chaves opcionais nos vínculos.
+
 Critério de aceite: cadastros sobrevivem a reinicializações, dados do GIW são conciliados
 sem duplicação e toda linha importada tem origem rastreável.
 

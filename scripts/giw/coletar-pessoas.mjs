@@ -1,36 +1,10 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
-import { chromium } from "playwright";
-
-const baseUrl = process.env.GIW_URL ??
-  "http://ws.marvsolutions.com.br:9050/instituto/open.do?sys=GIW";
-const usuario = process.env.GIW_USUARIO;
-const senha = process.env.GIW_SENHA;
-const headless = process.env.GIW_HEADLESS !== "false";
-
-if (!usuario || !senha) {
-  throw new Error("Configure GIW_USUARIO e GIW_SENHA somente no ambiente local.");
-}
+import { abrirMenuCadastro, abrirSessaoGiw, salvarSnapshot } from "./cliente.mjs";
 
 const timestamp = new Date().toISOString();
-const defaultFile = `.private/importacoes/giw/pessoas-${timestamp.replace(/[:.]/g, "-")}.json`;
-const outputFile = resolve(process.env.GIW_OUTPUT ?? defaultFile);
-const browser = await chromium.launch({ headless });
+const { browser, page, sistema, menu } = await abrirSessaoGiw();
 
 try {
-  const page = await browser.newPage();
-  page.setDefaultTimeout(20_000);
-  await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
-
-  const login = page.frameLocator('iframe[name="mainform"]');
-  await login.getByLabel("Usuário", { exact: true }).fill(usuario);
-  await login.getByLabel("Senha", { exact: true }).fill(senha);
-  await login.getByRole("button", { name: /Autenticar/ }).click();
-
-  await page.locator('iframe[name="mainsystem"]').waitFor();
-  const sistema = page.frameLocator('iframe[name="mainsystem"]');
-  const menu = sistema.frameLocator('iframe[name="mainform"]');
-  await menu.locator('a[href="#MenuLateralGamma-submenu-788825"]').click();
+  await abrirMenuCadastro(menu);
   await menu.locator("#MenuLateralGamma-item-923723").click();
 
   const janelaPessoa = sistema.locator('iframe[src*="formID=464569402"]');
@@ -88,21 +62,13 @@ try {
 
   if (!completed) throw new Error("A coleta ultrapassou o limite de 100 páginas.");
 
-  const snapshot = {
-    schemaVersion: "1.0",
-    source: {
-      system: "GIW",
-      formId: "464569402",
-      extractedAt: timestamp,
-      baseUrl,
-    },
+  await salvarSnapshot({
     entity: "pessoas",
+    formId: "464569402",
+    extractedAt: timestamp,
     records,
-  };
-
-  await mkdir(dirname(outputFile), { recursive: true });
-  await writeFile(outputFile, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
-  console.log(`Snapshot privado salvo em ${outputFile}.`);
+    output: process.env.GIW_OUTPUT,
+  });
 } finally {
   await browser.close();
 }

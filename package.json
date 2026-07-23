@@ -15,6 +15,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:bootstrap:empresa": "tsx scripts/db/bootstrap-empresa.ts",
     "giw:coletar:pessoas": "node scripts/giw/coletar-pessoas.mjs",
+    "giw:coletar:cadastros": "node scripts/giw/coletar-cadastros-base.mjs",
     "giw:importar": "tsx scripts/importacao/importar.ts"
   },
   "dependencies": {

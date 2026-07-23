@@ -138,6 +138,44 @@ export const prestadores = pgTable(
   ],
 );
 
+export const atividades = pgTable(
+  "atividade",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    codigo: varchar("codigo", { length: 40 }).notNull(),
+    descricao: varchar("descricao", { length: 180 }).notNull(),
+    cargaHoraria: numeric("carga_horaria", { precision: 10, scale: 2 }),
+    valor: numeric("valor", { precision: 18, scale: 2 }),
+    ativo: boolean("ativo").notNull().default(true),
+    ...auditoriaBasica,
+  },
+  (table) => [
+    uniqueIndex("uq_atividade_empresa_codigo").on(table.empresaId, table.codigo),
+    index("ix_atividade_empresa_descricao").on(table.empresaId, table.descricao),
+  ],
+);
+
+export const lotacoes = pgTable(
+  "lotacao",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    codigo: varchar("codigo", { length: 40 }).notNull(),
+    descricao: varchar("descricao", { length: 160 }).notNull(),
+    ativo: boolean("ativo").notNull().default(true),
+    ...auditoriaBasica,
+  },
+  (table) => [
+    uniqueIndex("uq_lotacao_empresa_codigo").on(table.empresaId, table.codigo),
+    index("ix_lotacao_empresa_descricao").on(table.empresaId, table.descricao),
+  ],
+);
+
 export const termos = pgTable(
   "termo",
   {
@@ -187,6 +225,8 @@ export const vinculos = pgTable(
     metaId: uuid("meta_id")
       .notNull()
       .references(() => metas.id),
+    atividadeId: uuid("atividade_id").references(() => atividades.id),
+    lotacaoId: uuid("lotacao_id").references(() => lotacoes.id),
     atividade: varchar("atividade", { length: 180 }).notNull(),
     lotacao: varchar("lotacao", { length: 160 }),
     inicio: date("inicio").notNull(),

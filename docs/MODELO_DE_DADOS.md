@@ -2,7 +2,7 @@
 
 ## Implementado no primeiro incremento
 
-As migrações Drizzle criam 17 tabelas:
+As migrações Drizzle criam 19 tabelas:
 
 - `empresa`;
 - `usuario` e `usuario_empresa`;
@@ -12,10 +12,22 @@ As migrações Drizzle criam 17 tabelas:
 - `folha`, `folha_item` e `folha_status_historico`;
 - `obrigacao_fiscal` e `obrigacao_fiscal_folha`.
 - `importacao_execucao`, `importacao_registro` e `legado_chave`.
+- `atividade` e `lotacao`, agora referenciáveis por `prestador_vinculo`.
 
 As três estruturas de importação guardam a execução, a decisão por registro e a
 correspondência durável entre o código do GIW e o UUID local. Isso permite simular,
 reexecutar e auditar a migração sem duplicar cadastros.
+
+```mermaid
+erDiagram
+  EMPRESA ||--o{ ATIVIDADE : possui
+  EMPRESA ||--o{ LOTACAO : possui
+  ATIVIDADE ||--o{ PRESTADOR_VINCULO : classifica
+  LOTACAO ||--o{ PRESTADOR_VINCULO : aloca
+  EMPRESA ||--o{ IMPORTACAO_EXECUCAO : executa
+  IMPORTACAO_EXECUCAO ||--o{ IMPORTACAO_REGISTRO : detalha
+  IMPORTACAO_EXECUCAO ||--o{ LEGADO_CHAVE : atualiza
+```
 
 Esse recorte sustenta o primeiro vertical slice. Não representa ainda todas as 47 estruturas do modelo aprofundado.
 

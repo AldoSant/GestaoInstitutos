@@ -3,8 +3,11 @@ import { basename, resolve } from "node:path";
 import pg, { type PoolClient } from "pg";
 import {
   checksum,
-  validarSnapshotPessoas,
+  validarSnapshotGiw,
+  type GiwAtividade,
+  type GiwLotacao,
   type GiwPessoa,
+  type GiwSnapshot,
 } from "../../lib/importacao-giw";
 
 const { Pool } = pg;
@@ -21,6 +24,13 @@ type Resumo = {
   atualizados: number;
   ignorados: number;
   erros: number;
+};
+
+type ResultadoRegistro = {
+  status: "INSERIDO" | "ATUALIZADO" | "IGNORADO";
+  destinoTabela: "pessoa" | "atividade" | "lotacao";
+  destinoId: string;
+  registroChecksum: string;
 };
 
 function lerOpcoes(argv: string[]): Opcoes {
@@ -108,11 +118,18 @@ async function importarPessoa(
   );
 
   if (chave.rows[0]?.checksum === registroChecksum) {
-    return {
-      status: "IGNORADO" as const,
-      destinoId: chave.rows[0].destino_id,
-      registroChecksum,
-    };
+    const destinoExiste = await client.query(
+      "select 1 from pessoa where id = $1 and empresa_id = $2",
+      [chave.rows[0].destino_id, empresaId],
+    );
+    if (destinoExiste.rowCount === 1) {
+      return {
+        status: "IGNORADO" as const,
+        destinoTabela: "pessoa" as const,
+        destinoId: chave.rows[0].destino_id,
+        registroChecksum,
+      };
+    }
   }
 
   const destinoId = await localizarPessoa(
@@ -158,14 +175,219 @@ async function importarPessoa(
     [empresaId, pessoa.legacyId, pessoaId, registroChecksum, execucaoId],
   );
 
-  return { status, destinoId: pessoaId, registroChecksum };
+  return {
+    status,
+    destinoTabela: "pessoa" as const,
+    destinoId: pessoaId,
+    registroChecksum,
+  };
+}
+
+async function importarAtividade(
+  client: PoolClient,
+  empresaId: string,
+  execucaoId: string,
+  atividade: GiwAtividade,
+): Promise<ResultadoRegistro> {
+  const registroChecksum = checksum(atividade);
+  const chave = await client.query<{ destino_id: string; checksum: string }>(
+    `select destino_id, checksum
+       from legado_chave
+      where empresa_id = $1 and origem = 'GIW' and entidade = 'atividades'
+        and legacy_id = $2`,
+    [empresaId, atividade.legacyId],
+  );
+
+  if (chave.rows[0]?.checksum === registroChecksum) {
+    const destinoExiste = await client.query(
+      "select 1 from atividade where id = $1 and empresa_id = $2",
+      [chave.rows[0].destino_id, empresaId],
+    );
+    if (destinoExiste.rowCount === 1) {
+      return {
+        status: "IGNORADO",
+        destinoTabela: "atividade",
+        destinoId: chave.rows[0].destino_id,
+        registroChecksum,
+      };
+    }
+  }
+
+  const existente = await client.query<{ id: string }>(
+    `select id
+       from atividade
+      where empresa_id = $1 and (id = $2::uuid or codigo = $3)
+      order by case when id = $2::uuid then 0 else 1 end
+      limit 1`,
+    [empresaId, chave.rows[0]?.destino_id ?? null, atividade.legacyId],
+  );
+  let destinoId = existente.rows[0]?.id;
+  let status: "INSERIDO" | "ATUALIZADO";
+  if (destinoId) {
+    await client.query(
+      `update atividade
+          set codigo = $3, descricao = $4, carga_horaria = $5, valor = $6,
+              ativo = $7, atualizado_em = now()
+        where id = $1 and empresa_id = $2`,
+      [
+        destinoId,
+        empresaId,
+        atividade.legacyId,
+        atividade.descricao,
+        atividade.cargaHoraria,
+        atividade.valor,
+        atividade.ativo,
+      ],
+    );
+    status = "ATUALIZADO";
+  } else {
+    const insert = await client.query<{ id: string }>(
+      `insert into atividade
+         (empresa_id, codigo, descricao, carga_horaria, valor, ativo)
+       values ($1, $2, $3, $4, $5, $6)
+       returning id`,
+      [
+        empresaId,
+        atividade.legacyId,
+        atividade.descricao,
+        atividade.cargaHoraria,
+        atividade.valor,
+        atividade.ativo,
+      ],
+    );
+    destinoId = insert.rows[0].id;
+    status = "INSERIDO";
+  }
+
+  await client.query(
+    `insert into legado_chave
+       (empresa_id, origem, entidade, legacy_id, destino_tabela, destino_id,
+        checksum, primeira_execucao_id, ultima_execucao_id)
+     values ($1, 'GIW', 'atividades', $2, 'atividade', $3, $4, $5, $5)
+     on conflict (empresa_id, origem, entidade, legacy_id)
+     do update set destino_tabela = excluded.destino_tabela,
+                   destino_id = excluded.destino_id,
+                   checksum = excluded.checksum,
+                   ultima_execucao_id = excluded.ultima_execucao_id,
+                   atualizado_em = now()`,
+    [empresaId, atividade.legacyId, destinoId, registroChecksum, execucaoId],
+  );
+  return {
+    status,
+    destinoTabela: "atividade",
+    destinoId,
+    registroChecksum,
+  };
+}
+
+async function importarLotacao(
+  client: PoolClient,
+  empresaId: string,
+  execucaoId: string,
+  lotacao: GiwLotacao,
+): Promise<ResultadoRegistro> {
+  const registroChecksum = checksum(lotacao);
+  const chave = await client.query<{ destino_id: string; checksum: string }>(
+    `select destino_id, checksum
+       from legado_chave
+      where empresa_id = $1 and origem = 'GIW' and entidade = 'lotacoes'
+        and legacy_id = $2`,
+    [empresaId, lotacao.legacyId],
+  );
+
+  if (chave.rows[0]?.checksum === registroChecksum) {
+    const destinoExiste = await client.query(
+      "select 1 from lotacao where id = $1 and empresa_id = $2",
+      [chave.rows[0].destino_id, empresaId],
+    );
+    if (destinoExiste.rowCount === 1) {
+      return {
+        status: "IGNORADO",
+        destinoTabela: "lotacao",
+        destinoId: chave.rows[0].destino_id,
+        registroChecksum,
+      };
+    }
+  }
+
+  const existente = await client.query<{ id: string }>(
+    `select id
+       from lotacao
+      where empresa_id = $1 and (id = $2::uuid or codigo = $3)
+      order by case when id = $2::uuid then 0 else 1 end
+      limit 1`,
+    [empresaId, chave.rows[0]?.destino_id ?? null, lotacao.legacyId],
+  );
+  let destinoId = existente.rows[0]?.id;
+  let status: "INSERIDO" | "ATUALIZADO";
+  if (destinoId) {
+    await client.query(
+      `update lotacao
+          set codigo = $3, descricao = $4, ativo = $5, atualizado_em = now()
+        where id = $1 and empresa_id = $2`,
+      [destinoId, empresaId, lotacao.legacyId, lotacao.descricao, lotacao.ativo],
+    );
+    status = "ATUALIZADO";
+  } else {
+    const insert = await client.query<{ id: string }>(
+      `insert into lotacao (empresa_id, codigo, descricao, ativo)
+       values ($1, $2, $3, $4)
+       returning id`,
+      [empresaId, lotacao.legacyId, lotacao.descricao, lotacao.ativo],
+    );
+    destinoId = insert.rows[0].id;
+    status = "INSERIDO";
+  }
+
+  await client.query(
+    `insert into legado_chave
+       (empresa_id, origem, entidade, legacy_id, destino_tabela, destino_id,
+        checksum, primeira_execucao_id, ultima_execucao_id)
+     values ($1, 'GIW', 'lotacoes', $2, 'lotacao', $3, $4, $5, $5)
+     on conflict (empresa_id, origem, entidade, legacy_id)
+     do update set destino_tabela = excluded.destino_tabela,
+                   destino_id = excluded.destino_id,
+                   checksum = excluded.checksum,
+                   ultima_execucao_id = excluded.ultima_execucao_id,
+                   atualizado_em = now()`,
+    [empresaId, lotacao.legacyId, destinoId, registroChecksum, execucaoId],
+  );
+  return { status, destinoTabela: "lotacao", destinoId, registroChecksum };
+}
+
+async function importarRegistro(
+  client: PoolClient,
+  empresaId: string,
+  execucaoId: string,
+  snapshot: GiwSnapshot,
+  index: number,
+) {
+  if (snapshot.entity === "pessoas") {
+    const registro = snapshot.records[index];
+    return {
+      registro,
+      result: await importarPessoa(client, empresaId, execucaoId, registro),
+    };
+  }
+  if (snapshot.entity === "atividades") {
+    const registro = snapshot.records[index];
+    return {
+      registro,
+      result: await importarAtividade(client, empresaId, execucaoId, registro),
+    };
+  }
+  const registro = snapshot.records[index];
+  return {
+    registro,
+    result: await importarLotacao(client, empresaId, execucaoId, registro),
+  };
 }
 
 async function executar() {
   const opcoes = lerOpcoes(process.argv.slice(2));
   const conteudo = await readFile(opcoes.arquivo, "utf8");
   const parsed: unknown = JSON.parse(conteudo);
-  const validacao = validarSnapshotPessoas(parsed);
+  const validacao = validarSnapshotGiw(parsed);
 
   if (!validacao.snapshot) {
     console.error(`Snapshot rejeitado com ${validacao.issues.length} problema(s):`);
@@ -180,7 +402,8 @@ async function executar() {
   const snapshot = validacao.snapshot;
   const arquivoChecksum = checksum(snapshot);
   console.log(
-    `Snapshot válido: ${snapshot.records.length} pessoa(s), checksum ${arquivoChecksum.slice(0, 12)}.`,
+    `Snapshot válido: ${snapshot.records.length} registro(s) de ${snapshot.entity}, ` +
+      `checksum ${arquivoChecksum.slice(0, 12)}.`,
   );
 
   if (!process.env.DATABASE_URL) {
@@ -211,10 +434,11 @@ async function executar() {
     const execucao = await client.query<{ id: string }>(
       `insert into importacao_execucao
          (empresa_id, origem, entidade, arquivo, checksum_arquivo, modo, status, total_lidos)
-       values ($1, 'GIW', 'pessoas', $2, $3, $4, 'EM_ANDAMENTO', $5)
+       values ($1, 'GIW', $2, $3, $4, $5, 'EM_ANDAMENTO', $6)
        returning id`,
       [
         empresaId,
+        snapshot.entity,
         basename(opcoes.arquivo),
         arquivoChecksum,
         opcoes.aplicar ? "APLICAR" : "DRY_RUN",
@@ -224,11 +448,19 @@ async function executar() {
     const execucaoId = execucao.rows[0].id;
 
     for (let index = 0; index < snapshot.records.length; index += 1) {
-      const pessoa = snapshot.records[index];
       const savepoint = `registro_${index + 1}`;
       await client.query(`savepoint ${savepoint}`);
+      let registro: GiwPessoa | GiwAtividade | GiwLotacao = snapshot.records[index];
       try {
-        const result = await importarPessoa(client, empresaId, execucaoId, pessoa);
+        const imported = await importarRegistro(
+          client,
+          empresaId,
+          execucaoId,
+          snapshot,
+          index,
+        );
+        registro = imported.registro;
+        const result = imported.result;
         if (result.status === "INSERIDO") resumo.inseridos += 1;
         else if (result.status === "ATUALIZADO") resumo.atualizados += 1;
         else resumo.ignorados += 1;
@@ -236,15 +468,16 @@ async function executar() {
         await client.query(
           `insert into importacao_registro
              (execucao_id, ordem, legacy_id, checksum, status, destino_tabela, destino_id, payload)
-           values ($1, $2, $3, $4, $5, 'pessoa', $6, $7)`,
+           values ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [
             execucaoId,
             index + 1,
-            pessoa.legacyId,
+            registro.legacyId,
             result.registroChecksum,
             result.status,
+            result.destinoTabela,
             result.destinoId,
-            pessoa,
+            registro,
           ],
         );
         await client.query(`release savepoint ${savepoint}`);
@@ -258,10 +491,10 @@ async function executar() {
           [
             execucaoId,
             index + 1,
-            pessoa.legacyId,
-            checksum(pessoa),
+            registro.legacyId,
+            checksum(registro),
             error instanceof Error ? error.message : "Erro desconhecido",
-            pessoa,
+            registro,
           ],
         );
       }

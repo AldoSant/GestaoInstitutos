@@ -15,6 +15,13 @@
       "when": 1784767554213,
       "tag": "0001_sturdy_master_mold",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784769562476,
+      "tag": "0002_keen_susan_delgado",
+      "breakpoints": true
     }
   ]
 }
