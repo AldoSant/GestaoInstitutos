@@ -2,7 +2,7 @@
 
 ## Visão geral
 
-**Estimativa atual: 36% concluído.**
+**Estimativa atual: 40% concluído.**
 
 O percentual mede capacidade operacional validada, e não quantidade de telas ou linhas
 de código. Uma etapa só avança quando existe persistência, validação, teste e caminho de
@@ -13,24 +13,25 @@ homologação. Interfaces demonstrativas contam apenas como descoberta de fluxo.
 | Plataforma, banco, deploy e CI | 15% | 12% | Operacional; faltam acesso real, auditoria de usuário e rotinas comprovadas de restauração. |
 | Descoberta, regras e modelo relacional | 10% | 7% | Fluxo principal e modelo identificados; contratos e amostras reais ainda precisam ampliar a evidência. |
 | Migração e cadastros-base | 15% | 10% | Pessoas, Atividades, Lotações e Prestadores persistentes; importação automática cobre os três primeiros. |
-| Termos, metas e vínculos | 15% | 1% | Schema existe, mas ainda faltam importadores e operação web. |
+| Termos, metas e vínculos | 15% | 5% | Termos e Metas possuem CRUD persistente; faltam importadores e Vínculos operacionais. |
 | Folha auditável | 20% | 4% | Motor inicial e memória demonstrativa existem; processamento e fechamento ainda não persistem. |
 | Obrigação previdenciária | 15% | 2% | Divergência é detectada no protótipo; apuração, reconciliação e emissão ainda não são operacionais. |
 | Homologação, paralelo e corte | 10% | 0% | Depende dos módulos anteriores e de três competências reais conciliadas. |
-| **Total** | **100%** | **36%** | |
+| **Total** | **100%** | **40%** | |
 
 ## O que já pode ser usado
 
 - aplicação, PostgreSQL, migrações e containers com CI;
 - coleta e importação idempotente de Pessoas, Atividades e Lotações do GIW;
 - cadastro persistente de Pessoas, Atividades, Lotações e Prestadores;
+- cadastro persistente de Termos e Metas, com vigência e dependências protegidas;
 - regras iniciais de INSS e IRRF de 2026 com testes;
 - diagnóstico de duplicidade da obrigação previdenciária do legado;
 - documentação de implantação, modelo relacional e evidências.
 
 ## Caminho crítico restante
 
-1. Termos e Metas persistentes e importáveis.
+1. Importação de Termos e Metas do GIW.
 2. Vínculos ligando Prestador, Termo, Meta, Atividade e Lotação.
 3. Eventos, produtividade e parâmetros fiscais por vigência.
 4. Processamento, conferência, fechamento e reabertura da folha.

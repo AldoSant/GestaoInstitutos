@@ -62,11 +62,13 @@ docs/                arquitetura, domínio, deploy e referências
 
 ## Estado da persistência
 
-Pessoas, Atividades, Lotações e Prestadores já usam consultas e ações de servidor
+Pessoas, Atividades, Lotações, Prestadores, Termos e Metas já usam consultas e ações de servidor
 conectadas ao PostgreSQL. Prestador depende de uma Pessoa da mesma empresa e não pode
-duplicá-la dentro da organização. Todas as operações são filtradas pela empresa ativa,
-alterações são validadas no servidor e a exclusão física foi substituída por inativação.
-As páginas de folha, parâmetros e obrigações ainda usam dados demonstrativos.
+duplicá-la dentro da organização. Meta depende de um Termo da mesma empresa, e cadastros
+com dependências ativas não podem ser inativados. Todas as operações são filtradas pela
+empresa ativa, alterações são validadas no servidor e a exclusão física foi substituída
+por inativação. As páginas de folha, parâmetros e obrigações ainda usam dados
+demonstrativos.
 
 Na substituição progressiva dessas páginas por repositórios PostgreSQL, os contratos de
 cálculo em `lib/calculos.ts` devem ser preservados, separando:

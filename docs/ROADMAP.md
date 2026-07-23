@@ -35,9 +35,10 @@ vinculação obrigatória a uma Pessoa e parâmetros previdenciários. Atividade
 possuem tabelas relacionais próprias e chaves opcionais nos vínculos. O banco rejeita
 documentos, vigências, totais e estados estruturalmente inconsistentes, e o CI aplica as
 migrações em PostgreSQL 16, cria uma organização sintética e testa as páginas conectadas
-ao banco.
+ao banco. Termos e Metas agora possuem CRUD persistente, validação de vigência e bloqueio
+de inativação enquanto existirem dependências ativas.
 
-Próximo recorte: implementar Termos e Metas; depois, Vínculos sobre todos os
+Próximo recorte: importar Termos e Metas do GIW e implementar Vínculos sobre todos os
 cadastros-base já persistentes.
 
 Critério de aceite: cadastros sobrevivem a reinicializações, dados do GIW são conciliados

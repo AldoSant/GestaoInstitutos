@@ -21,13 +21,15 @@ Este primeiro incremento contém:
 - cadastro persistente de Pessoas, Atividades e Lotações, com busca, edição e
   inativação sem exclusão física;
 - cadastro persistente de Prestadores ligado obrigatoriamente a Pessoas;
+- cadastro persistente de Termos e Metas, com vigência, valores e proteção de
+  dependências ativas;
 - primeira migração Drizzle;
 - Dockerfile e Compose para implantação própria;
 - testes automatizados e pipeline de integração contínua.
 
-Os módulos `/cadastros` e `/prestadores` já gravam no PostgreSQL. As demais telas de
-escrita e o login ainda são demonstrativos. Nenhuma obrigação é transmitida. Consulte
-o [andamento ponderado do MVP](docs/ANDAMENTO.md).
+Os módulos `/cadastros`, `/prestadores` e `/instrumentos` já gravam no PostgreSQL. As
+demais telas de escrita e o login ainda são demonstrativos. Nenhuma obrigação é
+transmitida. Consulte o [andamento ponderado do MVP](docs/ANDAMENTO.md).
 
 ## Começando
 
