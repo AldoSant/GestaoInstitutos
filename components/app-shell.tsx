@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   BadgeDollarSign,
   Building2,
+  Database,
   CalendarDays,
   ChevronDown,
   CircleHelp,
@@ -21,6 +22,7 @@ import type { ReactNode } from "react";
 const navegacao = [
   { href: "/", label: "Visão geral", icon: Gauge },
   { href: "/folhas", label: "Folhas", icon: BadgeDollarSign },
+  { href: "/cadastros", label: "Cadastros", icon: Database },
   { href: "/prestadores", label: "Prestadores", icon: UsersRound },
   { href: "/obrigacoes", label: "Obrigações", icon: FileCheck2 },
   { href: "/parametros", label: "Parâmetros", icon: Settings2 },
@@ -62,11 +64,18 @@ export function AppShell({
   title,
   eyebrow,
   actions,
+  organization = "Instituto · Demonstração",
+  notice = {
+    label: "Protótipo local",
+    text: "Dados demonstrativos e anonimizados. Nenhuma obrigação fiscal é transmitida.",
+  },
 }: {
   children: ReactNode;
   title: string;
   eyebrow?: string;
   actions?: ReactNode;
+  organization?: string;
+  notice?: { label: string; text: string };
 }) {
   return (
     <div className="app-frame">
@@ -74,7 +83,7 @@ export function AppShell({
         <Logo />
         <div className="tenant-card">
           <Building2 size={17} />
-          <span><small>Organização ativa</small><strong>Instituto · Demonstração</strong></span>
+          <span><small>Organização ativa</small><strong>{organization}</strong></span>
           <ChevronDown size={15} />
         </div>
         <NavLinks />
@@ -109,8 +118,8 @@ export function AppShell({
         </header>
         <main className="content">
           <div className="demo-notice">
-            <span>Protótipo local</span>
-            Dados demonstrativos e anonimizados. Nenhuma obrigação fiscal é transmitida.
+            <span>{notice.label}</span>
+            {notice.text}
           </div>
           {children}
         </main>

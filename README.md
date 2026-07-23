@@ -18,11 +18,14 @@ Este primeiro incremento contém:
 - bloqueio da divergência previdenciária identificada no legado;
 - modelo PostgreSQL inicial com 19 tabelas, incluindo trilha de importação;
 - coletores e importadores idempotentes de Pessoas, Atividades e Lotações do GIW;
+- cadastro persistente de Pessoas, Atividades e Lotações, com busca, edição e
+  inativação sem exclusão física;
 - primeira migração Drizzle;
 - Dockerfile e Compose para implantação própria;
 - testes automatizados e pipeline de integração contínua.
 
-As telas de escrita e o login ainda são demonstrativos. Nenhuma obrigação é transmitida.
+O módulo `/cadastros` já grava no PostgreSQL. As demais telas de escrita e o login ainda
+são demonstrativos. Nenhuma obrigação é transmitida.
 
 ## Começando
 

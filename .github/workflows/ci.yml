@@ -53,6 +53,12 @@ jobs:
       - name: Database migrations
         run: npm run db:migrate
 
+      - name: Bootstrap test organization
+        run: >-
+          npm run db:bootstrap:empresa --
+          --cnpj 99999999000191
+          --razao-social "Organização sintética da CI"
+
       - name: Lint
         run: npm run lint
 
@@ -74,6 +80,7 @@ jobs:
             if curl --fail --silent http://localhost:3000/api/health > /dev/null; then
               curl --fail --silent http://localhost:3000/ > /dev/null
               curl --fail --silent http://localhost:3000/folhas > /dev/null
+              curl --fail --silent http://localhost:3000/cadastros > /dev/null
               exit 0
             fi
             sleep 1

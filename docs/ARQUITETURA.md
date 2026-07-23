@@ -60,9 +60,15 @@ docs/                arquitetura, domínio, deploy e referências
 .github/workflows/   integração contínua
 ```
 
-## Evolução prevista
+## Estado da persistência
 
-O protótipo usa dados demonstrativos nas páginas. A substituição por repositórios PostgreSQL deve preservar os contratos de cálculo em `lib/calculos.ts`, separando:
+Pessoas, Atividades e Lotações já usam consultas e ações de servidor conectadas ao
+PostgreSQL. Todas as operações são filtradas pela empresa ativa, alterações são
+validadas no servidor e a exclusão física foi substituída por inativação. As páginas de
+folha, prestadores, parâmetros e obrigações ainda usam dados demonstrativos.
+
+Na substituição progressiva dessas páginas por repositórios PostgreSQL, os contratos de
+cálculo em `lib/calculos.ts` devem ser preservados, separando:
 
 - entrada validada;
 - regra/versionamento;

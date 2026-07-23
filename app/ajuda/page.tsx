@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/app-shell";
 
 export default function AjudaPage() {
-  return <AppShell title="Ajuda" eyebrow="Protótipo local"><section className="panel prose-panel"><h2>Sobre este incremento</h2><p>Esta versão demonstra a arquitetura da experiência, a cadeia de folha e o bloqueio de conciliação. Os dados são anonimizados e as ações de escrita ainda não persistem.</p><h3>Próximas entregas</h3><ol><li>PostgreSQL e migrações.</li><li>Autenticação, perfis e segregação por organização.</li><li>Cadastro funcional de prestadores e vínculos.</li><li>Processamento versionado da folha.</li></ol></section></AppShell>;
+  return <AppShell title="Ajuda" eyebrow="Evolução incremental"><section className="panel prose-panel"><h2>Sobre este incremento</h2><p>Pessoas, Atividades e Lotações já são consultadas e alteradas no PostgreSQL pela área de Cadastros. Os dados importados do GIW preservam a identificação de origem. As telas de folha, prestadores, parâmetros e obrigações ainda usam dados demonstrativos.</p><h3>Próximas entregas</h3><ol><li>Cadastro persistente de prestadores, termos, metas e vínculos.</li><li>Eventos e parâmetros por vigência.</li><li>Processamento versionado e persistente da folha.</li><li>Autenticação, perfis e segregação completa por organização.</li></ol></section></AppShell>;
 }
