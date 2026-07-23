@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0",
+  "source": {
+    "system": "GIW",
+    "formId": "464569252",
+    "extractedAt": "2026-07-23T12:00:00.000Z"
+  },
+  "entity": "atividades",
+  "records": [
+    {
+      "legacyId": "8001",
+      "descricao": "ATIVIDADE SINTETICA CI",
+      "cargaHoraria": "200",
+      "valor": "4.080,00",
+      "ativo": true
+    }
+  ]
+}

@@ -43,6 +43,24 @@ export type GiwTermo = {
   metas: GiwMeta[];
 };
 
+export type GiwVinculo = {
+  legacyId: string;
+  pessoaLegacyId: string;
+  matricula: string;
+  termoLegacyId: string;
+  metaLegacyId: string;
+  atividadeLegacyId: string;
+  lotacaoLegacyId: string;
+  numeroContrato: string | null;
+  inicio: string;
+  fim: string | null;
+  valorRetribuicao: string;
+  cargaHoraria: string | null;
+  descontaInss: boolean;
+  descontaIrrf: boolean;
+  ativo: boolean;
+};
+
 export type GiwSnapshotPessoas = {
   schemaVersion: "1.0";
   source: {
@@ -91,11 +109,24 @@ export type GiwSnapshotTermos = {
   records: GiwTermo[];
 };
 
+export type GiwSnapshotVinculos = {
+  schemaVersion: "1.0";
+  source: {
+    system: "GIW";
+    formId: "464569258";
+    extractedAt: string;
+    baseUrl?: string;
+  };
+  entity: "vinculos";
+  records: GiwVinculo[];
+};
+
 export type GiwSnapshot =
   | GiwSnapshotPessoas
   | GiwSnapshotAtividades
   | GiwSnapshotLotacoes
-  | GiwSnapshotTermos;
+  | GiwSnapshotTermos
+  | GiwSnapshotVinculos;
 
 export type ValidationIssue = {
   record: number | null;
@@ -714,6 +745,187 @@ export function validarSnapshotTermos(
   };
 }
 
+export function normalizarVinculoGiw(
+  value: unknown,
+  index: number,
+): { vinculo: GiwVinculo | null; issues: ValidationIssue[] } {
+  const issues: ValidationIssue[] = [];
+  if (!objectLike(value)) {
+    return {
+      vinculo: null,
+      issues: [{ record: index, field: "registro", message: "deve ser um objeto" }],
+    };
+  }
+  const texto = (field: string) => String(value[field] ?? "").replace(/\s+/g, " ").trim();
+  const legacyId = texto("legacyId");
+  const pessoaLegacyId = texto("pessoaLegacyId");
+  const matricula = texto("matricula");
+  const termoLegacyId = texto("termoLegacyId");
+  const metaLegacyId = texto("metaLegacyId");
+  const atividadeLegacyId = texto("atividadeLegacyId");
+  const lotacaoLegacyId = texto("lotacaoLegacyId");
+  const numeroContrato = texto("numeroContrato") || null;
+  const inicio = dataIsoGiw(value.inicio);
+  const fim = texto("fim") ? dataIsoGiw(value.fim) : null;
+  const valorRetribuicao = numeroDecimalBrasileiro(value.valorRetribuicao);
+  const cargaHoraria = texto("cargaHoraria")
+    ? numeroDecimalBrasileiro(value.cargaHoraria)
+    : null;
+  const descontaInss = value.descontaInss === true;
+  const descontaIrrf = value.descontaIrrf === true;
+  const ativo = value.ativo === undefined ? true : value.ativo === true;
+
+  for (const [field, fieldValue] of [
+    ["legacyId", legacyId],
+    ["pessoaLegacyId", pessoaLegacyId],
+    ["matricula", matricula],
+    ["termoLegacyId", termoLegacyId],
+    ["metaLegacyId", metaLegacyId],
+    ["atividadeLegacyId", atividadeLegacyId],
+    ["lotacaoLegacyId", lotacaoLegacyId],
+  ]) {
+    if (!fieldValue) issues.push({ record: index, field, message: "é obrigatório" });
+  }
+  if (matricula.length > 40) {
+    issues.push({ record: index, field: "matricula", message: "deve ter até 40 caracteres" });
+  }
+  if (numeroContrato && numeroContrato.length > 60) {
+    issues.push({
+      record: index,
+      field: "numeroContrato",
+      message: "deve ter até 60 caracteres",
+    });
+  }
+  if (!inicio) issues.push({ record: index, field: "inicio", message: "deve ser uma data válida" });
+  if (texto("fim") && !fim) {
+    issues.push({ record: index, field: "fim", message: "deve ser uma data válida" });
+  }
+  if (inicio && fim && fim < inicio) {
+    issues.push({ record: index, field: "fim", message: "não pode anteceder o início" });
+  }
+  if (valorRetribuicao === null || Number(valorRetribuicao) < 0) {
+    issues.push({
+      record: index,
+      field: "valorRetribuicao",
+      message: "deve ser um número não negativo",
+    });
+  }
+  if (texto("cargaHoraria") && (cargaHoraria === null || Number(cargaHoraria) < 0)) {
+    issues.push({
+      record: index,
+      field: "cargaHoraria",
+      message: "deve ser um número não negativo",
+    });
+  }
+  for (const field of ["descontaInss", "descontaIrrf", "ativo"]) {
+    if (value[field] !== undefined && typeof value[field] !== "boolean") {
+      issues.push({ record: index, field, message: "deve ser booleano" });
+    }
+  }
+
+  if (issues.length > 0 || !inicio || valorRetribuicao === null) {
+    return { vinculo: null, issues };
+  }
+  return {
+    vinculo: {
+      legacyId,
+      pessoaLegacyId,
+      matricula,
+      termoLegacyId,
+      metaLegacyId,
+      atividadeLegacyId,
+      lotacaoLegacyId,
+      numeroContrato,
+      inicio,
+      fim,
+      valorRetribuicao,
+      cargaHoraria,
+      descontaInss,
+      descontaIrrf,
+      ativo,
+    },
+    issues,
+  };
+}
+
+export function validarSnapshotVinculos(
+  value: unknown,
+): ValidationResult<GiwSnapshotVinculos> {
+  const issues: ValidationIssue[] = [];
+  if (!objectLike(value)) {
+    return {
+      snapshot: null,
+      issues: [{ record: null, field: "arquivo", message: "JSON inválido" }],
+    };
+  }
+  const source = objectLike(value.source) ? value.source : null;
+  const recordsOriginais = Array.isArray(value.records) ? value.records : null;
+  if (value.schemaVersion !== "1.0") {
+    issues.push({ record: null, field: "schemaVersion", message: "versão suportada: 1.0" });
+  }
+  if (value.entity !== "vinculos") {
+    issues.push({ record: null, field: "entity", message: "deve ser vinculos" });
+  }
+  if (!source) issues.push({ record: null, field: "source", message: "é obrigatório" });
+  if (!recordsOriginais) {
+    issues.push({ record: null, field: "records", message: "deve ser uma lista" });
+  }
+  if (source) {
+    if (source.system !== "GIW") {
+      issues.push({ record: null, field: "source.system", message: "deve ser GIW" });
+    }
+    if (String(source.formId ?? "") !== "464569258") {
+      issues.push({
+        record: null,
+        field: "source.formId",
+        message: "formulário esperado: 464569258",
+      });
+    }
+    if (Number.isNaN(Date.parse(String(source.extractedAt ?? "")))) {
+      issues.push({
+        record: null,
+        field: "source.extractedAt",
+        message: "deve ser uma data ISO válida",
+      });
+    }
+  }
+  if (!source || !recordsOriginais) return { snapshot: null, issues };
+
+  const records: GiwVinculo[] = [];
+  const ids = new Set<string>();
+  recordsOriginais.forEach((record, index) => {
+    const normalized = normalizarVinculoGiw(record, index + 1);
+    issues.push(...normalized.issues);
+    if (!normalized.vinculo) return;
+    if (ids.has(normalized.vinculo.legacyId)) {
+      issues.push({
+        record: index + 1,
+        field: "legacyId",
+        message: "duplicado no mesmo arquivo",
+      });
+      return;
+    }
+    ids.add(normalized.vinculo.legacyId);
+    records.push(normalized.vinculo);
+  });
+  if (issues.length > 0) return { snapshot: null, issues };
+
+  return {
+    snapshot: {
+      schemaVersion: "1.0",
+      source: {
+        system: "GIW",
+        formId: "464569258",
+        extractedAt: String(source.extractedAt),
+        baseUrl: typeof source.baseUrl === "string" ? source.baseUrl : undefined,
+      },
+      entity: "vinculos",
+      records,
+    },
+    issues,
+  };
+}
+
 export function validarSnapshotGiw(value: unknown): ValidationResult<GiwSnapshot> {
   if (!objectLike(value)) {
     return {
@@ -725,6 +937,7 @@ export function validarSnapshotGiw(value: unknown): ValidationResult<GiwSnapshot
   if (value.entity === "atividades") return validarSnapshotAtividades(value);
   if (value.entity === "lotacoes") return validarSnapshotLotacoes(value);
   if (value.entity === "termos") return validarSnapshotTermos(value);
+  if (value.entity === "vinculos") return validarSnapshotVinculos(value);
   return {
     snapshot: null,
     issues: [{ record: null, field: "entity", message: "entidade não suportada" }],

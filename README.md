@@ -17,7 +17,8 @@ Este primeiro incremento contém:
 - memória individual anonimizada;
 - bloqueio da divergência previdenciária identificada no legado;
 - modelo PostgreSQL inicial com 19 tabelas, incluindo trilha de importação;
-- coletores e importadores idempotentes de Pessoas, Atividades, Lotações, Termos e Metas do GIW;
+- coletores e importadores idempotentes de Pessoas, Atividades, Lotações, Termos, Metas
+  e Vínculos do GIW;
 - cadastro persistente de Pessoas, Atividades e Lotações, com busca, edição e
   inativação sem exclusão física;
 - cadastro persistente de Prestadores ligado obrigatoriamente a Pessoas;

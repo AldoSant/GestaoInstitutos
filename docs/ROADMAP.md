@@ -35,12 +35,12 @@ vinculação obrigatória a uma Pessoa e parâmetros previdenciários. Atividade
 possuem tabelas relacionais próprias e chaves opcionais nos vínculos. O banco rejeita
 documentos, vigências, totais e estados estruturalmente inconsistentes, e o CI aplica as
 migrações em PostgreSQL 16, cria uma organização sintética e testa as páginas conectadas
-ao banco. Termos e Metas possuem coleta/importação idempotente e CRUD persistente,
-incluindo orçamento por Meta. Vínculos já conectam Prestador, Termo, Meta, Atividade e
-Lotação, validam vigência e impedem contratos ativos sobrepostos.
+ao banco. Termos, Metas e Vínculos possuem coleta/importação idempotente e CRUD
+persistente. A importação cria o Prestador quando sua Pessoa já está mapeada, resolve
+Termo, Meta, Atividade e Lotação por chave legada e rejeita dependências ausentes.
 
-Próximo recorte: importar os Vínculos do GIW e iniciar Eventos, produtividade e
-parâmetros por vigência sobre toda a cadeia cadastral já persistente.
+Próximo recorte: reconciliar a coleta contratual real e iniciar Eventos, produtividade
+e parâmetros por vigência sobre toda a cadeia cadastral já persistente.
 
 Critério de aceite: cadastros sobrevivem a reinicializações, dados do GIW são conciliados
 sem duplicação e toda linha importada tem origem rastreável.

@@ -9,6 +9,7 @@ import {
   type GiwPessoa,
   type GiwSnapshot,
   type GiwTermo,
+  type GiwVinculo,
 } from "../../lib/importacao-giw";
 
 const { Pool } = pg;
@@ -29,7 +30,12 @@ type Resumo = {
 
 type ResultadoRegistro = {
   status: "INSERIDO" | "ATUALIZADO" | "IGNORADO";
-  destinoTabela: "pessoa" | "atividade" | "lotacao" | "termo";
+  destinoTabela:
+    | "pessoa"
+    | "atividade"
+    | "lotacao"
+    | "termo"
+    | "prestador_vinculo";
   destinoId: string;
   registroChecksum: string;
 };
@@ -529,6 +535,244 @@ async function importarTermo(
   return { status, destinoTabela: "termo", destinoId: termoId, registroChecksum };
 }
 
+async function importarVinculo(
+  client: PoolClient,
+  empresaId: string,
+  execucaoId: string,
+  vinculo: GiwVinculo,
+): Promise<ResultadoRegistro> {
+  const registroChecksum = checksum(vinculo);
+  const chave = await client.query<{ destino_id: string; checksum: string }>(
+    `select destino_id, checksum
+       from legado_chave
+      where empresa_id = $1 and origem = 'GIW' and entidade = 'vinculos'
+        and legacy_id = $2`,
+    [empresaId, vinculo.legacyId],
+  );
+  if (chave.rows[0]?.checksum === registroChecksum) {
+    const destinoExiste = await client.query(
+      "select 1 from prestador_vinculo where id = $1 and empresa_id = $2",
+      [chave.rows[0].destino_id, empresaId],
+    );
+    if (destinoExiste.rowCount === 1) {
+      return {
+        status: "IGNORADO",
+        destinoTabela: "prestador_vinculo",
+        destinoId: chave.rows[0].destino_id,
+        registroChecksum,
+      };
+    }
+  }
+
+  const dependencias = await client.query<{
+    pessoa_id: string | null;
+    termo_id: string | null;
+    meta_id: string | null;
+    atividade_id: string | null;
+    atividade: string | null;
+    lotacao_id: string | null;
+    lotacao: string | null;
+  }>(
+    `select
+       (select p.id
+          from legado_chave lc join pessoa p on p.id = lc.destino_id
+         where lc.empresa_id = $1 and lc.origem = 'GIW' and lc.entidade = 'pessoas'
+           and lc.legacy_id = $2 and p.empresa_id = $1 limit 1) pessoa_id,
+       (select t.id
+          from legado_chave lc join termo t on t.id = lc.destino_id
+         where lc.empresa_id = $1 and lc.origem = 'GIW' and lc.entidade = 'termos'
+           and lc.legacy_id = $3 and t.empresa_id = $1 limit 1) termo_id,
+       (select tm.id
+          from legado_chave lc
+          join termo_meta tm on tm.id = lc.destino_id
+          join termo t on t.id = tm.termo_id
+         where lc.empresa_id = $1 and lc.origem = 'GIW' and lc.entidade = 'metas'
+           and lc.legacy_id = $4 and t.empresa_id = $1 limit 1) meta_id,
+       (select a.id
+          from legado_chave lc join atividade a on a.id = lc.destino_id
+         where lc.empresa_id = $1 and lc.origem = 'GIW' and lc.entidade = 'atividades'
+           and lc.legacy_id = $5 and a.empresa_id = $1 limit 1) atividade_id,
+       (select a.descricao
+          from legado_chave lc join atividade a on a.id = lc.destino_id
+         where lc.empresa_id = $1 and lc.origem = 'GIW' and lc.entidade = 'atividades'
+           and lc.legacy_id = $5 and a.empresa_id = $1 limit 1) atividade,
+       (select l.id
+          from legado_chave lc join lotacao l on l.id = lc.destino_id
+         where lc.empresa_id = $1 and lc.origem = 'GIW' and lc.entidade = 'lotacoes'
+           and lc.legacy_id = $6 and l.empresa_id = $1 limit 1) lotacao_id,
+       (select l.descricao
+          from legado_chave lc join lotacao l on l.id = lc.destino_id
+         where lc.empresa_id = $1 and lc.origem = 'GIW' and lc.entidade = 'lotacoes'
+           and lc.legacy_id = $6 and l.empresa_id = $1 limit 1) lotacao`,
+    [
+      empresaId,
+      vinculo.pessoaLegacyId,
+      vinculo.termoLegacyId,
+      vinculo.metaLegacyId,
+      vinculo.atividadeLegacyId,
+      vinculo.lotacaoLegacyId,
+    ],
+  );
+  const refs = dependencias.rows[0];
+  const ausentes = [
+    !refs.pessoa_id && "Pessoa",
+    !refs.termo_id && "Termo",
+    !refs.meta_id && "Meta",
+    !refs.atividade_id && "Atividade",
+    !refs.lotacao_id && "Lotação",
+  ].filter(Boolean);
+  if (ausentes.length > 0) {
+    throw new Error(`Dependências ainda não importadas: ${ausentes.join(", ")}.`);
+  }
+  const metaDoTermo = await client.query(
+    "select 1 from termo_meta where id = $1 and termo_id = $2",
+    [refs.meta_id, refs.termo_id],
+  );
+  if (metaDoTermo.rowCount !== 1) {
+    throw new Error("A Meta mapeada não pertence ao Termo informado pelo GIW.");
+  }
+
+  const prestadores = await client.query<{ id: string; pessoa_id: string }>(
+    `select id, pessoa_id
+       from prestador
+      where empresa_id = $1 and (pessoa_id = $2 or matricula = $3)
+      order by case when pessoa_id = $2 then 0 else 1 end
+      limit 2`,
+    [empresaId, refs.pessoa_id, vinculo.matricula],
+  );
+  if (
+    prestadores.rows.some((prestador) => prestador.pessoa_id !== refs.pessoa_id)
+  ) {
+    throw new Error("A matrícula do GIW já pertence a outra Pessoa no sistema novo.");
+  }
+  let prestadorId = prestadores.rows[0]?.id;
+  if (prestadorId) {
+    await client.query(
+      `update prestador
+          set matricula = $3, ativo = true, atualizado_em = now()
+        where id = $1 and empresa_id = $2`,
+      [prestadorId, empresaId, vinculo.matricula],
+    );
+  } else {
+    const insert = await client.query<{ id: string }>(
+      `insert into prestador (empresa_id, pessoa_id, matricula, ativo)
+       values ($1, $2, $3, true)
+       returning id`,
+      [empresaId, refs.pessoa_id, vinculo.matricula],
+    );
+    prestadorId = insert.rows[0].id;
+  }
+  await client.query(
+    `insert into legado_chave
+       (empresa_id, origem, entidade, legacy_id, destino_tabela, destino_id,
+        checksum, primeira_execucao_id, ultima_execucao_id)
+     values ($1, 'GIW', 'prestadores', $2, 'prestador', $3, $4, $5, $5)
+     on conflict (empresa_id, origem, entidade, legacy_id)
+     do update set destino_tabela = excluded.destino_tabela,
+                   destino_id = excluded.destino_id,
+                   checksum = excluded.checksum,
+                   ultima_execucao_id = excluded.ultima_execucao_id,
+                   atualizado_em = now()`,
+    [
+      empresaId,
+      vinculo.pessoaLegacyId,
+      prestadorId,
+      checksum({ pessoaLegacyId: vinculo.pessoaLegacyId, matricula: vinculo.matricula }),
+      execucaoId,
+    ],
+  );
+
+  const existente = await client.query<{ id: string }>(
+    `select id
+       from prestador_vinculo
+      where empresa_id = $1
+        and (
+          id = $2::uuid
+          or (
+            prestador_id = $3 and termo_id = $4 and meta_id = $5
+            and numero_contrato is not distinct from $6
+            and inicio = $7
+          )
+        )
+      order by case when id = $2::uuid then 0 else 1 end
+      limit 1`,
+    [
+      empresaId,
+      chave.rows[0]?.destino_id ?? null,
+      prestadorId,
+      refs.termo_id,
+      refs.meta_id,
+      vinculo.numeroContrato,
+      vinculo.inicio,
+    ],
+  );
+  let destinoId = existente.rows[0]?.id;
+  let status: "INSERIDO" | "ATUALIZADO";
+  const values = [
+    empresaId,
+    prestadorId,
+    refs.termo_id,
+    refs.meta_id,
+    refs.atividade_id,
+    refs.lotacao_id,
+    vinculo.numeroContrato,
+    refs.atividade,
+    refs.lotacao,
+    vinculo.inicio,
+    vinculo.fim,
+    vinculo.valorRetribuicao,
+    vinculo.cargaHoraria,
+    vinculo.descontaInss,
+    vinculo.descontaIrrf,
+    vinculo.ativo,
+  ];
+  if (destinoId) {
+    await client.query(
+      `update prestador_vinculo
+          set prestador_id = $3, termo_id = $4, meta_id = $5, atividade_id = $6,
+              lotacao_id = $7, numero_contrato = $8, atividade = $9, lotacao = $10,
+              inicio = $11, fim = $12, valor_retribuicao = $13, carga_horaria = $14,
+              desconta_inss = $15, desconta_irrf = $16, ativo = $17,
+              atualizado_em = now()
+        where id = $1 and empresa_id = $2`,
+      [destinoId, ...values],
+    );
+    status = "ATUALIZADO";
+  } else {
+    const insert = await client.query<{ id: string }>(
+      `insert into prestador_vinculo
+         (empresa_id, prestador_id, termo_id, meta_id, atividade_id, lotacao_id,
+          numero_contrato, atividade, lotacao, inicio, fim, valor_retribuicao,
+          carga_horaria, desconta_inss, desconta_irrf, ativo)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+       returning id`,
+      values,
+    );
+    destinoId = insert.rows[0].id;
+    status = "INSERIDO";
+  }
+
+  await client.query(
+    `insert into legado_chave
+       (empresa_id, origem, entidade, legacy_id, destino_tabela, destino_id,
+        checksum, primeira_execucao_id, ultima_execucao_id)
+     values ($1, 'GIW', 'vinculos', $2, 'prestador_vinculo', $3, $4, $5, $5)
+     on conflict (empresa_id, origem, entidade, legacy_id)
+     do update set destino_tabela = excluded.destino_tabela,
+                   destino_id = excluded.destino_id,
+                   checksum = excluded.checksum,
+                   ultima_execucao_id = excluded.ultima_execucao_id,
+                   atualizado_em = now()`,
+    [empresaId, vinculo.legacyId, destinoId, registroChecksum, execucaoId],
+  );
+  return {
+    status,
+    destinoTabela: "prestador_vinculo",
+    destinoId,
+    registroChecksum,
+  };
+}
+
 async function importarRegistro(
   client: PoolClient,
   empresaId: string,
@@ -557,10 +801,17 @@ async function importarRegistro(
       result: await importarLotacao(client, empresaId, execucaoId, registro),
     };
   }
+  if (snapshot.entity === "termos") {
+    const registro = snapshot.records[index];
+    return {
+      registro,
+      result: await importarTermo(client, empresaId, execucaoId, registro),
+    };
+  }
   const registro = snapshot.records[index];
   return {
     registro,
-    result: await importarTermo(client, empresaId, execucaoId, registro),
+    result: await importarVinculo(client, empresaId, execucaoId, registro),
   };
 }
 
@@ -631,7 +882,7 @@ async function executar() {
     for (let index = 0; index < snapshot.records.length; index += 1) {
       const savepoint = `registro_${index + 1}`;
       await client.query(`savepoint ${savepoint}`);
-      let registro: GiwPessoa | GiwAtividade | GiwLotacao | GiwTermo =
+      let registro: GiwPessoa | GiwAtividade | GiwLotacao | GiwTermo | GiwVinculo =
         snapshot.records[index];
       try {
         const imported = await importarRegistro(

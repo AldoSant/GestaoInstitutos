@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0",
+  "source": {
+    "system": "GIW",
+    "formId": "464569449",
+    "extractedAt": "2026-07-23T12:00:00.000Z"
+  },
+  "entity": "lotacoes",
+  "records": [
+    {
+      "legacyId": "7001",
+      "descricao": "LOTACAO SINTETICA CI",
+      "ativo": true
+    }
+  ]
+}

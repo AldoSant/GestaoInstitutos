@@ -7,7 +7,7 @@ simulação, aplicação e conferência antes de liberar a próxima.
 ## Situação atual
 
 Os fluxos implementados coletam e importam **Pessoas**, **Atividades**, **Lotações**,
-**Termos** e **Metas**. Eles estabelecem o padrão que será reutilizado por Vínculos,
+**Termos**, **Metas** e **Vínculos**. Eles estabelecem o padrão que será reutilizado por
 eventos, tabelas fiscais, produtividade, folhas e guias.
 
 Dados reais nunca são versionados. O coletor grava em `.private/importacoes/giw`, pasta
@@ -19,7 +19,7 @@ ignorada pelo Git. Usuário e senha são lidos exclusivamente de variáveis de a
 2. Aplicar as migrações com `npm run db:migrate`.
 3. Cadastrar ou atualizar a empresa-base.
 4. Instalar o Chromium do coletor com `npx playwright install chromium`.
-5. Coletar Pessoas, Atividades, Lotações, Termos e Metas do GIW.
+5. Coletar Pessoas, Atividades, Lotações, Termos, Metas e Vínculos do GIW.
 6. Validar o snapshot sem banco.
 7. Executar um dry-run contra o banco de destino.
 8. Conferir contagens e erros.
@@ -96,10 +96,12 @@ Com a mesma sessão configurada:
 npm run giw:coletar:instrumentos
 ```
 
-O coletor abre Movimentação > Termo, percorre a listagem do ano selecionado e inclui as
-Metas de cada Termo. O snapshot preserva os códigos internos do GIW, número, descrição,
-modalidade, vigência, valor global, tipo de cálculo e valor previsto. O caminho pode ser
-alterado com `GIW_OUTPUT_TERMOS`.
+O coletor abre Movimentação > Termo, percorre a listagem do ano selecionado, inclui as
+Metas e visita os Prestadores associados a cada Meta. São produzidos snapshots separados
+para Termos/Metas e Vínculos. Eles preservam códigos internos do GIW, vigências, valores,
+atividade, lotação, contrato, carga horária e incidências.
+
+Os caminhos podem ser alterados com `GIW_OUTPUT_TERMOS` e `GIW_OUTPUT_VINCULOS`.
 
 ## Validar e importar
 
@@ -153,10 +155,11 @@ final. Assim a simulação usa as mesmas consultas e validações da aplicação
 | 6 | Tabela de IRRF | 8733 | regras por vigência | mapeado |
 | 7 | Limites de INSS | 464569398 | regras por vigência | mapeado |
 | 8 | Termos e Metas | 464569250 | empresa | coletor e importador prontos |
-| 9 | Lançamentos de eventos | 464569425 | pessoa, termo e evento | mapeado |
-| 10 | Produtividade | 464569461 | vínculo e competência | mapeado |
-| 11 | Folhas | 464569390 | todos os anteriores | mapeado |
-| 12 | Emissão de GPS | 464569421 | folha fechada | mapeado |
+| 9 | Vínculos | 464569258 | pessoa, termo, meta, atividade e lotação | coletor e importador prontos |
+| 10 | Lançamentos de eventos | 464569425 | pessoa, termo e evento | mapeado |
+| 11 | Produtividade | 464569461 | vínculo e competência | mapeado |
+| 12 | Folhas | 464569390 | todos os anteriores | mapeado |
+| 13 | Emissão de GPS | 464569421 | folha fechada | mapeado |
 
 As listagens Webrun usam `basic_query.jsp`, paginação própria e grids com campos
 identificados. IDs de formulário são tratados como adaptadores do legado, nunca como
@@ -180,8 +183,9 @@ Critério de saída: prestadores ativos aptos a formar vínculos sem recadastro 
 
 ### Etapa C — contratos e vínculos
 
-Termos e Metas estão implementados. O próximo passo é coletar e importar os prestadores
-associados a cada Meta, suas atividades contratadas, lotações, vigências e valores.
+Termos, Metas e Vínculos estão implementados. O importador cria ou atualiza o Prestador
+quando a Pessoa já estiver mapeada e rejeita o registro quando qualquer dependência ainda
+não tiver sido importada.
 
 Critério de saída: cada prestador de uma folha histórica aponta para termo, meta e
 vínculo válidos.

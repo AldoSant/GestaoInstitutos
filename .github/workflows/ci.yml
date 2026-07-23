@@ -59,6 +59,16 @@ jobs:
           --cnpj 99999999000191
           --razao-social "Organização sintética da CI"
 
+      - name: GIW import chain and idempotency
+        shell: bash
+        run: |
+          for snapshot in tests/fixtures/giw/*.json; do
+            npm run giw:importar -- --arquivo "$snapshot" --aplicar
+          done
+          for snapshot in tests/fixtures/giw/*.json; do
+            npm run giw:importar -- --arquivo "$snapshot" --aplicar
+          done
+
       - name: Lint
         run: npm run lint
 

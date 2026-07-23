@@ -10,6 +10,7 @@ import {
   validarSnapshotLotacoes,
   validarSnapshotPessoas,
   validarSnapshotTermos,
+  validarSnapshotVinculos,
 } from "../lib/importacao-giw";
 
 function snapshot(records: unknown[]) {
@@ -227,4 +228,69 @@ test("rejeita datas impossíveis e meta duplicada em Termos", () => {
   assert.equal(result.snapshot, null);
   assert.ok(result.issues.some((issue) => issue.field === "inicio"));
   assert.ok(result.issues.some((issue) => issue.field === "metas.legacyId"));
+});
+
+test("normaliza Vínculo do GIW com incidências e dependências legadas", () => {
+  const result = validarSnapshotVinculos({
+    schemaVersion: "1.0",
+    source: {
+      system: "GIW",
+      formId: "464569258",
+      extractedAt: "2026-07-23T12:00:00.000Z",
+    },
+    entity: "vinculos",
+    records: [
+      {
+        legacyId: "5430",
+        pessoaLegacyId: "1076",
+        matricula: "1073",
+        termoLegacyId: "54",
+        metaLegacyId: "254",
+        atividadeLegacyId: "75",
+        lotacaoLegacyId: "10",
+        numeroContrato: "222/2026",
+        inicio: "01/04/2026",
+        fim: "31/08/2026",
+        valorRetribuicao: "4.080,00",
+        cargaHoraria: "200",
+        descontaInss: false,
+        descontaIrrf: true,
+        ativo: true,
+      },
+    ],
+  });
+
+  assert.equal(result.issues.length, 0);
+  assert.equal(result.snapshot?.records[0].inicio, "2026-04-01");
+  assert.equal(result.snapshot?.records[0].valorRetribuicao, "4080.00");
+  assert.equal(result.snapshot?.records[0].descontaInss, false);
+  assert.equal(result.snapshot?.records[0].descontaIrrf, true);
+});
+
+test("rejeita Vínculo sem dependência e com valor negativo", () => {
+  const result = validarSnapshotVinculos({
+    schemaVersion: "1.0",
+    source: {
+      system: "GIW",
+      formId: "464569258",
+      extractedAt: "2026-07-23T12:00:00.000Z",
+    },
+    entity: "vinculos",
+    records: [
+      {
+        legacyId: "1",
+        matricula: "1",
+        termoLegacyId: "2",
+        metaLegacyId: "3",
+        atividadeLegacyId: "4",
+        lotacaoLegacyId: "5",
+        inicio: "2026-01-01",
+        valorRetribuicao: "-1",
+      },
+    ],
+  });
+
+  assert.equal(result.snapshot, null);
+  assert.ok(result.issues.some((issue) => issue.field === "pessoaLegacyId"));
+  assert.ok(result.issues.some((issue) => issue.field === "valorRetribuicao"));
 });

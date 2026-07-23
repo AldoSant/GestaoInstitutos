@@ -2,7 +2,7 @@
 
 ## Visão geral
 
-**Estimativa atual: 46% concluído.**
+**Estimativa atual: 49% concluído.**
 
 O percentual mede capacidade operacional validada, e não quantidade de telas ou linhas
 de código. Uma etapa só avança quando existe persistência, validação, teste e caminho de
@@ -13,16 +13,16 @@ homologação. Interfaces demonstrativas contam apenas como descoberta de fluxo.
 | Plataforma, banco, deploy e CI | 15% | 12% | Operacional; faltam acesso real, auditoria de usuário e rotinas comprovadas de restauração. |
 | Descoberta, regras e modelo relacional | 10% | 7% | Fluxo principal e modelo identificados; contratos e amostras reais ainda precisam ampliar a evidência. |
 | Migração e cadastros-base | 15% | 10% | Pessoas, Atividades, Lotações e Prestadores persistentes; importação automática cobre os três primeiros. |
-| Termos, metas e vínculos | 15% | 11% | Coleta/importação de Termos e Metas e CRUD de Vínculos implementados; falta importar Vínculos do GIW e reconciliar contagens reais. |
+| Termos, metas e vínculos | 15% | 14% | Coleta/importação e CRUD da cadeia implementados; falta executar e reconciliar os dados reais de todos os anos. |
 | Folha auditável | 20% | 4% | Motor inicial e memória demonstrativa existem; processamento e fechamento ainda não persistem. |
 | Obrigação previdenciária | 15% | 2% | Divergência é detectada no protótipo; apuração, reconciliação e emissão ainda não são operacionais. |
 | Homologação, paralelo e corte | 10% | 0% | Depende dos módulos anteriores e de três competências reais conciliadas. |
-| **Total** | **100%** | **46%** | |
+| **Total** | **100%** | **49%** | |
 
 ## O que já pode ser usado
 
 - aplicação, PostgreSQL, migrações e containers com CI;
-- coleta e importação idempotente de Pessoas, Atividades, Lotações, Termos e Metas do GIW;
+- coleta e importação idempotente de Pessoas, Atividades, Lotações, Termos, Metas e Vínculos do GIW;
 - cadastro persistente de Pessoas, Atividades, Lotações e Prestadores;
 - cadastro persistente de Termos e Metas, com vigência, orçamento e dependências protegidas;
 - cadastro persistente de Vínculos, ligando toda a cadeia e bloqueando vigências sobrepostas;
@@ -32,7 +32,7 @@ homologação. Interfaces demonstrativas contam apenas como descoberta de fluxo.
 
 ## Caminho crítico restante
 
-1. Coleta e importação dos Vínculos do GIW, com reconciliação por Termo e Meta.
+1. Executar a coleta real da cadeia contratual e reconciliar contagens por Termo e Meta.
 2. Eventos, produtividade e parâmetros fiscais por vigência.
 3. Processamento, conferência, fechamento e reabertura da folha.
 4. Apuração e reconciliação previdenciária com origem por item.

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "source": {
+    "system": "GIW",
+    "formId": "464569402",
+    "extractedAt": "2026-07-23T12:00:00.000Z"
+  },
+  "entity": "pessoas",
+  "records": [
+    {
+      "legacyId": "9001",
+      "nome": "PRESTADOR SINTETICO CI",
+      "cpf": "99999999991",
+      "cnpj": null
+    }
+  ]
+}
