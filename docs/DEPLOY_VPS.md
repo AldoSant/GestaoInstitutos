@@ -35,15 +35,32 @@ docker compose ps
 ```
 
 A porta do PostgreSQL está vinculada a `127.0.0.1` no Compose. Não publique a porta 5432 na internet.
+O serviço `worker` não publica portas e usa no máximo duas conexões PostgreSQL. Para
+validar o caminho fila → worker → regra fiscal depois da implantação:
+
+```bash
+docker compose run --rm worker npm run worker:validar-regra -- 2026-06
+docker compose logs --since 5m worker
+```
+
+A tarefa deve terminar como `CONCLUIDA`. O único handler habilitado neste estágio valida
+a regra fiscal da competência; o processamento integral da Folha será adicionado como
+um tipo separado depois da materialização transacional.
 
 ## Migrações
 
 Antes do primeiro uso e de atualizações com mudança de schema, faça backup e aplique as migrações a partir de um checkout confiável:
 
+Com Docker Compose, use o alvo de migração incluído no projeto:
+
 ```bash
-npm ci
-npm run db:migrate
+docker compose build migrate
+docker compose run --rm migrate
+docker compose run --rm migrate npm run db:bootstrap:regras
 ```
+
+Em uma instalação sem Docker, a alternativa é `npm ci` seguido de
+`npm run db:migrate` com `DATABASE_URL` configurada.
 
 Em produção madura, a migração deve ser uma etapa única e controlada do pipeline, não executada simultaneamente por várias réplicas.
 
@@ -59,19 +76,44 @@ Encaminhe o domínio para `127.0.0.1:3000`. Habilite HTTPS, redirecionamento de 
 - backup antes de cada migração;
 - documentação de RPO/RTO.
 
+O repositório inclui uma rotina operacional que cria o dump em formato PostgreSQL
+custom, valida o catálogo do arquivo, calcula SHA-256 e aplica retenção local:
+
+```bash
+BACKUP_DIR=/srv/backups/gestao-institutos \
+BACKUP_RETENTION_DAYS=30 \
+./scripts/ops/backup-postgres.sh
+```
+
+O diretório local não é proteção contra perda da VPS. Após a criação, envie o arquivo
+e seu `.sha256` para armazenamento externo criptografado e monitore o sucesso da cópia.
+Não considere o backup operacional até testar uma restauração:
+
+```bash
+./scripts/ops/verificar-restauracao-postgres.sh \
+  /srv/backups/gestao-institutos/instituto_folha_AAAAMMDDTHHMMSSZ.dump
+```
+
+O verificador usa exclusivamente o banco temporário
+`instituto_folha_restore_verify`, confere a quantidade mínima de tabelas e o remove
+ao terminar. Agende o backup diário e uma restauração de teste periódica pelo
+gerenciador de tarefas da VPS.
+
 ## Atualização
 
 ```bash
 git pull --ff-only
-npm ci
-npm test
-npm run build
+docker compose build migrate web
+docker compose run --rm migrate
+docker compose run --rm migrate npm run db:bootstrap:regras
 docker compose up -d --build
 ```
 
-Valide `/api/health`, logs, login e uma consulta de leitura após a atualização.
+Valide `/api/health`, logs, login e uma consulta de leitura após a atualização. O
+endpoint de saúde agora devolve HTTP 503 quando não consegue consultar o PostgreSQL;
+uma resposta HTTP 200 confirma aplicação e banco acessíveis.
 
-## Antes de dados reais
+## Antes de ampliar o acesso além da equipe interna
 
 - implementar autenticação e autorização reais;
 - configurar política de logs sem dados pessoais;

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0",
+  "source": {
+    "system": "GIW",
+    "formId": "464569250",
+    "extractedAt": "2026-07-23T12:00:00.000Z"
+  },
+  "entity": "termos",
+  "records": [
+    {
+      "legacyId": "6001",
+      "numero": "CI-2026",
+      "descricao": "TERMO SINTETICO CI",
+      "modalidade": "TERMO DE COLABORACAO",
+      "inicio": "01/01/2026",
+      "fim": "31/12/2026",
+      "valorGlobal": "100.000,00",
+      "ativo": true,
+      "metas": [
+        {
+          "legacyId": "6002",
+          "codigo": "META-CI",
+          "descricao": "META SINTETICA CI",
+          "tipoCalculo": "Mensal",
+          "valorPrevisto": "100.000,00",
+          "ativo": true
+        }
+      ]
+    }
+  ]
+}

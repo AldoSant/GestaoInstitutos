@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "source": {
+    "system": "GIW",
+    "formId": "464569258",
+    "extractedAt": "2026-07-23T12:00:00.000Z"
+  },
+  "entity": "vinculos",
+  "records": [
+    {
+      "legacyId": "5001",
+      "pessoaLegacyId": "9001",
+      "matricula": "CI-0001",
+      "termoLegacyId": "6001",
+      "metaLegacyId": "6002",
+      "atividadeLegacyId": "8001",
+      "lotacaoLegacyId": "7001",
+      "numeroContrato": "CI-001/2026",
+      "inicio": "01/01/2026",
+      "fim": "31/12/2026",
+      "valorRetribuicao": "4.080,00",
+      "cargaHoraria": "200",
+      "descontaInss": true,
+      "descontaIrrf": true,
+      "ativo": true
+    }
+  ]
+}

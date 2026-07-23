@@ -2,7 +2,7 @@
 
 ## Implementado no primeiro incremento
 
-A migração `drizzle/0000_rapid_kree.sql` cria 14 tabelas:
+As migrações Drizzle criam 24 tabelas:
 
 - `empresa`;
 - `usuario` e `usuario_empresa`;
@@ -11,6 +11,36 @@ A migração `drizzle/0000_rapid_kree.sql` cria 14 tabelas:
 - `regra_calculo_versao`;
 - `folha`, `folha_item` e `folha_status_historico`;
 - `obrigacao_fiscal` e `obrigacao_fiscal_folha`.
+- `importacao_execucao`, `importacao_registro` e `legado_chave`.
+- `atividade` e `lotacao`, agora referenciáveis por `prestador_vinculo`.
+- `evento` e `lancamento_evento_recorrente`.
+- `pessoa_endereco`, `pessoa_conta_bancaria` e `dependente`.
+
+As três estruturas de importação guardam a execução, a decisão por registro e a
+correspondência durável entre o código do GIW e o UUID local. Isso permite simular,
+reexecutar e auditar a migração sem duplicar cadastros.
+
+A migração `0003` adiciona restrições de domínio para documentos, vigências, valores
+não negativos, competência no primeiro dia do mês, consistência dos totais da folha e
+da obrigação e estados da importação. Essas regras protegem o banco inclusive quando
+uma gravação não passa pela interface web.
+
+```mermaid
+erDiagram
+  EMPRESA ||--o{ ATIVIDADE : possui
+  EMPRESA ||--o{ LOTACAO : possui
+  ATIVIDADE ||--o{ PRESTADOR_VINCULO : classifica
+  LOTACAO ||--o{ PRESTADOR_VINCULO : aloca
+  EMPRESA ||--o{ EVENTO : configura
+  PRESTADOR_VINCULO ||--o{ LANCAMENTO_EVENTO_RECORRENTE : recebe
+  EVENTO ||--o{ LANCAMENTO_EVENTO_RECORRENTE : aplica
+  PESSOA ||--o| PESSOA_ENDERECO : reside
+  PESSOA ||--o| PESSOA_CONTA_BANCARIA : recebe
+  PESSOA ||--o{ DEPENDENTE : declara
+  EMPRESA ||--o{ IMPORTACAO_EXECUCAO : executa
+  IMPORTACAO_EXECUCAO ||--o{ IMPORTACAO_REGISTRO : detalha
+  IMPORTACAO_EXECUCAO ||--o{ LEGADO_CHAVE : atualiza
+```
 
 Esse recorte sustenta o primeiro vertical slice. Não representa ainda todas as 47 estruturas do modelo aprofundado.
 
@@ -35,8 +65,7 @@ Consulte:
 
 ## Próximas tabelas prioritárias
 
-- eventos/rubricas e composições;
-- dependentes;
+- composições de eventos/rubricas;
 - consolidação mensal por pessoa e rateio por vínculo;
 - fontes pagadoras concomitantes;
 - lançamentos e memória granular;

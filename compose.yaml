@@ -2,37 +2,126 @@ services:
   database:
     image: postgres:16-alpine
     restart: unless-stopped
+    stop_grace_period: 1m
     environment:
       POSTGRES_DB: instituto_folha
       POSTGRES_USER: instituto
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-instituto-local}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    shm_size: 256mb
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U instituto -d instituto_folha"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U instituto -d instituto_folha"]
       interval: 5s
       timeout: 3s
       retries: 10
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: "5"
     ports:
       - "127.0.0.1:5432:5432"
 
   web:
     build: .
     restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     environment:
-      DATABASE_URL: postgresql://instituto:${POSTGRES_PASSWORD:-instituto-local}@database:5432/instituto_folha
+      DATABASE_HOST: database
+      DATABASE_PORT: "5432"
+      DATABASE_USER: instituto
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
+      DATABASE_NAME: instituto_folha
       DATABASE_SSL: "false"
-      AUTH_SECRET: ${AUTH_SECRET:-somente-desenvolvimento-troque-em-producao}
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
+      DATABASE_CONNECTION_TIMEOUT_MS: ${DATABASE_CONNECTION_TIMEOUT_MS:-5000}
+      DATABASE_IDLE_TIMEOUT_MS: ${DATABASE_IDLE_TIMEOUT_MS:-30000}
+      DATABASE_STATEMENT_TIMEOUT_MS: ${DATABASE_STATEMENT_TIMEOUT_MS:-30000}
+      DATABASE_QUERY_TIMEOUT_MS: ${DATABASE_QUERY_TIMEOUT_MS:-35000}
+      DATABASE_IDLE_TRANSACTION_TIMEOUT_MS: ${DATABASE_IDLE_TRANSACTION_TIMEOUT_MS:-30000}
+      DATABASE_APPLICATION_NAME: gestao-institutos-web
+      AUTH_SECRET: ${AUTH_SECRET:?Defina AUTH_SECRET no arquivo .env}
     depends_on:
       database:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health >/dev/null || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 5
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: "5"
+
+  worker:
+    build:
+      context: .
+      target: worker
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      DATABASE_HOST: database
+      DATABASE_PORT: "5432"
+      DATABASE_USER: instituto
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
+      DATABASE_NAME: instituto_folha
+      DATABASE_SSL: "false"
+      DATABASE_POOL_MAX: "2"
+      DATABASE_CONNECTION_TIMEOUT_MS: ${DATABASE_CONNECTION_TIMEOUT_MS:-5000}
+      DATABASE_IDLE_TIMEOUT_MS: ${DATABASE_IDLE_TIMEOUT_MS:-30000}
+      DATABASE_STATEMENT_TIMEOUT_MS: ${DATABASE_STATEMENT_TIMEOUT_MS:-30000}
+      DATABASE_QUERY_TIMEOUT_MS: ${DATABASE_QUERY_TIMEOUT_MS:-35000}
+      DATABASE_IDLE_TRANSACTION_TIMEOUT_MS: ${DATABASE_IDLE_TRANSACTION_TIMEOUT_MS:-30000}
+      DATABASE_APPLICATION_NAME: gestao-institutos-worker
+      WORKER_POLL_INTERVAL_MS: ${WORKER_POLL_INTERVAL_MS:-2000}
+      WORKER_LEASE_TIMEOUT_MINUTES: ${WORKER_LEASE_TIMEOUT_MINUTES:-15}
+    depends_on:
+      database:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: "5"
+
+  migrate:
+    build:
+      context: .
+      target: migrator
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    profiles: ["tools"]
+    environment:
+      DATABASE_HOST: database
+      DATABASE_PORT: "5432"
+      DATABASE_USER: instituto
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
+      DATABASE_NAME: instituto_folha
+      DATABASE_SSL: "false"
+      DATABASE_APPLICATION_NAME: gestao-institutos-migrator
+    depends_on:
+      database:
+        condition: service_healthy
 
 volumes:
   postgres_data:

@@ -11,16 +11,32 @@ O projeto nasceu de engenharia reversa autorizada do comportamento do sistema at
 Este primeiro incremento contém:
 
 - painel das três competências analisadas;
-- folhas, prestadores, parâmetros e obrigações em dados demonstrativos;
+- folhas, parâmetros e obrigações em dados demonstrativos;
 - motor inicial de INSS e IRRF de 2026;
+- parâmetros fiscais de 2026 conferidos em fontes oficiais e documentados;
 - memória individual anonimizada;
 - bloqueio da divergência previdenciária identificada no legado;
-- modelo PostgreSQL inicial com 14 tabelas;
+- modelo PostgreSQL inicial com 24 tabelas, incluindo trilha de importação;
+- coletores e importadores idempotentes de Pessoas completas, Atividades, Lotações,
+  Termos, Metas e Vínculos do GIW;
+- migração da ficha civil/profissional, contatos, endereço, conta bancária e dependentes
+  da Pessoa, sem colocar snapshots reais no Git;
+- cadastro persistente de Pessoas, Atividades e Lotações, com busca, edição e
+  inativação sem exclusão física;
+- cadastro persistente de Prestadores ligado obrigatoriamente a Pessoas;
+- cadastro persistente de Termos e Metas, com vigência, valores e proteção de
+  dependências ativas;
+- cadastro persistente de Vínculos, com contrato, vigência, retribuição, carga horária
+  e incidências de INSS/IRRF;
+- cadastro persistente de Eventos/Rubricas e lançamentos recorrentes por Vínculo e
+  competência, com validação de natureza, incidências, vigência e sobreposição;
 - primeira migração Drizzle;
 - Dockerfile e Compose para implantação própria;
 - testes automatizados e pipeline de integração contínua.
 
-As telas de escrita e o login ainda são demonstrativos. Nenhuma obrigação é transmitida.
+Os módulos `/cadastros`, `/prestadores`, `/instrumentos`, `/vinculos` e `/eventos` já gravam no
+PostgreSQL. As demais telas de escrita e o login ainda são demonstrativos. Nenhuma obrigação é
+transmitida. Consulte o [andamento ponderado do MVP](docs/ANDAMENTO.md).
 
 ## Começando
 
@@ -38,10 +54,12 @@ Abra `http://localhost:3000`.
 ### Testes e build
 
 ```bash
-npm test
-npm run build
+npm run validate
 npm audit
 ```
+
+Sem `DATABASE_URL`, o teste de integração PostgreSQL é marcado como ignorado. No CI,
+um PostgreSQL 16 real recebe todas as migrações e executa os testes de restrições.
 
 ### Banco e migrações
 
@@ -68,7 +86,10 @@ Antes de usar em servidor, defina valores fortes para `POSTGRES_PASSWORD` e `AUT
 - [Arquitetura](docs/ARQUITETURA.md)
 - [Modelo de dados](docs/MODELO_DE_DADOS.md)
 - [Engenharia reversa e critérios de evidência](docs/ENGENHARIA_REVERSA.md)
+- [Importação automatizada do GIW](docs/IMPORTACAO_GIW.md)
+- [Regras fiscais confirmadas para 2026](docs/REGRAS_FISCAIS_2026.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Andamento do MVP](docs/ANDAMENTO.md)
 - [Implantação em VPS](docs/DEPLOY_VPS.md)
 - [Como contribuir](CONTRIBUTING.md)
 - [Política de segurança](SECURITY.md)
