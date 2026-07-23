@@ -9,9 +9,67 @@
   "records": [
     {
       "legacyId": "9001",
+      "dadosCompletos": true,
       "nome": "PRESTADOR SINTETICO CI",
+      "tipo": "FISICA",
       "cpf": "99999999991",
-      "cnpj": null
+      "cnpj": null,
+      "sexo": "MASCULINO",
+      "nascimento": "1990-01-15",
+      "rg": "RG-SINTETICO",
+      "rgOrgaoEmissor": "SSP",
+      "rgUf": "BA",
+      "rgEmissao": "2010-05-10",
+      "estadoCivil": "SOLTEIRO",
+      "naturalidade": "MUNICIPIO SINTETICO",
+      "inscricaoInss": "99999999999",
+      "conselhoTipo": null,
+      "conselhoNumero": null,
+      "aposentado": false,
+      "cnh": null,
+      "cnhCategoria": null,
+      "cnhValidade": null,
+      "nomeFantasia": null,
+      "representanteLegal": null,
+      "inscricaoMunicipal": null,
+      "inscricaoEstadual": null,
+      "papelPrestador": true,
+      "papelParceiro": false,
+      "papelFornecedor": false,
+      "email": "prestador@example.test",
+      "telefone": "77999990000",
+      "celular": "77999990001",
+      "celularAlternativo": null,
+      "endereco": {
+        "cep": "46600000",
+        "logradouro": "RUA SINTETICA",
+        "numero": "100",
+        "bairro": "CENTRO",
+        "municipio": "MUNICIPIO SINTETICO",
+        "municipioLegacyId": "999",
+        "complemento": null,
+        "referencia": null
+      },
+      "contaBancaria": {
+        "agenciaLegacyId": "999",
+        "agencia": "AGENCIA SINTETICA",
+        "numero": "12345",
+        "digito": "6",
+        "variacao": null,
+        "tipo": "CORRENTE"
+      },
+      "dependentes": [
+        {
+          "origemLegacyKey": "DEP-9001-1",
+          "nome": "DEPENDENTE SINTETICO CI",
+          "nascimento": "2015-03-20",
+          "parentesco": "FILHO",
+          "estudante": true,
+          "cpf": "99999999999",
+          "baixaSalarioFamilia": null,
+          "baixaIrrf": null
+        }
+      ]
     }
   ]
 }

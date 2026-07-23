@@ -26,7 +26,7 @@ test(
           where table_schema = 'public'
             and table_type = 'BASE TABLE'`,
       );
-      assert.equal(Number(tabelas.rows[0].total), 21);
+      assert.equal(Number(tabelas.rows[0].total), 24);
 
       const restricoes = await client.query<{ conname: string }>(
         `select conname
@@ -41,10 +41,13 @@ test(
             'ck_vinculo_carga_horaria',
             'ck_evento_natureza',
             'ck_evento_informativo_sem_incidencia',
-            'ck_evento_recorrente_vigencia'
+            'ck_evento_recorrente_vigencia',
+            'ck_pessoa_endereco_cep',
+            'ck_pessoa_conta_tipo',
+            'ck_dependente_cpf'
           )`,
       );
-      assert.equal(restricoes.rowCount, 10);
+      assert.equal(restricoes.rowCount, 13);
 
       await client.query("begin");
       const empresaId = randomUUID();

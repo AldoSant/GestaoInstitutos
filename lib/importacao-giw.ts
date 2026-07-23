@@ -2,10 +2,71 @@ import { createHash } from "node:crypto";
 
 export type GiwPessoa = {
   legacyId: string;
+  dadosCompletos: boolean;
   nome: string;
   tipo: "FISICA" | "JURIDICA";
   cpf: string | null;
   cnpj: string | null;
+  sexo: string | null;
+  nascimento: string | null;
+  rg: string | null;
+  rgOrgaoEmissor: string | null;
+  rgUf: string | null;
+  rgEmissao: string | null;
+  estadoCivil: string | null;
+  naturalidade: string | null;
+  inscricaoInss: string | null;
+  conselhoTipo: string | null;
+  conselhoNumero: string | null;
+  aposentado: boolean;
+  cnh: string | null;
+  cnhCategoria: string | null;
+  cnhValidade: string | null;
+  nomeFantasia: string | null;
+  representanteLegal: string | null;
+  inscricaoMunicipal: string | null;
+  inscricaoEstadual: string | null;
+  papelPrestador: boolean;
+  papelParceiro: boolean;
+  papelFornecedor: boolean;
+  email: string | null;
+  telefone: string | null;
+  celular: string | null;
+  celularAlternativo: string | null;
+  endereco: GiwPessoaEndereco | null;
+  contaBancaria: GiwPessoaContaBancaria | null;
+  dependentes: GiwDependente[];
+};
+
+export type GiwPessoaEndereco = {
+  cep: string | null;
+  logradouro: string | null;
+  numero: string | null;
+  bairro: string | null;
+  municipio: string | null;
+  municipioLegacyId: string | null;
+  complemento: string | null;
+  referencia: string | null;
+};
+
+export type GiwPessoaContaBancaria = {
+  agenciaLegacyId: string | null;
+  agencia: string | null;
+  numero: string | null;
+  digito: string | null;
+  variacao: string | null;
+  tipo: "CORRENTE" | "POUPANCA" | null;
+};
+
+export type GiwDependente = {
+  origemLegacyKey: string;
+  nome: string;
+  nascimento: string | null;
+  parentesco: string | null;
+  estudante: boolean;
+  cpf: string | null;
+  baixaSalarioFamilia: string | null;
+  baixaIrrf: string | null;
 };
 
 export type GiwAtividade = {
@@ -177,6 +238,21 @@ export function normalizarPessoaGiw(
   const nome = String(value.nome ?? "").replace(/\s+/g, " ").trim();
   const cpf = somenteDigitos(value.cpf);
   const cnpj = somenteDigitos(value.cnpj);
+  const textoOpcional = (item: unknown) => {
+    const normalizado = String(item ?? "").replace(/\s+/g, " ").trim();
+    return normalizado || null;
+  };
+  const dataOpcional = (field: string) => {
+    const original = textoOpcional(value[field]);
+    const normalizada = dataIsoGiw(original);
+    if (original && !normalizada) {
+      issues.push({ record: index, field, message: "data inválida" });
+    }
+    return normalizada;
+  };
+  const enderecoEntrada = objectLike(value.endereco) ? value.endereco : null;
+  const contaEntrada = objectLike(value.contaBancaria) ? value.contaBancaria : null;
+  const dependentesEntrada = Array.isArray(value.dependentes) ? value.dependentes : [];
 
   if (!legacyId) {
     issues.push({ record: index, field: "legacyId", message: "é obrigatório" });
@@ -197,16 +273,137 @@ export function normalizarPessoaGiw(
       message: "não pode conter CPF e CNPJ ao mesmo tempo",
     });
   }
+  const cep = somenteDigitos(enderecoEntrada?.cep);
+  if (cep && cep.length !== 8) {
+    issues.push({ record: index, field: "endereco.cep", message: "deve ter 8 dígitos" });
+  }
 
+  const dependentes: GiwDependente[] = [];
+  dependentesEntrada.forEach((item, dependenteIndex) => {
+    if (!objectLike(item)) {
+      issues.push({
+        record: index,
+        field: `dependentes[${dependenteIndex}]`,
+        message: "deve ser um objeto",
+      });
+      return;
+    }
+    const nomeDependente = textoOpcional(item.nome);
+    const cpfDependente = somenteDigitos(item.cpf);
+    const nascimento = dataIsoGiw(item.nascimento);
+    const baixaSalarioFamilia = dataIsoGiw(item.baixaSalarioFamilia);
+    const baixaIrrf = dataIsoGiw(item.baixaIrrf);
+    for (const [campo, original, normalizada] of [
+      ["nascimento", item.nascimento, nascimento],
+      ["baixaSalarioFamilia", item.baixaSalarioFamilia, baixaSalarioFamilia],
+      ["baixaIrrf", item.baixaIrrf, baixaIrrf],
+    ] as const) {
+      if (textoOpcional(original) && !normalizada) {
+        issues.push({
+          record: index,
+          field: `dependentes[${dependenteIndex}].${campo}`,
+          message: "data inválida",
+        });
+      }
+    }
+    if (!nomeDependente) {
+      issues.push({
+        record: index,
+        field: `dependentes[${dependenteIndex}].nome`,
+        message: "é obrigatório",
+      });
+      return;
+    }
+    if (cpfDependente && cpfDependente.length !== 11) {
+      issues.push({
+        record: index,
+        field: `dependentes[${dependenteIndex}].cpf`,
+        message: "deve ter 11 dígitos",
+      });
+    }
+    const origemLegacyKey =
+      textoOpcional(item.origemLegacyKey) ??
+      cpfDependente ??
+      `${nomeDependente}|${nascimento ?? ""}|${textoOpcional(item.parentesco) ?? ""}`;
+    dependentes.push({
+      origemLegacyKey,
+      nome: nomeDependente,
+      nascimento,
+      parentesco: textoOpcional(item.parentesco),
+      estudante: item.estudante === true,
+      cpf: cpfDependente,
+      baixaSalarioFamilia,
+      baixaIrrf,
+    });
+  });
+
+  const nascimento = dataOpcional("nascimento");
+  const rgEmissao = dataOpcional("rgEmissao");
+  const cnhValidade = dataOpcional("cnhValidade");
   if (issues.length > 0) return { pessoa: null, issues };
 
   return {
     pessoa: {
       legacyId,
+      dadosCompletos: value.dadosCompletos === true,
       nome,
       tipo: cnpj ? "JURIDICA" : "FISICA",
       cpf,
       cnpj,
+      sexo: textoOpcional(value.sexo),
+      nascimento,
+      rg: textoOpcional(value.rg),
+      rgOrgaoEmissor: textoOpcional(value.rgOrgaoEmissor),
+      rgUf: textoOpcional(value.rgUf)?.toUpperCase() ?? null,
+      rgEmissao,
+      estadoCivil: textoOpcional(value.estadoCivil),
+      naturalidade: textoOpcional(value.naturalidade),
+      inscricaoInss: textoOpcional(value.inscricaoInss),
+      conselhoTipo: textoOpcional(value.conselhoTipo),
+      conselhoNumero: textoOpcional(value.conselhoNumero),
+      aposentado: value.aposentado === true,
+      cnh: textoOpcional(value.cnh),
+      cnhCategoria: textoOpcional(value.cnhCategoria)?.toUpperCase() ?? null,
+      cnhValidade,
+      nomeFantasia: textoOpcional(value.nomeFantasia),
+      representanteLegal: textoOpcional(value.representanteLegal),
+      inscricaoMunicipal: textoOpcional(value.inscricaoMunicipal),
+      inscricaoEstadual: textoOpcional(value.inscricaoEstadual),
+      papelPrestador: value.papelPrestador === true,
+      papelParceiro: value.papelParceiro === true,
+      papelFornecedor: value.papelFornecedor === true,
+      email: textoOpcional(value.email),
+      telefone: textoOpcional(value.telefone),
+      celular: textoOpcional(value.celular),
+      celularAlternativo: textoOpcional(value.celularAlternativo),
+      endereco: enderecoEntrada
+        ? {
+            cep,
+            logradouro: textoOpcional(enderecoEntrada.logradouro),
+            numero: textoOpcional(enderecoEntrada.numero),
+            bairro: textoOpcional(enderecoEntrada.bairro),
+            municipio: textoOpcional(enderecoEntrada.municipio),
+            municipioLegacyId: textoOpcional(enderecoEntrada.municipioLegacyId),
+            complemento: textoOpcional(enderecoEntrada.complemento),
+            referencia: textoOpcional(enderecoEntrada.referencia),
+          }
+        : null,
+      contaBancaria: contaEntrada
+        ? {
+            agenciaLegacyId: textoOpcional(contaEntrada.agenciaLegacyId),
+            agencia: textoOpcional(contaEntrada.agencia),
+            numero: textoOpcional(contaEntrada.numero),
+            digito: textoOpcional(contaEntrada.digito),
+            variacao: textoOpcional(contaEntrada.variacao),
+            tipo:
+              String(contaEntrada.tipo ?? "").toUpperCase() === "CORRENTE"
+                ? "CORRENTE"
+                : String(contaEntrada.tipo ?? "").toUpperCase() === "POUPANCA"
+                  ? "POUPANCA"
+                  : null,
+          }
+        : null,
+      dependentes,
     },
     issues,
   };

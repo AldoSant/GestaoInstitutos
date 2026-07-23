@@ -32,13 +32,67 @@ test("normaliza documentos e classifica pessoa física", () => {
   );
 
   assert.equal(result.issues.length, 0);
-  assert.deepEqual(result.snapshot?.records[0], {
-    legacyId: "42",
-    nome: "Maria da Silva",
-    tipo: "FISICA",
-    cpf: "12345678901",
-    cnpj: null,
-  });
+  const pessoa = result.snapshot?.records[0];
+  assert.deepEqual(
+    pessoa && {
+      legacyId: pessoa.legacyId,
+      nome: pessoa.nome,
+      tipo: pessoa.tipo,
+      cpf: pessoa.cpf,
+      cnpj: pessoa.cnpj,
+    },
+    {
+      legacyId: "42",
+      nome: "Maria da Silva",
+      tipo: "FISICA",
+      cpf: "12345678901",
+      cnpj: null,
+    },
+  );
+  assert.equal(pessoa?.dadosCompletos, false);
+});
+
+test("normaliza ficha completa, endereço, conta e dependentes", () => {
+  const result = validarSnapshotPessoas(
+    snapshot([
+      {
+        legacyId: "42",
+        dadosCompletos: true,
+        nome: "Maria da Silva",
+        cpf: "12345678901",
+        nascimento: "31/01/1990",
+        papelPrestador: true,
+        email: "maria@example.test",
+        endereco: {
+          cep: "46.600-000",
+          logradouro: "Rua Principal",
+          municipio: "Paramirim",
+        },
+        contaBancaria: {
+          agencia: "001",
+          numero: "12345",
+          tipo: "CORRENTE",
+        },
+        dependentes: [
+          {
+            nome: "Dependente Sintético",
+            nascimento: "10/05/2015",
+            parentesco: "Filho",
+            cpf: "99999999999",
+            estudante: true,
+          },
+        ],
+      },
+    ]),
+  );
+
+  assert.equal(result.issues.length, 0);
+  const pessoa = result.snapshot?.records[0];
+  assert.equal(pessoa?.nascimento, "1990-01-31");
+  assert.equal(pessoa?.endereco?.cep, "46600000");
+  assert.equal(pessoa?.contaBancaria?.tipo, "CORRENTE");
+  assert.equal(pessoa?.dependentes[0].nascimento, "2015-05-10");
+  assert.equal(pessoa?.dependentes[0].origemLegacyKey, "99999999999");
 });
 
 test("classifica pessoa jurídica pelo CNPJ", () => {

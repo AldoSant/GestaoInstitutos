@@ -16,9 +16,11 @@ Este primeiro incremento contém:
 - parâmetros fiscais de 2026 conferidos em fontes oficiais e documentados;
 - memória individual anonimizada;
 - bloqueio da divergência previdenciária identificada no legado;
-- modelo PostgreSQL inicial com 21 tabelas, incluindo trilha de importação;
-- coletores e importadores idempotentes de Pessoas, Atividades, Lotações, Termos, Metas
-  e Vínculos do GIW;
+- modelo PostgreSQL inicial com 24 tabelas, incluindo trilha de importação;
+- coletores e importadores idempotentes de Pessoas completas, Atividades, Lotações,
+  Termos, Metas e Vínculos do GIW;
+- migração da ficha civil/profissional, contatos, endereço, conta bancária e dependentes
+  da Pessoa, sem colocar snapshots reais no Git;
 - cadastro persistente de Pessoas, Atividades e Lotações, com busca, edição e
   inativação sem exclusão física;
 - cadastro persistente de Prestadores ligado obrigatoriamente a Pessoas;

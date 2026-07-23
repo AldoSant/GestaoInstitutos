@@ -106,8 +106,32 @@ export const pessoas = pgTable(
     nomeRazaoSocial: varchar("nome_razao_social", { length: 180 }).notNull(),
     cpf: varchar("cpf", { length: 11 }),
     cnpj: varchar("cnpj", { length: 14 }),
+    sexo: varchar("sexo", { length: 10 }),
+    nascimento: date("nascimento"),
+    rg: varchar("rg", { length: 40 }),
+    rgOrgaoEmissor: varchar("rg_orgao_emissor", { length: 10 }),
+    rgUf: varchar("rg_uf", { length: 2 }),
+    rgEmissao: date("rg_emissao"),
+    estadoCivil: varchar("estado_civil", { length: 40 }),
+    naturalidade: varchar("naturalidade", { length: 120 }),
+    inscricaoInss: varchar("inscricao_inss", { length: 30 }),
+    conselhoTipo: varchar("conselho_tipo", { length: 20 }),
+    conselhoNumero: varchar("conselho_numero", { length: 20 }),
+    aposentado: boolean("aposentado").notNull().default(false),
+    cnh: varchar("cnh", { length: 20 }),
+    cnhCategoria: varchar("cnh_categoria", { length: 2 }),
+    cnhValidade: date("cnh_validade"),
+    nomeFantasia: varchar("nome_fantasia", { length: 180 }),
+    representanteLegal: varchar("representante_legal", { length: 180 }),
+    inscricaoMunicipal: varchar("inscricao_municipal", { length: 30 }),
+    inscricaoEstadual: varchar("inscricao_estadual", { length: 30 }),
+    papelPrestador: boolean("papel_prestador").notNull().default(false),
+    papelParceiro: boolean("papel_parceiro").notNull().default(false),
+    papelFornecedor: boolean("papel_fornecedor").notNull().default(false),
     email: varchar("email", { length: 180 }),
     telefone: varchar("telefone", { length: 20 }),
+    celular: varchar("celular", { length: 20 }),
+    celularAlternativo: varchar("celular_alternativo", { length: 20 }),
     ativo: boolean("ativo").notNull().default(true),
     ...auditoriaBasica,
   },
@@ -131,6 +155,97 @@ export const pessoas = pgTable(
       "ck_pessoa_tipo_documento",
       sql`(${table.tipo} = 'FISICA' and ${table.cnpj} is null)
           or (${table.tipo} = 'JURIDICA' and ${table.cpf} is null)`,
+    ),
+  ],
+);
+
+export const pessoasEnderecos = pgTable(
+  "pessoa_endereco",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    pessoaId: uuid("pessoa_id")
+      .notNull()
+      .references(() => pessoas.id),
+    cep: varchar("cep", { length: 8 }),
+    logradouro: varchar("logradouro", { length: 120 }),
+    numero: varchar("numero", { length: 20 }),
+    bairro: varchar("bairro", { length: 100 }),
+    municipio: varchar("municipio", { length: 120 }),
+    municipioLegacyId: varchar("municipio_legacy_id", { length: 60 }),
+    complemento: varchar("complemento", { length: 200 }),
+    referencia: varchar("referencia", { length: 200 }),
+    ...auditoriaBasica,
+  },
+  (table) => [
+    uniqueIndex("uq_pessoa_endereco_pessoa").on(table.empresaId, table.pessoaId),
+    check(
+      "ck_pessoa_endereco_cep",
+      sql`${table.cep} is null or ${table.cep} ~ '^[0-9]{8}$'`,
+    ),
+  ],
+);
+
+export const pessoasContasBancarias = pgTable(
+  "pessoa_conta_bancaria",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    pessoaId: uuid("pessoa_id")
+      .notNull()
+      .references(() => pessoas.id),
+    agenciaLegacyId: varchar("agencia_legacy_id", { length: 60 }),
+    agencia: varchar("agencia", { length: 120 }),
+    numero: varchar("numero", { length: 20 }),
+    digito: varchar("digito", { length: 5 }),
+    variacao: varchar("variacao", { length: 5 }),
+    tipo: varchar("tipo", { length: 20 }),
+    ...auditoriaBasica,
+  },
+  (table) => [
+    uniqueIndex("uq_pessoa_conta_pessoa").on(table.empresaId, table.pessoaId),
+    check(
+      "ck_pessoa_conta_tipo",
+      sql`${table.tipo} is null or ${table.tipo} in ('CORRENTE', 'POUPANCA')`,
+    ),
+  ],
+);
+
+export const dependentes = pgTable(
+  "dependente",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    pessoaId: uuid("pessoa_id")
+      .notNull()
+      .references(() => pessoas.id),
+    origemLegacyKey: varchar("origem_legacy_key", { length: 180 }).notNull(),
+    nome: varchar("nome", { length: 180 }).notNull(),
+    nascimento: date("nascimento"),
+    parentesco: varchar("parentesco", { length: 80 }),
+    estudante: boolean("estudante").notNull().default(false),
+    cpf: varchar("cpf", { length: 11 }),
+    baixaSalarioFamilia: date("baixa_salario_familia"),
+    baixaIrrf: date("baixa_irrf"),
+    ativo: boolean("ativo").notNull().default(true),
+    ...auditoriaBasica,
+  },
+  (table) => [
+    uniqueIndex("uq_dependente_pessoa_origem").on(
+      table.pessoaId,
+      table.origemLegacyKey,
+    ),
+    uniqueIndex("uq_dependente_pessoa_cpf").on(table.pessoaId, table.cpf),
+    index("ix_dependente_empresa_nome").on(table.empresaId, table.nome),
+    check(
+      "ck_dependente_cpf",
+      sql`${table.cpf} is null or ${table.cpf} ~ '^[0-9]{11}$'`,
     ),
   ],
 );

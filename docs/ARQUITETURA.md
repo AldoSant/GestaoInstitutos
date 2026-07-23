@@ -62,8 +62,9 @@ docs/                arquitetura, domínio, deploy e referências
 
 ## Estado da persistência
 
-Pessoas, Atividades, Lotações, Prestadores, Termos, Metas, Vínculos, Eventos e lançamentos
-recorrentes já usam consultas e ações de servidor conectadas ao PostgreSQL. Prestador depende
+Pessoas, seus endereços, contas bancárias e dependentes, além de Atividades, Lotações,
+Prestadores, Termos, Metas, Vínculos, Eventos e lançamentos recorrentes já usam consultas
+e ações de servidor conectadas ao PostgreSQL. Prestador depende
 de uma Pessoa da mesma empresa e não pode
 duplicá-la dentro da organização. Meta depende de um Termo da mesma empresa, e cadastros
 com dependências ativas não podem ser inativados. Vínculos exigem toda a cadeia da mesma

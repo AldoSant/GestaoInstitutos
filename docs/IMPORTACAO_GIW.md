@@ -6,7 +6,7 @@ simulação, aplicação e conferência antes de liberar a próxima.
 
 ## Situação atual
 
-Os fluxos implementados coletam e importam **Pessoas**, **Atividades**, **Lotações**,
+Os fluxos implementados coletam e importam **Pessoas completas**, **Atividades**, **Lotações**,
 **Termos**, **Metas** e **Vínculos**. Eles estabelecem o padrão que será reutilizado por
 eventos, tabelas fiscais, produtividade, folhas e guias.
 
@@ -68,8 +68,13 @@ Variáveis opcionais:
 - `GIW_HEADLESS=false`: mostra o navegador para diagnóstico local.
 
 O coletor entra no GIW, abre Cadastro > Pessoa > Localizar, percorre todas as páginas
-de 100 registros e produz um snapshot com versão e origem. Nenhuma tela de inclusão,
-edição ou exclusão é acionada.
+de 100 registros e abre cada ficha em modo de consulta. O snapshot inclui identificação
+civil e profissional, papéis, contatos, endereço, conta bancária e dependentes com
+baixas de salário-família e IRRF. Nenhuma tela de inclusão, edição ou exclusão é acionada.
+
+Snapshots completos usam `dadosCompletos: true`. O importador sincroniza os detalhes e
+inativa dependentes que deixaram de existir no GIW somente quando esse marcador está
+presente. Assim, reprocessar um snapshot antigo resumido nunca apaga uma ficha detalhada.
 
 ## Coletar Atividades e Lotações
 
@@ -174,10 +179,11 @@ de pagamento, fontes de recurso e documentos.
 
 Critério de saída: contagens conciliadas e 100% dos registros com chave legada.
 
-### Etapa B — pessoas completas
+### Etapa B — pessoas completas — implementada
 
-Complementar a listagem de Pessoas com as abas Cadastro, Endereço/Conta, Prestador,
-Dependentes e Parceiro. Documentos bancários e dependentes terão tabelas próprias.
+O coletor visita as abas Cadastro, Endereço/Conta e Dependentes. Dados bancários,
+endereço e dependentes possuem tabelas próprias; dados civis, profissionais, contatos e
+papéis ficam na Pessoa. A aba Prestador continua complementada pelos Vínculos coletados.
 
 Critério de saída: prestadores ativos aptos a formar vínculos sem recadastro manual.
 
@@ -213,8 +219,8 @@ diferenças, aprovar o corte e manter plano de retorno.
 
 - o coletor de Pessoas depende do layout Webrun observado; alterações no GIW podem
   exigir ajuste de seletor;
-- a primeira versão de Pessoas traz os quatro campos da listagem (código, nome, CPF e CNPJ); as
-  abas detalhadas entram na Etapa B;
+- a coleta detalhada é mais lenta porque abre cada Pessoa individualmente; o snapshot
+  deve ser conferido antes da aplicação e nunca enviado ao Git;
 - o coletor de Termos opera sobre o ano selecionado no GIW; anos históricos devem ser
   selecionados e coletados separadamente;
 - nenhuma guia é transmitida e nenhum registro do GIW é alterado;

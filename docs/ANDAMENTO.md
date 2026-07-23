@@ -2,7 +2,7 @@
 
 ## Visão geral
 
-**Estimativa atual: 52% concluído.**
+**Estimativa atual: 54% concluído.**
 
 O percentual mede capacidade operacional validada, e não quantidade de telas ou linhas
 de código. Uma etapa só avança quando existe persistência, validação, teste e caminho de
@@ -12,17 +12,20 @@ homologação. Interfaces demonstrativas contam apenas como descoberta de fluxo.
 |---|---:|---:|---|
 | Plataforma, banco, deploy e CI | 15% | 12% | Operacional; faltam acesso real, auditoria de usuário e rotinas comprovadas de restauração. |
 | Descoberta, regras e modelo relacional | 10% | 7% | Fluxo principal e modelo identificados; contratos e amostras reais ainda precisam ampliar a evidência. |
-| Migração e cadastros-base | 15% | 10% | Pessoas, Atividades, Lotações e Prestadores persistentes; importação automática cobre os três primeiros. |
+| Migração e cadastros-base | 15% | 12% | Pessoas completas, Atividades, Lotações e Prestadores persistentes; a coleta de Pessoa inclui dados civis, contatos, endereço, conta e dependentes. |
 | Termos, metas e vínculos | 15% | 14% | Coleta/importação e CRUD da cadeia implementados; falta executar e reconciliar os dados reais de todos os anos. |
 | Folha auditável | 20% | 7% | Eventos e lançamentos recorrentes já persistem; motor inicial e memória demonstrativa existem, mas processamento e fechamento ainda não persistem. |
 | Obrigação previdenciária | 15% | 2% | Divergência é detectada no protótipo; apuração, reconciliação e emissão ainda não são operacionais. |
 | Homologação, paralelo e corte | 10% | 0% | Depende dos módulos anteriores e de três competências reais conciliadas. |
-| **Total** | **100%** | **52%** | |
+| **Total** | **100%** | **54%** | |
 
 ## O que já pode ser usado
 
 - aplicação, PostgreSQL, migrações e containers com CI;
-- coleta e importação idempotente de Pessoas, Atividades, Lotações, Termos, Metas e Vínculos do GIW;
+- coleta e importação idempotente de Pessoas completas, Atividades, Lotações, Termos,
+  Metas e Vínculos do GIW;
+- ficha de Pessoa com identificação civil/profissional, contatos, endereço, conta
+  bancária e dependentes relevantes para IRRF e salário-família;
 - cadastro persistente de Pessoas, Atividades, Lotações e Prestadores;
 - cadastro persistente de Termos e Metas, com vigência, orçamento e dependências protegidas;
 - cadastro persistente de Vínculos, ligando toda a cadeia e bloqueando vigências sobrepostas;

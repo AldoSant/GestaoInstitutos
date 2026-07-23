@@ -38,6 +38,9 @@ migrações em PostgreSQL 16, cria uma organização sintética e testa as pági
 ao banco. Termos, Metas e Vínculos possuem coleta/importação idempotente e CRUD
 persistente. A importação cria o Prestador quando sua Pessoa já está mapeada, resolve
 Termo, Meta, Atividade e Lotação por chave legada e rejeita dependências ausentes.
+O coletor de Pessoas abre cada ficha do GIW e transporta identificação civil e
+profissional, contatos, endereço, conta bancária e dependentes. Snapshots resumidos
+anteriores continuam aceitos sem apagar detalhes já migrados.
 
 Eventos/Rubricas e lançamentos recorrentes por Vínculo já possuem persistência, busca,
 edição e inativação, com validações no servidor e no banco. O próximo recorte é reconciliar

@@ -70,6 +70,23 @@ export async function carregarCadastrosBase(busca = "") {
         nome: pessoas.nomeRazaoSocial,
         cpf: pessoas.cpf,
         cnpj: pessoas.cnpj,
+        nascimento: pessoas.nascimento,
+        email: pessoas.email,
+        telefone: pessoas.telefone,
+        celular: pessoas.celular,
+        inscricaoInss: pessoas.inscricaoInss,
+        papelPrestador: pessoas.papelPrestador,
+        dependentes: sql<number>`(
+          select count(*)::int
+            from dependente d
+           where d.pessoa_id = ${pessoas.id} and d.ativo
+        )`,
+        temEndereco: sql<boolean>`exists(
+          select 1 from pessoa_endereco pe where pe.pessoa_id = ${pessoas.id}
+        )`,
+        temContaBancaria: sql<boolean>`exists(
+          select 1 from pessoa_conta_bancaria pcb where pcb.pessoa_id = ${pessoas.id}
+        )`,
         ativo: pessoas.ativo,
         atualizadoEm: pessoas.atualizadoEm,
         legacyId: chavesLegado.legacyId,

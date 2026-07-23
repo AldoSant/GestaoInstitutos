@@ -6,8 +6,9 @@ export default function AjudaPage() {
       <section className="panel prose-panel">
         <h2>Sobre este incremento</h2>
         <p>
-          Pessoas, Atividades, Lotações, Prestadores, Termos, Metas, Vínculos,
-          Eventos e lançamentos recorrentes já são consultados e alterados no
+          Pessoas — incluindo dados civis, contatos, endereço, conta bancária e
+          dependentes —, Atividades, Lotações, Prestadores, Termos, Metas, Vínculos,
+          Eventos e lançamentos recorrentes já são consultados no
           PostgreSQL. O Vínculo une a cadeia contratual e impede vigências
           ativas sobrepostas. A cadeia pode ser coletada e importada do GIW com
           identificação de origem e repetição segura. As telas de folha,

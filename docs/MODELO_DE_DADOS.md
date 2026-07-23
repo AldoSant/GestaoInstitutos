@@ -2,7 +2,7 @@
 
 ## Implementado no primeiro incremento
 
-As migrações Drizzle criam 21 tabelas:
+As migrações Drizzle criam 24 tabelas:
 
 - `empresa`;
 - `usuario` e `usuario_empresa`;
@@ -14,6 +14,7 @@ As migrações Drizzle criam 21 tabelas:
 - `importacao_execucao`, `importacao_registro` e `legado_chave`.
 - `atividade` e `lotacao`, agora referenciáveis por `prestador_vinculo`.
 - `evento` e `lancamento_evento_recorrente`.
+- `pessoa_endereco`, `pessoa_conta_bancaria` e `dependente`.
 
 As três estruturas de importação guardam a execução, a decisão por registro e a
 correspondência durável entre o código do GIW e o UUID local. Isso permite simular,
@@ -33,6 +34,9 @@ erDiagram
   EMPRESA ||--o{ EVENTO : configura
   PRESTADOR_VINCULO ||--o{ LANCAMENTO_EVENTO_RECORRENTE : recebe
   EVENTO ||--o{ LANCAMENTO_EVENTO_RECORRENTE : aplica
+  PESSOA ||--o| PESSOA_ENDERECO : reside
+  PESSOA ||--o| PESSOA_CONTA_BANCARIA : recebe
+  PESSOA ||--o{ DEPENDENTE : declara
   EMPRESA ||--o{ IMPORTACAO_EXECUCAO : executa
   IMPORTACAO_EXECUCAO ||--o{ IMPORTACAO_REGISTRO : detalha
   IMPORTACAO_EXECUCAO ||--o{ LEGADO_CHAVE : atualiza
@@ -62,7 +66,6 @@ Consulte:
 ## Próximas tabelas prioritárias
 
 - composições de eventos/rubricas;
-- dependentes;
 - consolidação mensal por pessoa e rateio por vínculo;
 - fontes pagadoras concomitantes;
 - lançamentos e memória granular;

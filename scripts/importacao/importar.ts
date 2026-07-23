@@ -147,25 +147,176 @@ async function importarPessoa(
   );
   let pessoaId = destinoId;
   let status: "INSERIDO" | "ATUALIZADO";
+  const dadosPessoais = [
+    pessoa.tipo,
+    pessoa.nome,
+    pessoa.cpf,
+    pessoa.cnpj,
+    pessoa.sexo,
+    pessoa.nascimento,
+    pessoa.rg,
+    pessoa.rgOrgaoEmissor,
+    pessoa.rgUf,
+    pessoa.rgEmissao,
+    pessoa.estadoCivil,
+    pessoa.naturalidade,
+    pessoa.inscricaoInss,
+    pessoa.conselhoTipo,
+    pessoa.conselhoNumero,
+    pessoa.aposentado,
+    pessoa.cnh,
+    pessoa.cnhCategoria,
+    pessoa.cnhValidade,
+    pessoa.nomeFantasia,
+    pessoa.representanteLegal,
+    pessoa.inscricaoMunicipal,
+    pessoa.inscricaoEstadual,
+    pessoa.papelPrestador,
+    pessoa.papelParceiro,
+    pessoa.papelFornecedor,
+    pessoa.email,
+    pessoa.telefone,
+    pessoa.celular,
+    pessoa.celularAlternativo,
+  ];
 
   if (pessoaId) {
-    await client.query(
-      `update pessoa
-          set tipo = $3, nome_razao_social = $4, cpf = $5, cnpj = $6,
-              ativo = true, atualizado_em = now()
-        where id = $1 and empresa_id = $2`,
-      [pessoaId, empresaId, pessoa.tipo, pessoa.nome, pessoa.cpf, pessoa.cnpj],
-    );
+    if (pessoa.dadosCompletos) {
+      await client.query(
+        `update pessoa
+            set tipo = $3, nome_razao_social = $4, cpf = $5, cnpj = $6,
+                sexo = $7, nascimento = $8, rg = $9, rg_orgao_emissor = $10,
+                rg_uf = $11, rg_emissao = $12, estado_civil = $13,
+                naturalidade = $14, inscricao_inss = $15, conselho_tipo = $16,
+                conselho_numero = $17, aposentado = $18, cnh = $19,
+                cnh_categoria = $20, cnh_validade = $21, nome_fantasia = $22,
+                representante_legal = $23, inscricao_municipal = $24,
+                inscricao_estadual = $25, papel_prestador = $26,
+                papel_parceiro = $27, papel_fornecedor = $28, email = $29,
+                telefone = $30, celular = $31, celular_alternativo = $32,
+                ativo = true, atualizado_em = now()
+          where id = $1 and empresa_id = $2`,
+        [pessoaId, empresaId, ...dadosPessoais],
+      );
+    } else {
+      await client.query(
+        `update pessoa
+            set tipo = $3, nome_razao_social = $4, cpf = $5, cnpj = $6,
+                ativo = true, atualizado_em = now()
+          where id = $1 and empresa_id = $2`,
+        [pessoaId, empresaId, pessoa.tipo, pessoa.nome, pessoa.cpf, pessoa.cnpj],
+      );
+    }
     status = "ATUALIZADO";
   } else {
     const insert = await client.query<{ id: string }>(
-      `insert into pessoa (empresa_id, tipo, nome_razao_social, cpf, cnpj, ativo)
-       values ($1, $2, $3, $4, $5, true)
+      `insert into pessoa
+         (empresa_id, tipo, nome_razao_social, cpf, cnpj, sexo, nascimento, rg,
+          rg_orgao_emissor, rg_uf, rg_emissao, estado_civil, naturalidade,
+          inscricao_inss, conselho_tipo, conselho_numero, aposentado, cnh,
+          cnh_categoria, cnh_validade, nome_fantasia, representante_legal,
+          inscricao_municipal, inscricao_estadual, papel_prestador, papel_parceiro,
+          papel_fornecedor, email, telefone, celular, celular_alternativo, ativo)
+       values
+         ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+          $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
+          $27, $28, $29, $30, $31, true)
        returning id`,
-      [empresaId, pessoa.tipo, pessoa.nome, pessoa.cpf, pessoa.cnpj],
+      [empresaId, ...dadosPessoais],
     );
     pessoaId = insert.rows[0].id;
     status = "INSERIDO";
+  }
+
+  if (pessoa.dadosCompletos && pessoa.endereco) {
+    await client.query(
+      `insert into pessoa_endereco
+         (empresa_id, pessoa_id, cep, logradouro, numero, bairro, municipio,
+          municipio_legacy_id, complemento, referencia)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       on conflict (empresa_id, pessoa_id)
+       do update set cep = excluded.cep, logradouro = excluded.logradouro,
+                     numero = excluded.numero, bairro = excluded.bairro,
+                     municipio = excluded.municipio,
+                     municipio_legacy_id = excluded.municipio_legacy_id,
+                     complemento = excluded.complemento,
+                     referencia = excluded.referencia, atualizado_em = now()`,
+      [
+        empresaId,
+        pessoaId,
+        pessoa.endereco.cep,
+        pessoa.endereco.logradouro,
+        pessoa.endereco.numero,
+        pessoa.endereco.bairro,
+        pessoa.endereco.municipio,
+        pessoa.endereco.municipioLegacyId,
+        pessoa.endereco.complemento,
+        pessoa.endereco.referencia,
+      ],
+    );
+  }
+
+  if (pessoa.dadosCompletos && pessoa.contaBancaria) {
+    await client.query(
+      `insert into pessoa_conta_bancaria
+         (empresa_id, pessoa_id, agencia_legacy_id, agencia, numero, digito,
+          variacao, tipo)
+       values ($1, $2, $3, $4, $5, $6, $7, $8)
+       on conflict (empresa_id, pessoa_id)
+       do update set agencia_legacy_id = excluded.agencia_legacy_id,
+                     agencia = excluded.agencia, numero = excluded.numero,
+                     digito = excluded.digito, variacao = excluded.variacao,
+                     tipo = excluded.tipo, atualizado_em = now()`,
+      [
+        empresaId,
+        pessoaId,
+        pessoa.contaBancaria.agenciaLegacyId,
+        pessoa.contaBancaria.agencia,
+        pessoa.contaBancaria.numero,
+        pessoa.contaBancaria.digito,
+        pessoa.contaBancaria.variacao,
+        pessoa.contaBancaria.tipo,
+      ],
+    );
+  }
+
+  if (pessoa.dadosCompletos) {
+    const chavesDependentes: string[] = [];
+    for (const dependente of pessoa.dependentes) {
+      chavesDependentes.push(dependente.origemLegacyKey);
+      await client.query(
+        `insert into dependente
+           (empresa_id, pessoa_id, origem_legacy_key, nome, nascimento,
+            parentesco, estudante, cpf, baixa_salario_familia, baixa_irrf, ativo)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
+         on conflict (pessoa_id, origem_legacy_key)
+         do update set nome = excluded.nome, nascimento = excluded.nascimento,
+                       parentesco = excluded.parentesco,
+                       estudante = excluded.estudante, cpf = excluded.cpf,
+                       baixa_salario_familia = excluded.baixa_salario_familia,
+                       baixa_irrf = excluded.baixa_irrf, ativo = true,
+                       atualizado_em = now()`,
+        [
+          empresaId,
+          pessoaId,
+          dependente.origemLegacyKey,
+          dependente.nome,
+          dependente.nascimento,
+          dependente.parentesco,
+          dependente.estudante,
+          dependente.cpf,
+          dependente.baixaSalarioFamilia,
+          dependente.baixaIrrf,
+        ],
+      );
+    }
+    await client.query(
+      `update dependente
+          set ativo = false, atualizado_em = now()
+        where empresa_id = $1 and pessoa_id = $2
+          and not (origem_legacy_key = any($3::text[]))`,
+      [empresaId, pessoaId, chavesDependentes],
+    );
   }
 
   await client.query(
