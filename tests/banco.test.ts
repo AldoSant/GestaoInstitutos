@@ -42,12 +42,11 @@ test(
             'ck_evento_natureza',
             'ck_evento_informativo_sem_incidencia',
             'ck_evento_recorrente_vigencia',
-            'ck_pessoa_endereco_cep',
             'ck_pessoa_conta_tipo',
             'ck_dependente_cpf'
           )`,
       );
-      assert.equal(restricoes.rowCount, 13);
+      assert.equal(restricoes.rowCount, 12);
 
       await client.query("begin");
       const empresaId = randomUUID();

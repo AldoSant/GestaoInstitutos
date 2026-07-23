@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { abrirMenuCadastro, abrirSessaoGiw, salvarSnapshot } from "./cliente.mjs";
 
 const timestamp = new Date().toISOString();
@@ -19,7 +21,18 @@ try {
 
   const records = [];
   const seen = new Set();
-  let pageNumber = 1;
+  if (process.env.GIW_RESUME === "true" && process.env.GIW_OUTPUT) {
+    const anterior = JSON.parse(await readFile(resolve(process.env.GIW_OUTPUT), "utf8"));
+    if (anterior.entity !== "pessoas" || !Array.isArray(anterior.records)) {
+      throw new Error("O checkpoint informado não é um snapshot de Pessoas.");
+    }
+    for (const record of anterior.records) {
+      if (!record.legacyId || seen.has(String(record.legacyId))) continue;
+      seen.add(String(record.legacyId));
+      records.push(record);
+    }
+  }
+  let pageNumber = Math.floor(records.length / 100) + 1;
   let completed = false;
   const valor = async (selector) =>
     ((await formularioPessoa.locator(selector).inputValue().catch(() => "")) ?? "").trim();
@@ -27,6 +40,40 @@ try {
     formularioPessoa.locator(selector).isChecked().catch(() => false);
   const normalizarConta = (value) =>
     value === "c" ? "CORRENTE" : value === "p" ? "POUPANCA" : null;
+  const salvarCheckpoint = () =>
+    salvarSnapshot({
+      entity: "pessoas",
+      formId: "464569402",
+      extractedAt: timestamp,
+      records,
+      output: process.env.GIW_OUTPUT,
+    });
+  const avancarPagina = async (numeroDestino) => {
+    const firstBefore =
+      (await consulta.locator("#results-table tbody tr td").first().textContent())?.trim() ?? "";
+    const nextContainer = consulta.locator("#nav-item-next");
+    const className = await nextContainer.getAttribute("class");
+    if (className?.includes("disabled")) {
+      throw new Error(`O GIW terminou antes da página ${numeroDestino}.`);
+    }
+    await nextContainer.locator("a").click();
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const firstAfter =
+        (await consulta.locator("#results-table tbody tr td").first().textContent())?.trim() ?? "";
+      if (firstAfter && firstAfter !== firstBefore) return;
+      await page.waitForTimeout(100);
+    }
+    throw new Error(`A página ${numeroDestino} não carregou.`);
+  };
+
+  if (pageNumber > 1) {
+    console.log(
+      `GIW: retomando com ${records.length} pessoa(s), avançando até a página ${pageNumber}.`,
+    );
+    for (let pagina = 2; pagina <= pageNumber; pagina += 1) {
+      await avancarPagina(pagina);
+    }
+  }
 
   while (pageNumber <= 100) {
     const linhas = consulta.locator("#results-table tbody tr");
@@ -43,14 +90,20 @@ try {
 
       await linhas.nth(rowIndex).dblclick();
       let abriuRegistro = false;
-      for (let attempt = 0; attempt < 50; attempt += 1) {
+      for (let attempt = 0; attempt < 200; attempt += 1) {
         if ((await valor("#WFRInput1025566")) === legacyId) {
           abriuRegistro = true;
           break;
         }
         await page.waitForTimeout(100);
       }
-      if (!abriuRegistro) throw new Error(`A Pessoa ${legacyId} não abriu para coleta completa.`);
+      if (!abriuRegistro) {
+        throw new Error(
+          `A Pessoa ${legacyId} não abriu para coleta completa (código exibido: ${
+            (await valor("#WFRInput1025566")) || "vazio"
+          }).`,
+        );
+      }
 
       const tipo = await formularioPessoa.locator("select").nth(0).inputValue();
       const sexo = await formularioPessoa.locator("select").nth(1).inputValue();
@@ -59,31 +112,38 @@ try {
       const cpf = (await valor("#WFRInput1025088")) || cpfResumo || null;
       const cnpj = (await valor("#WFRInput1025165")) || cnpjResumo || null;
 
-      await formularioPessoa.getByRole("tab", { name: "Dependentes", exact: true }).click();
-      const dependentes = await formularioPessoa
-        .locator('tr[role="listitem"]:visible')
-        .evaluateAll((elements) =>
-          elements.map((row) => {
-            const cells = Array.from(row.querySelectorAll("td")).map((cell) => ({
-              text: (cell.textContent ?? "").replace(/\u00a0/g, " ").trim(),
-              checked: Boolean(cell.querySelector(".checkboxTrue, input:checked")),
-            }));
-            const dados = cells.slice(-7);
-            const [nome, nascimento, parentesco, estudante, cpf, baixaSf, baixaIrrf] = dados;
-            return {
-              origemLegacyKey:
-                cpf?.text ||
-                `${nome?.text ?? ""}|${nascimento?.text ?? ""}|${parentesco?.text ?? ""}`,
-              nome: nome?.text ?? "",
-              nascimento: nascimento?.text || null,
-              parentesco: parentesco?.text || null,
-              estudante: estudante?.checked || estudante?.text.toLowerCase() === "sim",
-              cpf: cpf?.text || null,
-              baixaSalarioFamilia: baixaSf?.text || null,
-              baixaIrrf: baixaIrrf?.text || null,
-            };
-          }),
-        );
+      const abaDependentes = formularioPessoa.getByRole("tab", {
+        name: "Dependentes",
+        exact: true,
+      });
+      let dependentes = [];
+      if ((await abaDependentes.count()) === 1) {
+        await abaDependentes.click();
+        dependentes = await formularioPessoa
+          .locator('tr[role="listitem"]:visible')
+          .evaluateAll((elements) =>
+            elements.map((row) => {
+              const cells = Array.from(row.querySelectorAll("td")).map((cell) => ({
+                text: (cell.textContent ?? "").replace(/\u00a0/g, " ").trim(),
+                checked: Boolean(cell.querySelector(".checkboxTrue, input:checked")),
+              }));
+              const dados = cells.slice(-7);
+              const [nome, nascimento, parentesco, estudante, cpf, baixaSf, baixaIrrf] = dados;
+              return {
+                origemLegacyKey:
+                  cpf?.text ||
+                  `${nome?.text ?? ""}|${nascimento?.text ?? ""}|${parentesco?.text ?? ""}`,
+                nome: nome?.text ?? "",
+                nascimento: nascimento?.text || null,
+                parentesco: parentesco?.text || null,
+                estudante: estudante?.checked || estudante?.text.toLowerCase() === "sim",
+                cpf: cpf?.text || null,
+                baixaSalarioFamilia: baixaSf?.text || null,
+                baixaIrrf: baixaIrrf?.text || null,
+              };
+            }),
+          );
+      }
 
       records.push({
         legacyId,
@@ -140,11 +200,13 @@ try {
         },
         dependentes,
       });
+      if (records.length % 25 === 0) await salvarCheckpoint();
 
       await formularioPessoa.getByRole("tab", { name: "Localizar", exact: true }).click();
     }
 
     console.log(`GIW: página ${pageNumber}, ${records.length} pessoa(s) coletada(s).`);
+    await salvarCheckpoint();
     const nextContainer = consulta.locator("#nav-item-next");
     const className = await nextContainer.getAttribute("class");
     if (className?.includes("disabled")) {
@@ -152,20 +214,7 @@ try {
       break;
     }
 
-    const firstBefore = rows[0]?.[0] ?? "";
-    await nextContainer.locator("a").click();
-    let pageChanged = false;
-    for (let attempt = 0; attempt < 100; attempt += 1) {
-      const firstAfter =
-        (await consulta.locator("#results-table tbody tr td").first().textContent())?.trim() ??
-        "";
-      if (firstAfter && firstAfter !== firstBefore) {
-        pageChanged = true;
-        break;
-      }
-      await page.waitForTimeout(100);
-    }
-    if (!pageChanged) throw new Error(`A página ${pageNumber + 1} não carregou.`);
+    await avancarPagina(pageNumber + 1);
     pageNumber += 1;
   }
 

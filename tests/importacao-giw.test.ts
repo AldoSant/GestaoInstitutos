@@ -105,6 +105,23 @@ test("classifica pessoa jurídica pelo CNPJ", () => {
   assert.equal(result.snapshot?.records[0].cnpj, "12345678000190");
 });
 
+test("preserva CEP legado fora do padrão sem bloquear a ficha", () => {
+  const result = validarSnapshotPessoas(
+    snapshot([
+      {
+        legacyId: "10",
+        nome: "Pessoa com endereço legado",
+        cpf: "12345678901",
+        dadosCompletos: true,
+        endereco: { cep: "0" },
+      },
+    ]),
+  );
+
+  assert.equal(result.issues.length, 0);
+  assert.equal(result.snapshot?.records[0].endereco?.cep, "0");
+});
+
 test("rejeita IDs repetidos e documentos inválidos", () => {
   const result = validarSnapshotPessoas(
     snapshot([

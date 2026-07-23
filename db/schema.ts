@@ -169,7 +169,7 @@ export const pessoasEnderecos = pgTable(
     pessoaId: uuid("pessoa_id")
       .notNull()
       .references(() => pessoas.id),
-    cep: varchar("cep", { length: 8 }),
+    cep: varchar("cep", { length: 12 }),
     logradouro: varchar("logradouro", { length: 120 }),
     numero: varchar("numero", { length: 20 }),
     bairro: varchar("bairro", { length: 100 }),
@@ -181,10 +181,6 @@ export const pessoasEnderecos = pgTable(
   },
   (table) => [
     uniqueIndex("uq_pessoa_endereco_pessoa").on(table.empresaId, table.pessoaId),
-    check(
-      "ck_pessoa_endereco_cep",
-      sql`${table.cep} is null or ${table.cep} ~ '^[0-9]{8}$'`,
-    ),
   ],
 );
 

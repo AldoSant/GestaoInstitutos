@@ -274,9 +274,6 @@ export function normalizarPessoaGiw(
     });
   }
   const cep = somenteDigitos(enderecoEntrada?.cep);
-  if (cep && cep.length !== 8) {
-    issues.push({ record: index, field: "endereco.cep", message: "deve ter 8 dígitos" });
-  }
 
   const dependentes: GiwDependente[] = [];
   dependentesEntrada.forEach((item, dependenteIndex) => {

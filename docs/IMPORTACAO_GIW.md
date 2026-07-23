@@ -65,12 +65,16 @@ Variáveis opcionais:
 
 - `GIW_URL`: altera o endereço de entrada do legado;
 - `GIW_OUTPUT`: define o arquivo JSON de saída;
+- `GIW_RESUME=true`: carrega o arquivo indicado em `GIW_OUTPUT`, avança até a página
+  calculada e continua sem reler as fichas já presentes;
 - `GIW_HEADLESS=false`: mostra o navegador para diagnóstico local.
 
 O coletor entra no GIW, abre Cadastro > Pessoa > Localizar, percorre todas as páginas
 de 100 registros e abre cada ficha em modo de consulta. O snapshot inclui identificação
 civil e profissional, papéis, contatos, endereço, conta bancária e dependentes com
 baixas de salário-família e IRRF. Nenhuma tela de inclusão, edição ou exclusão é acionada.
+Durante a coleta, um checkpoint é gravado a cada 25 fichas e ao final de cada página.
+Uma interrupção pode ser retomada com o mesmo `GIW_OUTPUT` e `GIW_RESUME=true`.
 
 Snapshots completos usam `dadosCompletos: true`. O importador sincroniza os detalhes e
 inativa dependentes que deixaram de existir no GIW somente quando esse marcador está
