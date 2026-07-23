@@ -15,7 +15,7 @@
     "validate": "npm run lint && npm run typecheck && npm test && npm run db:check && npm run build",
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "node scripts/db/migrate.mjs",
     "db:bootstrap:empresa": "tsx scripts/db/bootstrap-empresa.ts",
     "giw:coletar:pessoas": "node scripts/giw/coletar-pessoas.mjs",
     "giw:coletar:cadastros": "node scripts/giw/coletar-cadastros-base.mjs",

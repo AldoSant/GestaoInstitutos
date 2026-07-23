@@ -13,6 +13,7 @@ RUN npm run build
 FROM dependencies AS migrator
 COPY drizzle ./drizzle
 COPY db ./db
+COPY scripts/db/migrate.mjs ./scripts/db/migrate.mjs
 COPY drizzle.config.ts tsconfig.json ./
 CMD ["npm", "run", "db:migrate"]
 

@@ -20,7 +20,11 @@ services:
     build: .
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://instituto:${POSTGRES_PASSWORD:-instituto-local}@database:5432/instituto_folha
+      DATABASE_HOST: database
+      DATABASE_PORT: "5432"
+      DATABASE_USER: instituto
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-instituto-local}
+      DATABASE_NAME: instituto_folha
       DATABASE_SSL: "false"
       AUTH_SECRET: ${AUTH_SECRET:-somente-desenvolvimento-troque-em-producao}
     depends_on:
@@ -40,7 +44,11 @@ services:
       target: migrator
     profiles: ["tools"]
     environment:
-      DATABASE_URL: postgresql://instituto:${POSTGRES_PASSWORD:-instituto-local}@database:5432/instituto_folha
+      DATABASE_HOST: database
+      DATABASE_PORT: "5432"
+      DATABASE_USER: instituto
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-instituto-local}
+      DATABASE_NAME: instituto_folha
       DATABASE_SSL: "false"
     depends_on:
       database:

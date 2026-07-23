@@ -6,12 +6,20 @@ const globalForDb = globalThis as unknown as { pgPool?: Pool };
 
 function criarPool() {
   const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("DATABASE_URL não configurada.");
+  const host = process.env.DATABASE_HOST;
+  const user = process.env.DATABASE_USER;
+  const password = process.env.DATABASE_PASSWORD;
+  const database = process.env.DATABASE_NAME;
+  const port = Number(process.env.DATABASE_PORT ?? "5432");
+
+  if (!connectionString && (!host || !user || password === undefined || !database)) {
+    throw new Error("Configure DATABASE_URL ou DATABASE_HOST, DATABASE_USER, DATABASE_PASSWORD e DATABASE_NAME.");
   }
 
   return new Pool({
-    connectionString,
+    ...(connectionString
+      ? { connectionString }
+      : { host, user, password, database, port }),
     max: 10,
     connectionTimeoutMillis: 5_000,
     idleTimeoutMillis: 30_000,
