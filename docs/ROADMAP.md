@@ -30,12 +30,14 @@ detalhado da migração está em [Importação do GIW](IMPORTACAO_GIW.md).
 - CRUD de pessoas, prestadores, termos, metas e vínculos.
 
 Progresso: Pessoas, Atividades e Lotações já possuem coleta, importação e CRUD
-persistente com busca, edição e inativação. Atividades e Lotações também possuem tabelas
-relacionais próprias e chaves opcionais nos vínculos. O banco rejeita documentos,
-vigências, totais e estados estruturalmente inconsistentes, e o CI aplica as migrações
-em PostgreSQL 16, cria uma organização sintética e testa a página conectada ao banco.
+persistente com busca, edição e inativação. Prestadores também possuem CRUD persistente,
+vinculação obrigatória a uma Pessoa e parâmetros previdenciários. Atividades e Lotações
+possuem tabelas relacionais próprias e chaves opcionais nos vínculos. O banco rejeita
+documentos, vigências, totais e estados estruturalmente inconsistentes, e o CI aplica as
+migrações em PostgreSQL 16, cria uma organização sintética e testa as páginas conectadas
+ao banco.
 
-Próximo recorte: completar Prestadores e iniciar Termos, Metas e Vínculos sobre os
+Próximo recorte: implementar Termos e Metas; depois, Vínculos sobre todos os
 cadastros-base já persistentes.
 
 Critério de aceite: cadastros sobrevivem a reinicializações, dados do GIW são conciliados

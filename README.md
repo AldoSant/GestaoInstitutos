@@ -11,7 +11,7 @@ O projeto nasceu de engenharia reversa autorizada do comportamento do sistema at
 Este primeiro incremento contém:
 
 - painel das três competências analisadas;
-- folhas, prestadores, parâmetros e obrigações em dados demonstrativos;
+- folhas, parâmetros e obrigações em dados demonstrativos;
 - motor inicial de INSS e IRRF de 2026;
 - parâmetros fiscais de 2026 conferidos em fontes oficiais e documentados;
 - memória individual anonimizada;
@@ -20,12 +20,14 @@ Este primeiro incremento contém:
 - coletores e importadores idempotentes de Pessoas, Atividades e Lotações do GIW;
 - cadastro persistente de Pessoas, Atividades e Lotações, com busca, edição e
   inativação sem exclusão física;
+- cadastro persistente de Prestadores ligado obrigatoriamente a Pessoas;
 - primeira migração Drizzle;
 - Dockerfile e Compose para implantação própria;
 - testes automatizados e pipeline de integração contínua.
 
-O módulo `/cadastros` já grava no PostgreSQL. As demais telas de escrita e o login ainda
-são demonstrativos. Nenhuma obrigação é transmitida.
+Os módulos `/cadastros` e `/prestadores` já gravam no PostgreSQL. As demais telas de
+escrita e o login ainda são demonstrativos. Nenhuma obrigação é transmitida. Consulte
+o [andamento ponderado do MVP](docs/ANDAMENTO.md).
 
 ## Começando
 
@@ -78,6 +80,7 @@ Antes de usar em servidor, defina valores fortes para `POSTGRES_PASSWORD` e `AUT
 - [Importação automatizada do GIW](docs/IMPORTACAO_GIW.md)
 - [Regras fiscais confirmadas para 2026](docs/REGRAS_FISCAIS_2026.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Andamento do MVP](docs/ANDAMENTO.md)
 - [Implantação em VPS](docs/DEPLOY_VPS.md)
 - [Como contribuir](CONTRIBUTING.md)
 - [Política de segurança](SECURITY.md)

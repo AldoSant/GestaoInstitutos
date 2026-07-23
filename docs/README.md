@@ -8,6 +8,7 @@
 | [Importação do GIW](IMPORTACAO_GIW.md) | Coleta, dry-run, aplicação, conciliação e expansão por etapas. |
 | [Regras fiscais de 2026](REGRAS_FISCAIS_2026.md) | Fontes oficiais, vigência, parâmetros implementados e limites atuais. |
 | [Roadmap](ROADMAP.md) | Incrementos, critérios de aceite e ordem recomendada. |
+| [Andamento do MVP](ANDAMENTO.md) | Percentual ponderado, entregas utilizáveis e caminho crítico restante. |
 | [Deploy em VPS](DEPLOY_VPS.md) | Preparação, segredos, proxy, banco, backup e atualização. |
 | [ADR 0001](decisoes/0001-stack-e-implantacao.md) | Por que Next.js, PostgreSQL e Docker. |
 | [Referências](referencia/) | Diagnóstico, UML e SQLs completos produzidos na descoberta. |
