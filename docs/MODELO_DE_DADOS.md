@@ -2,7 +2,7 @@
 
 ## Implementado no primeiro incremento
 
-A migração `drizzle/0000_rapid_kree.sql` cria 14 tabelas:
+As migrações Drizzle criam 17 tabelas:
 
 - `empresa`;
 - `usuario` e `usuario_empresa`;
@@ -11,6 +11,11 @@ A migração `drizzle/0000_rapid_kree.sql` cria 14 tabelas:
 - `regra_calculo_versao`;
 - `folha`, `folha_item` e `folha_status_historico`;
 - `obrigacao_fiscal` e `obrigacao_fiscal_folha`.
+- `importacao_execucao`, `importacao_registro` e `legado_chave`.
+
+As três estruturas de importação guardam a execução, a decisão por registro e a
+correspondência durável entre o código do GIW e o UUID local. Isso permite simular,
+reexecutar e auditar a migração sem duplicar cadastros.
 
 Esse recorte sustenta o primeiro vertical slice. Não representa ainda todas as 47 estruturas do modelo aprofundado.
 

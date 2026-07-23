@@ -71,7 +71,7 @@ docker compose up -d --build
 
 Valide `/api/health`, logs, login e uma consulta de leitura após a atualização.
 
-## Antes de dados reais
+## Antes de ampliar o acesso além da equipe interna
 
 - implementar autenticação e autorização reais;
 - configurar política de logs sem dados pessoais;

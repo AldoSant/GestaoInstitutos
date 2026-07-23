@@ -1,5 +1,19 @@
 # Roadmap
 
+## Prioridade operacional atual — migração e funcionalidade
+
+1. Pipeline seguro e idempotente de importação do GIW.
+2. Pessoas e prestadores completos, seguidos dos cadastros-base.
+3. Termos, metas e vínculos.
+4. Eventos, produtividade e tabelas por vigência.
+5. Processamento persistente da folha.
+6. Apuração e reconciliação da obrigação previdenciária.
+7. Execução paralela e corte do legado.
+
+Autenticação completa e perfis continuam previstos, mas não bloqueiam estas entregas.
+Até essa etapa, a aplicação deve permanecer em ambiente interno controlado. O roteiro
+detalhado da migração está em [Importação do GIW](IMPORTACAO_GIW.md).
+
 ## Incremento 0 — concluído
 
 - interface navegável;
@@ -11,13 +25,12 @@
 ## Incremento 1 — fundação persistente
 
 - executar PostgreSQL e migrações;
-- autenticação real;
-- perfis Administrador, Operador e Consulta;
-- isolamento por organização;
-- auditoria de login e alterações;
+- pipeline de importação com dry-run, trilha e repetição segura;
+- coletores de cadastros do GIW;
 - CRUD de pessoas, prestadores, termos, metas e vínculos.
 
-Critério de aceite: usuário autenticado só visualiza e altera dados da organização autorizada; cadastros sobrevivem a reinicializações.
+Critério de aceite: cadastros sobrevivem a reinicializações, dados do GIW são conciliados
+sem duplicação e toda linha importada tem origem rastreável.
 
 ## Incremento 2 — folha auditável
 
@@ -48,6 +61,14 @@ Critério de aceite: nenhuma obrigação é emitida com item sem origem ou com d
 - testes de segurança, backup e restauração;
 - treinamento e documentação operacional;
 - plano de reversão.
+
+## Incremento 5 — acesso e endurecimento
+
+- autenticação real;
+- perfis Administrador, Operador e Consulta;
+- isolamento por organização;
+- auditoria de login e alterações;
+- revisão de exposição antes de ampliar o público do sistema.
 
 ## Expansões posteriores
 

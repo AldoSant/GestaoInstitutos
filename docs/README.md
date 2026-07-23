@@ -5,6 +5,7 @@
 | [Arquitetura](ARQUITETURA.md) | Componentes, limites de domínio e decisões técnicas. |
 | [Modelo de dados](MODELO_DE_DADOS.md) | Estruturas atuais, modelo completo e estratégia de migração. |
 | [Engenharia reversa](ENGENHARIA_REVERSA.md) | Evidências, confiança e como transformar observação em regra. |
+| [Importação do GIW](IMPORTACAO_GIW.md) | Coleta, dry-run, aplicação, conciliação e expansão por etapas. |
 | [Roadmap](ROADMAP.md) | Incrementos, critérios de aceite e ordem recomendada. |
 | [Deploy em VPS](DEPLOY_VPS.md) | Preparação, segredos, proxy, banco, backup e atualização. |
 | [ADR 0001](decisoes/0001-stack-e-implantacao.md) | Por que Next.js, PostgreSQL e Docker. |

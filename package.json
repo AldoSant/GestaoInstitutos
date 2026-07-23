@@ -12,7 +12,10 @@
     "test": "tsx --test tests/**/*.test.ts",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:bootstrap:empresa": "tsx scripts/db/bootstrap-empresa.ts",
+    "giw:coletar:pessoas": "node scripts/giw/coletar-pessoas.mjs",
+    "giw:importar": "tsx scripts/importacao/importar.ts"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
@@ -31,6 +34,7 @@
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
+    "playwright": "^1.61.1",
     "tailwindcss": "4.2.1",
     "tsx": "4.20.5",
     "typescript": "5.9.3",

@@ -334,3 +334,87 @@ export const obrigacoesFolhas = pgTable(
   },
   (table) => [primaryKey({ columns: [table.obrigacaoId, table.folhaId] })],
 );
+
+export const importacoes = pgTable(
+  "importacao_execucao",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    origem: varchar("origem", { length: 40 }).notNull().default("GIW"),
+    entidade: varchar("entidade", { length: 80 }).notNull(),
+    arquivo: varchar("arquivo", { length: 255 }).notNull(),
+    checksumArquivo: varchar("checksum_arquivo", { length: 64 }).notNull(),
+    modo: varchar("modo", { length: 12 }).notNull(),
+    status: varchar("status", { length: 20 }).notNull(),
+    totalLidos: integer("total_lidos").notNull().default(0),
+    totalInseridos: integer("total_inseridos").notNull().default(0),
+    totalAtualizados: integer("total_atualizados").notNull().default(0),
+    totalIgnorados: integer("total_ignorados").notNull().default(0),
+    totalErros: integer("total_erros").notNull().default(0),
+    resumo: jsonb("resumo").notNull().default({}),
+    iniciadoEm: timestamp("iniciado_em", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    concluidoEm: timestamp("concluido_em", { withTimezone: true }),
+  },
+  (table) => [
+    index("ix_importacao_empresa_data").on(table.empresaId, table.iniciadoEm),
+    index("ix_importacao_checksum").on(table.checksumArquivo),
+  ],
+);
+
+export const importacaoRegistros = pgTable(
+  "importacao_registro",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    execucaoId: uuid("execucao_id")
+      .notNull()
+      .references(() => importacoes.id, { onDelete: "cascade" }),
+    ordem: integer("ordem").notNull(),
+    legacyId: varchar("legacy_id", { length: 100 }).notNull(),
+    checksum: varchar("checksum", { length: 64 }).notNull(),
+    status: varchar("status", { length: 20 }).notNull(),
+    destinoTabela: varchar("destino_tabela", { length: 80 }),
+    destinoId: uuid("destino_id"),
+    erro: text("erro"),
+    payload: jsonb("payload").notNull(),
+    criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("uq_importacao_registro_ordem").on(table.execucaoId, table.ordem),
+    index("ix_importacao_registro_legado").on(table.legacyId),
+  ],
+);
+
+export const chavesLegado = pgTable(
+  "legado_chave",
+  {
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    origem: varchar("origem", { length: 40 }).notNull(),
+    entidade: varchar("entidade", { length: 80 }).notNull(),
+    legacyId: varchar("legacy_id", { length: 100 }).notNull(),
+    destinoTabela: varchar("destino_tabela", { length: 80 }).notNull(),
+    destinoId: uuid("destino_id").notNull(),
+    checksum: varchar("checksum", { length: 64 }).notNull(),
+    primeiraExecucaoId: uuid("primeira_execucao_id")
+      .notNull()
+      .references(() => importacoes.id),
+    ultimaExecucaoId: uuid("ultima_execucao_id")
+      .notNull()
+      .references(() => importacoes.id),
+    criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+    atualizadoEm: timestamp("atualizado_em", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.empresaId, table.origem, table.entidade, table.legacyId],
+    }),
+    index("ix_legado_chave_destino").on(table.destinoTabela, table.destinoId),
+  ],
+);

@@ -15,7 +15,8 @@ Este primeiro incremento contém:
 - motor inicial de INSS e IRRF de 2026;
 - memória individual anonimizada;
 - bloqueio da divergência previdenciária identificada no legado;
-- modelo PostgreSQL inicial com 14 tabelas;
+- modelo PostgreSQL inicial com 17 tabelas, incluindo trilha de importação;
+- coletor automático e importador idempotente de Pessoas do GIW;
 - primeira migração Drizzle;
 - Dockerfile e Compose para implantação própria;
 - testes automatizados e pipeline de integração contínua.
@@ -68,6 +69,7 @@ Antes de usar em servidor, defina valores fortes para `POSTGRES_PASSWORD` e `AUT
 - [Arquitetura](docs/ARQUITETURA.md)
 - [Modelo de dados](docs/MODELO_DE_DADOS.md)
 - [Engenharia reversa e critérios de evidência](docs/ENGENHARIA_REVERSA.md)
+- [Importação automatizada do GIW](docs/IMPORTACAO_GIW.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Implantação em VPS](docs/DEPLOY_VPS.md)
 - [Como contribuir](CONTRIBUTING.md)
