@@ -182,6 +182,7 @@ td small { margin-top: 3px; color: #89979b; font-size: 9px; }
 .prestador-form { grid-template-columns: minmax(220px, 1.5fr) repeat(3, minmax(130px, .7fr)); }
 .termo-form { grid-template-columns: minmax(110px, .6fr) minmax(220px, 1.5fr) minmax(130px, .8fr) repeat(3, minmax(120px, .65fr)); }
 .meta-form { grid-template-columns: minmax(240px, 1.2fr) minmax(120px, .5fr) minmax(240px, 1.4fr) auto auto; }
+.vinculo-form { grid-template-columns: repeat(4, minmax(150px, 1fr)); }
 .crud-form .checkbox-field { min-height: 38px; padding: 0 11px; display: flex; align-items: center; gap: 8px; border: 1px solid #cfdbdc; border-radius: 8px; background: #fff; }
 .crud-form .checkbox-field input { width: 14px; height: 14px; padding: 0; accent-color: var(--teal); }
 .crud-form .checkbox-field > span { color: var(--ink); font-size: 10px; font-weight: 700; letter-spacing: 0; text-transform: none; }
@@ -263,7 +264,7 @@ td small { margin-top: 3px; color: #89979b; font-size: 9px; }
   .workflow { grid-template-columns: 1fr; gap: 12px; }
   .crud-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .prestador-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .termo-form, .meta-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .termo-form, .meta-form, .vinculo-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .crud-form .field-wide { grid-column: span 1; }
   .workflow li::after { left: 14px; top: 29px; bottom: -12px; width: 1px; height: auto; }
 }

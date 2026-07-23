@@ -8,6 +8,7 @@ import {
   type GiwLotacao,
   type GiwPessoa,
   type GiwSnapshot,
+  type GiwTermo,
 } from "../../lib/importacao-giw";
 
 const { Pool } = pg;
@@ -28,7 +29,7 @@ type Resumo = {
 
 type ResultadoRegistro = {
   status: "INSERIDO" | "ATUALIZADO" | "IGNORADO";
-  destinoTabela: "pessoa" | "atividade" | "lotacao";
+  destinoTabela: "pessoa" | "atividade" | "lotacao" | "termo";
   destinoId: string;
   registroChecksum: string;
 };
@@ -355,6 +356,179 @@ async function importarLotacao(
   return { status, destinoTabela: "lotacao", destinoId, registroChecksum };
 }
 
+async function importarTermo(
+  client: PoolClient,
+  empresaId: string,
+  execucaoId: string,
+  termo: GiwTermo,
+): Promise<ResultadoRegistro> {
+  const registroChecksum = checksum(termo);
+  const chave = await client.query<{ destino_id: string; checksum: string }>(
+    `select destino_id, checksum
+       from legado_chave
+      where empresa_id = $1 and origem = 'GIW' and entidade = 'termos'
+        and legacy_id = $2`,
+    [empresaId, termo.legacyId],
+  );
+
+  if (chave.rows[0]?.checksum === registroChecksum) {
+    const destinos = await client.query<{ total: string }>(
+      `select
+         (select count(*) from termo where id = $1 and empresa_id = $2) +
+         (select count(*)
+            from legado_chave lc
+            join termo_meta tm on tm.id = lc.destino_id
+            join termo t on t.id = tm.termo_id
+           where lc.empresa_id = $2 and lc.origem = 'GIW'
+             and lc.entidade = 'metas'
+             and lc.legacy_id = any($3::text[])
+             and t.id = $1 and t.empresa_id = $2) as total`,
+      [chave.rows[0].destino_id, empresaId, termo.metas.map((meta) => meta.legacyId)],
+    );
+    if (Number(destinos.rows[0]?.total) === termo.metas.length + 1) {
+      return {
+        status: "IGNORADO",
+        destinoTabela: "termo",
+        destinoId: chave.rows[0].destino_id,
+        registroChecksum,
+      };
+    }
+  }
+
+  const existente = await client.query<{ id: string }>(
+    `select id
+       from termo
+      where empresa_id = $1 and (id = $2::uuid or numero = $3)
+      order by case when id = $2::uuid then 0 else 1 end
+      limit 1`,
+    [empresaId, chave.rows[0]?.destino_id ?? null, termo.numero],
+  );
+  let termoId = existente.rows[0]?.id;
+  let status: "INSERIDO" | "ATUALIZADO";
+  if (termoId) {
+    await client.query(
+      `update termo
+          set numero = $3, descricao = $4, modalidade = $5, inicio = $6,
+              fim = $7, valor_global = $8, ativo = $9, atualizado_em = now()
+        where id = $1 and empresa_id = $2`,
+      [
+        termoId,
+        empresaId,
+        termo.numero,
+        termo.descricao,
+        termo.modalidade,
+        termo.inicio,
+        termo.fim,
+        termo.valorGlobal,
+        termo.ativo,
+      ],
+    );
+    status = "ATUALIZADO";
+  } else {
+    const insert = await client.query<{ id: string }>(
+      `insert into termo
+         (empresa_id, numero, descricao, modalidade, inicio, fim, valor_global, ativo)
+       values ($1, $2, $3, $4, $5, $6, $7, $8)
+       returning id`,
+      [
+        empresaId,
+        termo.numero,
+        termo.descricao,
+        termo.modalidade,
+        termo.inicio,
+        termo.fim,
+        termo.valorGlobal,
+        termo.ativo,
+      ],
+    );
+    termoId = insert.rows[0].id;
+    status = "INSERIDO";
+  }
+
+  for (const meta of termo.metas) {
+    const metaChecksum = checksum(meta);
+    const metaChave = await client.query<{ destino_id: string }>(
+      `select destino_id
+         from legado_chave
+        where empresa_id = $1 and origem = 'GIW' and entidade = 'metas'
+          and legacy_id = $2`,
+      [empresaId, meta.legacyId],
+    );
+    const metaExistente = await client.query<{ id: string }>(
+      `select tm.id
+         from termo_meta tm
+         join termo t on t.id = tm.termo_id
+        where t.empresa_id = $1 and tm.termo_id = $2
+          and (tm.id = $3::uuid or tm.codigo = $4)
+        order by case when tm.id = $3::uuid then 0 else 1 end
+        limit 1`,
+      [empresaId, termoId, metaChave.rows[0]?.destino_id ?? null, meta.codigo],
+    );
+    let metaId = metaExistente.rows[0]?.id;
+    if (metaId) {
+      await client.query(
+        `update termo_meta
+            set codigo = $3, descricao = $4, tipo_calculo = $5,
+                valor_previsto = $6, ativo = $7
+          where id = $1 and termo_id = $2`,
+        [
+          metaId,
+          termoId,
+          meta.codigo,
+          meta.descricao,
+          meta.tipoCalculo,
+          meta.valorPrevisto,
+          meta.ativo,
+        ],
+      );
+    } else {
+      const insert = await client.query<{ id: string }>(
+        `insert into termo_meta
+           (termo_id, codigo, descricao, tipo_calculo, valor_previsto, ativo)
+         values ($1, $2, $3, $4, $5, $6)
+         returning id`,
+        [
+          termoId,
+          meta.codigo,
+          meta.descricao,
+          meta.tipoCalculo,
+          meta.valorPrevisto,
+          meta.ativo,
+        ],
+      );
+      metaId = insert.rows[0].id;
+    }
+    await client.query(
+      `insert into legado_chave
+         (empresa_id, origem, entidade, legacy_id, destino_tabela, destino_id,
+          checksum, primeira_execucao_id, ultima_execucao_id)
+       values ($1, 'GIW', 'metas', $2, 'termo_meta', $3, $4, $5, $5)
+       on conflict (empresa_id, origem, entidade, legacy_id)
+       do update set destino_tabela = excluded.destino_tabela,
+                     destino_id = excluded.destino_id,
+                     checksum = excluded.checksum,
+                     ultima_execucao_id = excluded.ultima_execucao_id,
+                     atualizado_em = now()`,
+      [empresaId, meta.legacyId, metaId, metaChecksum, execucaoId],
+    );
+  }
+
+  await client.query(
+    `insert into legado_chave
+       (empresa_id, origem, entidade, legacy_id, destino_tabela, destino_id,
+        checksum, primeira_execucao_id, ultima_execucao_id)
+     values ($1, 'GIW', 'termos', $2, 'termo', $3, $4, $5, $5)
+     on conflict (empresa_id, origem, entidade, legacy_id)
+     do update set destino_tabela = excluded.destino_tabela,
+                   destino_id = excluded.destino_id,
+                   checksum = excluded.checksum,
+                   ultima_execucao_id = excluded.ultima_execucao_id,
+                   atualizado_em = now()`,
+    [empresaId, termo.legacyId, termoId, registroChecksum, execucaoId],
+  );
+  return { status, destinoTabela: "termo", destinoId: termoId, registroChecksum };
+}
+
 async function importarRegistro(
   client: PoolClient,
   empresaId: string,
@@ -376,10 +550,17 @@ async function importarRegistro(
       result: await importarAtividade(client, empresaId, execucaoId, registro),
     };
   }
+  if (snapshot.entity === "lotacoes") {
+    const registro = snapshot.records[index];
+    return {
+      registro,
+      result: await importarLotacao(client, empresaId, execucaoId, registro),
+    };
+  }
   const registro = snapshot.records[index];
   return {
     registro,
-    result: await importarLotacao(client, empresaId, execucaoId, registro),
+    result: await importarTermo(client, empresaId, execucaoId, registro),
   };
 }
 
@@ -450,7 +631,8 @@ async function executar() {
     for (let index = 0; index < snapshot.records.length; index += 1) {
       const savepoint = `registro_${index + 1}`;
       await client.query(`savepoint ${savepoint}`);
-      let registro: GiwPessoa | GiwAtividade | GiwLotacao = snapshot.records[index];
+      let registro: GiwPessoa | GiwAtividade | GiwLotacao | GiwTermo =
+        snapshot.records[index];
       try {
         const imported = await importarRegistro(
           client,

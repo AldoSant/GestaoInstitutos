@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   checksum,
+  dataIsoGiw,
   numeroDecimalBrasileiro,
   somenteDigitos,
   validarSnapshotAtividades,
   validarSnapshotGiw,
   validarSnapshotLotacoes,
   validarSnapshotPessoas,
+  validarSnapshotTermos,
 } from "../lib/importacao-giw";
 
 function snapshot(records: unknown[]) {
@@ -151,4 +153,78 @@ test("numeroDecimalBrasileiro não aceita texto ou infinito", () => {
   assert.equal(numeroDecimalBrasileiro("1.320,00"), "1320.00");
   assert.equal(numeroDecimalBrasileiro("abc"), null);
   assert.equal(numeroDecimalBrasileiro(Number.POSITIVE_INFINITY), null);
+});
+
+test("normaliza Termos e Metas extraídos do GIW", () => {
+  const result = validarSnapshotTermos({
+    schemaVersion: "1.0",
+    source: {
+      system: "GIW",
+      formId: "464569250",
+      extractedAt: "2026-07-23T12:00:00.000Z",
+    },
+    entity: "termos",
+    records: [
+      {
+        legacyId: "54",
+        numero: "22",
+        descricao: " IX - ADITIVO ",
+        modalidade: "1 - TERMO DE COLABORAÇÃO",
+        inicio: "01/04/2026",
+        fim: "31/08/2026",
+        valorGlobal: "2.861.539,60",
+        metas: [
+          {
+            legacyId: "254",
+            descricao: " HOSPITAL ",
+            tipoCalculo: "Mensal",
+            valorPrevisto: "890.429,48",
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.equal(result.issues.length, 0);
+  assert.equal(result.snapshot?.records[0].inicio, "2026-04-01");
+  assert.equal(result.snapshot?.records[0].valorGlobal, "2861539.60");
+  assert.deepEqual(result.snapshot?.records[0].metas[0], {
+    legacyId: "254",
+    codigo: "254",
+    descricao: "HOSPITAL",
+    tipoCalculo: "Mensal",
+    valorPrevisto: "890429.48",
+    ativo: true,
+  });
+});
+
+test("rejeita datas impossíveis e meta duplicada em Termos", () => {
+  assert.equal(dataIsoGiw("30/02/2026"), null);
+  const result = validarSnapshotTermos({
+    schemaVersion: "1.0",
+    source: {
+      system: "GIW",
+      formId: "464569250",
+      extractedAt: "2026-07-23T12:00:00.000Z",
+    },
+    entity: "termos",
+    records: [
+      {
+        legacyId: "1",
+        numero: "1",
+        descricao: "Teste",
+        modalidade: "Colaboração",
+        inicio: "2026-02-30",
+        valorGlobal: "1",
+        metas: [
+          { legacyId: "9", descricao: "A" },
+          { legacyId: "9", descricao: "B" },
+        ],
+      },
+    ],
+  });
+
+  assert.equal(result.snapshot, null);
+  assert.ok(result.issues.some((issue) => issue.field === "inicio"));
+  assert.ok(result.issues.some((issue) => issue.field === "metas.legacyId"));
 });

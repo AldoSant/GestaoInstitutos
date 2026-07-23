@@ -64,5 +64,20 @@ test("normaliza meta vinculada ao termo", () => {
     termoId,
     codigo: "META 01",
     descricao: "Atendimento especializado",
+    tipoCalculo: null,
+    valorPrevisto: null,
   });
+});
+
+test("normaliza orçamento e tipo de cálculo da meta", () => {
+  const resultado = validarMetaCadastro({
+    termoId,
+    codigo: "254",
+    descricao: "Hospital",
+    tipoCalculo: " Mensal ",
+    valorPrevisto: "890.429,48",
+  });
+
+  assert.equal(resultado.dados?.tipoCalculo, "Mensal");
+  assert.equal(resultado.dados?.valorPrevisto, "890429.48");
 });

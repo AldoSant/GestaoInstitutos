@@ -6,9 +6,9 @@ simulação, aplicação e conferência antes de liberar a próxima.
 
 ## Situação atual
 
-Os fluxos implementados coletam e importam **Pessoas**, **Atividades** e **Lotações**.
-Eles estabelecem o padrão que será reutilizado por eventos, tabelas fiscais, termos,
-produtividade, folhas e guias.
+Os fluxos implementados coletam e importam **Pessoas**, **Atividades**, **Lotações**,
+**Termos** e **Metas**. Eles estabelecem o padrão que será reutilizado por Vínculos,
+eventos, tabelas fiscais, produtividade, folhas e guias.
 
 Dados reais nunca são versionados. O coletor grava em `.private/importacoes/giw`, pasta
 ignorada pelo Git. Usuário e senha são lidos exclusivamente de variáveis de ambiente.
@@ -19,7 +19,7 @@ ignorada pelo Git. Usuário e senha são lidos exclusivamente de variáveis de a
 2. Aplicar as migrações com `npm run db:migrate`.
 3. Cadastrar ou atualizar a empresa-base.
 4. Instalar o Chromium do coletor com `npx playwright install chromium`.
-5. Coletar Pessoas, Atividades e Lotações do GIW.
+5. Coletar Pessoas, Atividades, Lotações, Termos e Metas do GIW.
 6. Validar o snapshot sem banco.
 7. Executar um dry-run contra o banco de destino.
 8. Conferir contagens e erros.
@@ -88,9 +88,22 @@ Saídas opcionais:
 - `GIW_OUTPUT_ATIVIDADES`: caminho do snapshot de Atividades;
 - `GIW_OUTPUT_LOTACOES`: caminho do snapshot de Lotações.
 
+## Coletar Termos e Metas
+
+Com a mesma sessão configurada:
+
+```bash
+npm run giw:coletar:instrumentos
+```
+
+O coletor abre Movimentação > Termo, percorre a listagem do ano selecionado e inclui as
+Metas de cada Termo. O snapshot preserva os códigos internos do GIW, número, descrição,
+modalidade, vigência, valor global, tipo de cálculo e valor previsto. O caminho pode ser
+alterado com `GIW_OUTPUT_TERMOS`.
+
 ## Validar e importar
 
-Validação estrutural, sem consultar o banco, funciona para qualquer uma das três
+Validação estrutural, sem consultar o banco, funciona para qualquer uma das entidades
 entidades suportadas:
 
 ```bash
@@ -139,7 +152,7 @@ final. Assim a simulação usa as mesmas consultas e validações da aplicação
 | 5 | Eventos/rubricas | 8716 | parâmetros | mapeado |
 | 6 | Tabela de IRRF | 8733 | regras por vigência | mapeado |
 | 7 | Limites de INSS | 464569398 | regras por vigência | mapeado |
-| 8 | Termos | 464569250 | empresa e parceiros | mapeado |
+| 8 | Termos e Metas | 464569250 | empresa | coletor e importador prontos |
 | 9 | Lançamentos de eventos | 464569425 | pessoa, termo e evento | mapeado |
 | 10 | Produtividade | 464569461 | vínculo e competência | mapeado |
 | 11 | Folhas | 464569390 | todos os anteriores | mapeado |
@@ -167,7 +180,8 @@ Critério de saída: prestadores ativos aptos a formar vínculos sem recadastro 
 
 ### Etapa C — contratos e vínculos
 
-Importar termos, metas, atividades contratadas, lotações, vigências e valores.
+Termos e Metas estão implementados. O próximo passo é coletar e importar os prestadores
+associados a cada Meta, suas atividades contratadas, lotações, vigências e valores.
 
 Critério de saída: cada prestador de uma folha histórica aponta para termo, meta e
 vínculo válidos.
@@ -195,7 +209,9 @@ diferenças, aprovar o corte e manter plano de retorno.
 
 - o coletor de Pessoas depende do layout Webrun observado; alterações no GIW podem
   exigir ajuste de seletor;
-- a primeira versão traz os quatro campos da listagem (código, nome, CPF e CNPJ); as
+- a primeira versão de Pessoas traz os quatro campos da listagem (código, nome, CPF e CNPJ); as
   abas detalhadas entram na Etapa B;
+- o coletor de Termos opera sobre o ano selecionado no GIW; anos históricos devem ser
+  selecionados e coletados separadamente;
 - nenhuma guia é transmitida e nenhum registro do GIW é alterado;
 - o importador pressupõe que as migrações novas já foram aplicadas.

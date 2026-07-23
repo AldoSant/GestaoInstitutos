@@ -83,6 +83,7 @@ jobs:
               curl --fail --silent http://localhost:3000/cadastros > /dev/null
               curl --fail --silent http://localhost:3000/prestadores > /dev/null
               curl --fail --silent http://localhost:3000/instrumentos > /dev/null
+              curl --fail --silent http://localhost:3000/vinculos > /dev/null
               exit 0
             fi
             sleep 1

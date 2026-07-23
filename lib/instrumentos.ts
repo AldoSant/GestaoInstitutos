@@ -20,6 +20,8 @@ export type MetaCadastro = {
   termoId: string;
   codigo: string;
   descricao: string;
+  tipoCalculo: string | null;
+  valorPrevisto: string | null;
 };
 
 function texto(value: unknown) {
@@ -91,12 +93,19 @@ export function validarMetaCadastro(input: {
   termoId?: unknown;
   codigo?: unknown;
   descricao?: unknown;
+  tipoCalculo?: unknown;
+  valorPrevisto?: unknown;
 }): ResultadoValidacao<MetaCadastro> {
   const erros: string[] = [];
   const id = idOpcional(input.id, erros);
   const termoId = texto(input.termoId);
   const codigo = texto(input.codigo);
   const descricao = texto(input.descricao);
+  const tipoCalculo = texto(input.tipoCalculo) || null;
+  const valorInformado = texto(input.valorPrevisto);
+  const valorPrevisto = valorInformado
+    ? numeroDecimalBrasileiro(input.valorPrevisto)
+    : null;
 
   if (!idCadastroValido(termoId)) erros.push("Selecione um termo válido.");
   if (!codigo) erros.push("Informe o código da meta.");
@@ -104,6 +113,16 @@ export function validarMetaCadastro(input: {
   if (!descricao) erros.push("Informe a descrição da meta.");
   if (descricao.length > 255) erros.push("Descrição deve ter até 255 caracteres.");
 
+  if (tipoCalculo && tipoCalculo.length > 40) {
+    erros.push("Tipo de cálculo deve ter até 40 caracteres.");
+  }
+  if (valorInformado && (valorPrevisto === null || Number(valorPrevisto) < 0)) {
+    erros.push("Valor previsto deve ser um número não negativo.");
+  }
+
   if (erros.length > 0) return { dados: null, erros };
-  return { dados: { id, termoId, codigo, descricao }, erros: [] };
+  return {
+    dados: { id, termoId, codigo, descricao, tipoCalculo, valorPrevisto },
+    erros: [],
+  };
 }

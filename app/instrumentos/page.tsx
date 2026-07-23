@@ -175,12 +175,14 @@ export default async function InstrumentosPage({
           <label className="field-wide"><span>Termo</span><select name="termoId" required defaultValue={metaEditada?.termoId ?? ""}><option value="" disabled>Selecione um termo ativo</option>{opcoesTermos.map((item) => <option key={item.id} value={item.id}>{item.numero} · {item.descricao}{item.ativo ? "" : " · inativo"}</option>)}</select></label>
           <label><span>Código</span><input name="codigo" required maxLength={40} defaultValue={metaEditada?.codigo ?? ""} /></label>
           <label className="field-wide"><span>Descrição</span><input name="descricao" required maxLength={255} defaultValue={metaEditada?.descricao ?? ""} /></label>
+          <label><span>Tipo de cálculo</span><input name="tipoCalculo" maxLength={40} placeholder="Ex.: Mensal" defaultValue={metaEditada?.tipoCalculo ?? ""} /></label>
+          <label><span>Valor previsto</span><input name="valorPrevisto" inputMode="decimal" placeholder="0,00" defaultValue={metaEditada?.valorPrevisto ?? ""} /></label>
           <button className="button primary" type="submit" disabled={opcoesTermos.length === 0}>{metaEditada ? "Salvar meta" : "Cadastrar meta"}</button>
           {metaEditada && <Link className="button secondary" href="/instrumentos#metas">Cancelar</Link>}
         </form>
-        <div className="table-wrap"><table><thead><tr><th>Termo</th><th>Código</th><th>Descrição</th><th>Vínculos</th><th>Situação</th><th>Ações</th></tr></thead><tbody>
-          {dados.metas.map((item) => <tr key={item.id}><td><strong>{item.termoNumero}</strong><small>{item.termoDescricao}</small></td><td>{item.codigo}</td><td>{item.descricao}</td><td>{item.totalVinculos}</td><td><StatusBadge tone={item.ativo && item.termoAtivo ? "success" : "neutral"}>{item.ativo && item.termoAtivo ? "Ativa" : "Inativa"}</StatusBadge></td><td><div className="row-actions"><Link className="row-text-action" href={`/instrumentos?editar=meta:${item.id}#metas`}><Pencil size={13} /> Editar</Link><AcaoSituacao entidade="meta" id={item.id} ativo={item.ativo} /></div></td></tr>)}
-          {dados.metas.length === 0 && <tr><td colSpan={6} className="empty-cell">Nenhuma meta encontrada.</td></tr>}
+        <div className="table-wrap"><table><thead><tr><th>Termo</th><th>Código</th><th>Descrição</th><th>Cálculo</th><th>Valor previsto</th><th>Vínculos</th><th>Situação</th><th>Ações</th></tr></thead><tbody>
+          {dados.metas.map((item) => <tr key={item.id}><td><strong>{item.termoNumero}</strong><small>{item.termoDescricao}</small></td><td>{item.codigo}</td><td>{item.descricao}</td><td>{item.tipoCalculo ?? "Não informado"}</td><td>{item.valorPrevisto ? moeda(item.valorPrevisto) : "—"}</td><td>{item.totalVinculos}</td><td><StatusBadge tone={item.ativo && item.termoAtivo ? "success" : "neutral"}>{item.ativo && item.termoAtivo ? "Ativa" : "Inativa"}</StatusBadge></td><td><div className="row-actions"><Link className="row-text-action" href={`/instrumentos?editar=meta:${item.id}#metas`}><Pencil size={13} /> Editar</Link><AcaoSituacao entidade="meta" id={item.id} ativo={item.ativo} /></div></td></tr>)}
+          {dados.metas.length === 0 && <tr><td colSpan={8} className="empty-cell">Nenhuma meta encontrada.</td></tr>}
         </tbody></table></div>
         <div className="summary-strip"><span><CircleDollarSign size={13} /> O valor global pertence ao Termo; a distribuição por meta poderá evoluir com a importação do plano de trabalho.</span></div>
       </section>

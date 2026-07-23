@@ -22,6 +22,27 @@ export type GiwLotacao = {
   ativo: boolean;
 };
 
+export type GiwMeta = {
+  legacyId: string;
+  codigo: string;
+  descricao: string;
+  tipoCalculo: string | null;
+  valorPrevisto: string | null;
+  ativo: boolean;
+};
+
+export type GiwTermo = {
+  legacyId: string;
+  numero: string;
+  descricao: string;
+  modalidade: string;
+  inicio: string;
+  fim: string | null;
+  valorGlobal: string;
+  ativo: boolean;
+  metas: GiwMeta[];
+};
+
 export type GiwSnapshotPessoas = {
   schemaVersion: "1.0";
   source: {
@@ -58,10 +79,23 @@ export type GiwSnapshotLotacoes = {
   records: GiwLotacao[];
 };
 
+export type GiwSnapshotTermos = {
+  schemaVersion: "1.0";
+  source: {
+    system: "GIW";
+    formId: "464569250";
+    extractedAt: string;
+    baseUrl?: string;
+  };
+  entity: "termos";
+  records: GiwTermo[];
+};
+
 export type GiwSnapshot =
   | GiwSnapshotPessoas
   | GiwSnapshotAtividades
-  | GiwSnapshotLotacoes;
+  | GiwSnapshotLotacoes
+  | GiwSnapshotTermos;
 
 export type ValidationIssue = {
   record: number | null;
@@ -440,6 +474,246 @@ export function validarSnapshotLotacoes(
   };
 }
 
+export function dataIsoGiw(value: unknown): string | null {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text);
+  const iso = match ? `${match[3]}-${match[2]}-${match[1]}` : text;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const [year, month, day] = iso.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+    ? iso
+    : null;
+}
+
+export function normalizarMetaGiw(
+  value: unknown,
+  index: number,
+): { meta: GiwMeta | null; issues: ValidationIssue[] } {
+  const issues: ValidationIssue[] = [];
+  if (!objectLike(value)) {
+    return {
+      meta: null,
+      issues: [{ record: index, field: "metas", message: "deve conter objetos" }],
+    };
+  }
+  const legacyId = String(value.legacyId ?? "").trim();
+  const codigo = String(value.codigo ?? legacyId).replace(/\s+/g, " ").trim();
+  const descricao = String(value.descricao ?? "").replace(/\s+/g, " ").trim();
+  const tipoCalculo = String(value.tipoCalculo ?? "").replace(/\s+/g, " ").trim() || null;
+  const valorPrevisto = numeroDecimalBrasileiro(value.valorPrevisto);
+  const ativo = value.ativo === undefined ? true : value.ativo === true;
+
+  if (!legacyId) issues.push({ record: index, field: "metas.legacyId", message: "é obrigatório" });
+  if (!codigo) issues.push({ record: index, field: "metas.codigo", message: "é obrigatório" });
+  if (!descricao) {
+    issues.push({ record: index, field: "metas.descricao", message: "é obrigatória" });
+  }
+  if (
+    value.valorPrevisto !== null &&
+    value.valorPrevisto !== undefined &&
+    value.valorPrevisto !== "" &&
+    valorPrevisto === null
+  ) {
+    issues.push({
+      record: index,
+      field: "metas.valorPrevisto",
+      message: "deve ser um número válido",
+    });
+  }
+  if (valorPrevisto !== null && Number(valorPrevisto) < 0) {
+    issues.push({
+      record: index,
+      field: "metas.valorPrevisto",
+      message: "não pode ser negativo",
+    });
+  }
+  if (value.ativo !== undefined && typeof value.ativo !== "boolean") {
+    issues.push({ record: index, field: "metas.ativo", message: "deve ser booleano" });
+  }
+
+  return issues.length > 0
+    ? { meta: null, issues }
+    : {
+        meta: { legacyId, codigo, descricao, tipoCalculo, valorPrevisto, ativo },
+        issues,
+      };
+}
+
+export function normalizarTermoGiw(
+  value: unknown,
+  index: number,
+): { termo: GiwTermo | null; issues: ValidationIssue[] } {
+  const issues: ValidationIssue[] = [];
+  if (!objectLike(value)) {
+    return {
+      termo: null,
+      issues: [{ record: index, field: "registro", message: "deve ser um objeto" }],
+    };
+  }
+  const legacyId = String(value.legacyId ?? "").trim();
+  const numero = String(value.numero ?? "").replace(/\s+/g, " ").trim();
+  const descricao = String(value.descricao ?? "").replace(/\s+/g, " ").trim();
+  const modalidade = String(value.modalidade ?? "").replace(/\s+/g, " ").trim();
+  const inicio = dataIsoGiw(value.inicio);
+  const fim = String(value.fim ?? "").trim() ? dataIsoGiw(value.fim) : null;
+  const valorGlobal = numeroDecimalBrasileiro(value.valorGlobal);
+  const ativo = value.ativo === undefined ? true : value.ativo === true;
+  const metasOriginais = Array.isArray(value.metas) ? value.metas : null;
+
+  if (!legacyId) issues.push({ record: index, field: "legacyId", message: "é obrigatório" });
+  if (!numero) issues.push({ record: index, field: "numero", message: "é obrigatório" });
+  if (!descricao) issues.push({ record: index, field: "descricao", message: "é obrigatória" });
+  if (!modalidade) issues.push({ record: index, field: "modalidade", message: "é obrigatória" });
+  if (!inicio) issues.push({ record: index, field: "inicio", message: "deve ser uma data válida" });
+  if (String(value.fim ?? "").trim() && !fim) {
+    issues.push({ record: index, field: "fim", message: "deve ser uma data válida" });
+  }
+  if (inicio && fim && fim < inicio) {
+    issues.push({ record: index, field: "fim", message: "não pode anteceder o início" });
+  }
+  if (valorGlobal === null || Number(valorGlobal) < 0) {
+    issues.push({
+      record: index,
+      field: "valorGlobal",
+      message: "deve ser um número não negativo",
+    });
+  }
+  if (!metasOriginais) {
+    issues.push({ record: index, field: "metas", message: "deve ser uma lista" });
+  }
+  if (value.ativo !== undefined && typeof value.ativo !== "boolean") {
+    issues.push({ record: index, field: "ativo", message: "deve ser booleano" });
+  }
+
+  const metas: GiwMeta[] = [];
+  const ids = new Set<string>();
+  metasOriginais?.forEach((item) => {
+    const normalized = normalizarMetaGiw(item, index);
+    issues.push(...normalized.issues);
+    if (!normalized.meta) return;
+    if (ids.has(normalized.meta.legacyId)) {
+      issues.push({
+        record: index,
+        field: "metas.legacyId",
+        message: "duplicado no mesmo termo",
+      });
+      return;
+    }
+    ids.add(normalized.meta.legacyId);
+    metas.push(normalized.meta);
+  });
+
+  return issues.length > 0 || !inicio || valorGlobal === null
+    ? { termo: null, issues }
+    : {
+        termo: {
+          legacyId,
+          numero,
+          descricao,
+          modalidade,
+          inicio,
+          fim,
+          valorGlobal,
+          ativo,
+          metas,
+        },
+        issues,
+      };
+}
+
+export function validarSnapshotTermos(
+  value: unknown,
+): ValidationResult<GiwSnapshotTermos> {
+  const issues: ValidationIssue[] = [];
+  if (!objectLike(value)) {
+    return {
+      snapshot: null,
+      issues: [{ record: null, field: "arquivo", message: "JSON inválido" }],
+    };
+  }
+  if (value.schemaVersion !== "1.0") {
+    issues.push({ record: null, field: "schemaVersion", message: "versão suportada: 1.0" });
+  }
+  if (value.entity !== "termos") {
+    issues.push({ record: null, field: "entity", message: "deve ser termos" });
+  }
+  const source = objectLike(value.source) ? value.source : null;
+  const recordsOriginais = Array.isArray(value.records) ? value.records : null;
+  if (!source) issues.push({ record: null, field: "source", message: "é obrigatório" });
+  if (!recordsOriginais) {
+    issues.push({ record: null, field: "records", message: "deve ser uma lista" });
+  }
+  if (source) {
+    if (source.system !== "GIW") {
+      issues.push({ record: null, field: "source.system", message: "deve ser GIW" });
+    }
+    if (String(source.formId ?? "") !== "464569250") {
+      issues.push({
+        record: null,
+        field: "source.formId",
+        message: "formulário esperado: 464569250",
+      });
+    }
+    if (Number.isNaN(Date.parse(String(source.extractedAt ?? "")))) {
+      issues.push({
+        record: null,
+        field: "source.extractedAt",
+        message: "deve ser uma data ISO válida",
+      });
+    }
+  }
+  if (!source || !recordsOriginais) return { snapshot: null, issues };
+
+  const records: GiwTermo[] = [];
+  const termoIds = new Set<string>();
+  const metaIds = new Set<string>();
+  recordsOriginais.forEach((record, recordIndex) => {
+    const normalized = normalizarTermoGiw(record, recordIndex + 1);
+    issues.push(...normalized.issues);
+    if (!normalized.termo) return;
+    if (termoIds.has(normalized.termo.legacyId)) {
+      issues.push({
+        record: recordIndex + 1,
+        field: "legacyId",
+        message: "duplicado no mesmo arquivo",
+      });
+      return;
+    }
+    termoIds.add(normalized.termo.legacyId);
+    normalized.termo.metas.forEach((meta) => {
+      if (metaIds.has(meta.legacyId)) {
+        issues.push({
+          record: recordIndex + 1,
+          field: "metas.legacyId",
+          message: "duplicado no arquivo",
+        });
+      }
+      metaIds.add(meta.legacyId);
+    });
+    records.push(normalized.termo);
+  });
+  if (issues.length > 0) return { snapshot: null, issues };
+
+  return {
+    snapshot: {
+      schemaVersion: "1.0",
+      source: {
+        system: "GIW",
+        formId: "464569250",
+        extractedAt: String(source.extractedAt),
+        baseUrl: typeof source.baseUrl === "string" ? source.baseUrl : undefined,
+      },
+      entity: "termos",
+      records,
+    },
+    issues,
+  };
+}
+
 export function validarSnapshotGiw(value: unknown): ValidationResult<GiwSnapshot> {
   if (!objectLike(value)) {
     return {
@@ -450,6 +724,7 @@ export function validarSnapshotGiw(value: unknown): ValidationResult<GiwSnapshot
   if (value.entity === "pessoas") return validarSnapshotPessoas(value);
   if (value.entity === "atividades") return validarSnapshotAtividades(value);
   if (value.entity === "lotacoes") return validarSnapshotLotacoes(value);
+  if (value.entity === "termos") return validarSnapshotTermos(value);
   return {
     snapshot: null,
     issues: [{ record: null, field: "entity", message: "entidade não suportada" }],

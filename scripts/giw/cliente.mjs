@@ -42,6 +42,14 @@ export async function abrirMenuCadastro(menu) {
   }
 }
 
+export async function abrirMenuMovimentacao(menu) {
+  const submenu = menu.locator("#MenuLateralGamma-submenu-250456");
+  const className = await submenu.getAttribute("class");
+  if (!className?.includes("show")) {
+    await menu.locator('a[href="#MenuLateralGamma-submenu-250456"]').click();
+  }
+}
+
 export async function salvarSnapshot({
   entity,
   formId,

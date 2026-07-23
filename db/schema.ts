@@ -239,9 +239,17 @@ export const metas = pgTable(
       .references(() => termos.id),
     codigo: varchar("codigo", { length: 40 }).notNull(),
     descricao: varchar("descricao", { length: 255 }).notNull(),
+    tipoCalculo: varchar("tipo_calculo", { length: 40 }),
+    valorPrevisto: numeric("valor_previsto", { precision: 18, scale: 2 }),
     ativo: boolean("ativo").notNull().default(true),
   },
-  (table) => [uniqueIndex("uq_meta_termo_codigo").on(table.termoId, table.codigo)],
+  (table) => [
+    uniqueIndex("uq_meta_termo_codigo").on(table.termoId, table.codigo),
+    check(
+      "ck_meta_valor_previsto",
+      sql`${table.valorPrevisto} is null or ${table.valorPrevisto} >= 0`,
+    ),
+  ],
 );
 
 export const vinculos = pgTable(
@@ -260,6 +268,7 @@ export const vinculos = pgTable(
     metaId: uuid("meta_id")
       .notNull()
       .references(() => metas.id),
+    numeroContrato: varchar("numero_contrato", { length: 60 }),
     atividadeId: uuid("atividade_id").references(() => atividades.id),
     lotacaoId: uuid("lotacao_id").references(() => lotacoes.id),
     atividade: varchar("atividade", { length: 180 }).notNull(),
@@ -268,6 +277,7 @@ export const vinculos = pgTable(
     fim: date("fim"),
     valorRetribuicao: numeric("valor_retribuicao", { precision: 18, scale: 2 })
       .notNull(),
+    cargaHoraria: numeric("carga_horaria", { precision: 10, scale: 2 }),
     descontaInss: boolean("desconta_inss").notNull().default(true),
     descontaIrrf: boolean("desconta_irrf").notNull().default(true),
     ativo: boolean("ativo").notNull().default(true),
@@ -280,6 +290,10 @@ export const vinculos = pgTable(
       sql`${table.fim} is null or ${table.fim} >= ${table.inicio}`,
     ),
     check("ck_vinculo_valor_retribuicao", sql`${table.valorRetribuicao} >= 0`),
+    check(
+      "ck_vinculo_carga_horaria",
+      sql`${table.cargaHoraria} is null or ${table.cargaHoraria} >= 0`,
+    ),
   ],
 );
 

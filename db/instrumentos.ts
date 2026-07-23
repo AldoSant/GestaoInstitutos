@@ -63,6 +63,8 @@ export async function carregarInstrumentos(busca = "") {
         termoId: metas.termoId,
         codigo: metas.codigo,
         descricao: metas.descricao,
+        tipoCalculo: metas.tipoCalculo,
+        valorPrevisto: metas.valorPrevisto,
         ativo: metas.ativo,
         termoNumero: termos.numero,
         termoDescricao: termos.descricao,

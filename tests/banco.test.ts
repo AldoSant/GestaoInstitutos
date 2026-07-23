@@ -36,10 +36,12 @@ test(
             'ck_pessoa_documento_exclusivo',
             'ck_folha_item_total_liquido',
             'ck_obrigacao_total',
-            'ck_importacao_totais'
+            'ck_importacao_totais',
+            'ck_meta_valor_previsto',
+            'ck_vinculo_carga_horaria'
           )`,
       );
-      assert.equal(restricoes.rowCount, 5);
+      assert.equal(restricoes.rowCount, 7);
 
       await client.query("begin");
       const empresaId = randomUUID();

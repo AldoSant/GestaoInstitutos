@@ -19,6 +19,7 @@
     "db:bootstrap:empresa": "tsx scripts/db/bootstrap-empresa.ts",
     "giw:coletar:pessoas": "node scripts/giw/coletar-pessoas.mjs",
     "giw:coletar:cadastros": "node scripts/giw/coletar-cadastros-base.mjs",
+    "giw:coletar:instrumentos": "node scripts/giw/coletar-instrumentos.mjs",
     "giw:importar": "tsx scripts/importacao/importar.ts"
   },
   "dependencies": {

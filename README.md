@@ -17,17 +17,19 @@ Este primeiro incremento contém:
 - memória individual anonimizada;
 - bloqueio da divergência previdenciária identificada no legado;
 - modelo PostgreSQL inicial com 19 tabelas, incluindo trilha de importação;
-- coletores e importadores idempotentes de Pessoas, Atividades e Lotações do GIW;
+- coletores e importadores idempotentes de Pessoas, Atividades, Lotações, Termos e Metas do GIW;
 - cadastro persistente de Pessoas, Atividades e Lotações, com busca, edição e
   inativação sem exclusão física;
 - cadastro persistente de Prestadores ligado obrigatoriamente a Pessoas;
 - cadastro persistente de Termos e Metas, com vigência, valores e proteção de
   dependências ativas;
+- cadastro persistente de Vínculos, com contrato, vigência, retribuição, carga horária
+  e incidências de INSS/IRRF;
 - primeira migração Drizzle;
 - Dockerfile e Compose para implantação própria;
 - testes automatizados e pipeline de integração contínua.
 
-Os módulos `/cadastros`, `/prestadores` e `/instrumentos` já gravam no PostgreSQL. As
+Os módulos `/cadastros`, `/prestadores`, `/instrumentos` e `/vinculos` já gravam no PostgreSQL. As
 demais telas de escrita e o login ainda são demonstrativos. Nenhuma obrigação é
 transmitida. Consulte o [andamento ponderado do MVP](docs/ANDAMENTO.md).
 

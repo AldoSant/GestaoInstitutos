@@ -81,6 +81,8 @@ export async function salvarMeta(formData: FormData) {
     termoId: formData.get("termoId"),
     codigo: formData.get("codigo"),
     descricao: formData.get("descricao"),
+    tipoCalculo: formData.get("tipoCalculo"),
+    valorPrevisto: formData.get("valorPrevisto"),
   });
   if (!validacao.dados) redirect(destino(validacao.erros.join(" "), true));
 
@@ -121,13 +123,21 @@ export async function salvarMeta(formData: FormData) {
       }
       await db
         .update(metas)
-        .set({ termoId: dados.termoId, codigo: dados.codigo, descricao: dados.descricao })
+        .set({
+          termoId: dados.termoId,
+          codigo: dados.codigo,
+          descricao: dados.descricao,
+          tipoCalculo: dados.tipoCalculo,
+          valorPrevisto: dados.valorPrevisto,
+        })
         .where(eq(metas.id, dados.id));
     } else {
       await db.insert(metas).values({
         termoId: dados.termoId,
         codigo: dados.codigo,
         descricao: dados.descricao,
+        tipoCalculo: dados.tipoCalculo,
+        valorPrevisto: dados.valorPrevisto,
       });
     }
   } catch (error) {

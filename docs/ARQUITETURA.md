@@ -62,10 +62,12 @@ docs/                arquitetura, domínio, deploy e referências
 
 ## Estado da persistência
 
-Pessoas, Atividades, Lotações, Prestadores, Termos e Metas já usam consultas e ações de servidor
+Pessoas, Atividades, Lotações, Prestadores, Termos, Metas e Vínculos já usam consultas e ações de servidor
 conectadas ao PostgreSQL. Prestador depende de uma Pessoa da mesma empresa e não pode
 duplicá-la dentro da organização. Meta depende de um Termo da mesma empresa, e cadastros
-com dependências ativas não podem ser inativados. Todas as operações são filtradas pela
+com dependências ativas não podem ser inativados. Vínculos exigem toda a cadeia da mesma
+empresa, guardam a referência e a descrição contratada e bloqueiam sobreposição ativa
+para o mesmo prestador, termo e meta. Todas as operações são filtradas pela
 empresa ativa, alterações são validadas no servidor e a exclusão física foi substituída
 por inativação. As páginas de folha, parâmetros e obrigações ainda usam dados
 demonstrativos.
