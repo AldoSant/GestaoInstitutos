@@ -26,7 +26,7 @@ test(
           where table_schema = 'public'
             and table_type = 'BASE TABLE'`,
       );
-      assert.equal(Number(tabelas.rows[0].total), 19);
+      assert.equal(Number(tabelas.rows[0].total), 21);
 
       const restricoes = await client.query<{ conname: string }>(
         `select conname
@@ -38,10 +38,13 @@ test(
             'ck_obrigacao_total',
             'ck_importacao_totais',
             'ck_meta_valor_previsto',
-            'ck_vinculo_carga_horaria'
+            'ck_vinculo_carga_horaria',
+            'ck_evento_natureza',
+            'ck_evento_informativo_sem_incidencia',
+            'ck_evento_recorrente_vigencia'
           )`,
       );
-      assert.equal(restricoes.rowCount, 7);
+      assert.equal(restricoes.rowCount, 10);
 
       await client.query("begin");
       const empresaId = randomUUID();
@@ -50,6 +53,21 @@ test(
          values ($1, '12345678000199', 'Empresa sintética de teste')`,
         [empresaId],
       );
+
+      await client.query("savepoint evento_informativo_invalido");
+      await assert.rejects(
+        client.query(
+          `insert into evento
+             (empresa_id, codigo, descricao, natureza, incide_inss)
+           values ($1, 'INFO-INVALIDO', 'Informativo com incidência', 'INFORMATIVO', true)`,
+          [empresaId],
+        ),
+        (error: unknown) =>
+          error instanceof Error &&
+          "constraint" in error &&
+          error.constraint === "ck_evento_informativo_sem_incidencia",
+      );
+      await client.query("rollback to savepoint evento_informativo_invalido");
 
       await client.query("savepoint documento_invalido");
       await assert.rejects(

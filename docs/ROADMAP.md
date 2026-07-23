@@ -39,15 +39,17 @@ ao banco. Termos, Metas e Vínculos possuem coleta/importação idempotente e CR
 persistente. A importação cria o Prestador quando sua Pessoa já está mapeada, resolve
 Termo, Meta, Atividade e Lotação por chave legada e rejeita dependências ausentes.
 
-Próximo recorte: reconciliar a coleta contratual real e iniciar Eventos, produtividade
-e parâmetros por vigência sobre toda a cadeia cadastral já persistente.
+Eventos/Rubricas e lançamentos recorrentes por Vínculo já possuem persistência, busca,
+edição e inativação, com validações no servidor e no banco. O próximo recorte é reconciliar
+a coleta contratual real e implementar produtividade, composição de Eventos e parâmetros
+fiscais por vigência sobre toda a cadeia cadastral já persistente.
 
 Critério de aceite: cadastros sobrevivem a reinicializações, dados do GIW são conciliados
 sem duplicação e toda linha importada tem origem rastreável.
 
 ## Incremento 2 — folha auditável
 
-- eventos/rubricas;
+- eventos/rubricas e lançamentos recorrentes — cadastro operacional concluído;
 - regras e tabelas fiscais por vigência;
 - consolidação mensal por pessoa;
 - outras fontes pagadoras;

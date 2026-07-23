@@ -16,7 +16,7 @@ Este primeiro incremento contém:
 - parâmetros fiscais de 2026 conferidos em fontes oficiais e documentados;
 - memória individual anonimizada;
 - bloqueio da divergência previdenciária identificada no legado;
-- modelo PostgreSQL inicial com 19 tabelas, incluindo trilha de importação;
+- modelo PostgreSQL inicial com 21 tabelas, incluindo trilha de importação;
 - coletores e importadores idempotentes de Pessoas, Atividades, Lotações, Termos, Metas
   e Vínculos do GIW;
 - cadastro persistente de Pessoas, Atividades e Lotações, com busca, edição e
@@ -26,12 +26,14 @@ Este primeiro incremento contém:
   dependências ativas;
 - cadastro persistente de Vínculos, com contrato, vigência, retribuição, carga horária
   e incidências de INSS/IRRF;
+- cadastro persistente de Eventos/Rubricas e lançamentos recorrentes por Vínculo e
+  competência, com validação de natureza, incidências, vigência e sobreposição;
 - primeira migração Drizzle;
 - Dockerfile e Compose para implantação própria;
 - testes automatizados e pipeline de integração contínua.
 
-Os módulos `/cadastros`, `/prestadores`, `/instrumentos` e `/vinculos` já gravam no PostgreSQL. As
-demais telas de escrita e o login ainda são demonstrativos. Nenhuma obrigação é
+Os módulos `/cadastros`, `/prestadores`, `/instrumentos`, `/vinculos` e `/eventos` já gravam no
+PostgreSQL. As demais telas de escrita e o login ainda são demonstrativos. Nenhuma obrigação é
 transmitida. Consulte o [andamento ponderado do MVP](docs/ANDAMENTO.md).
 
 ## Começando

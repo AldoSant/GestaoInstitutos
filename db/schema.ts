@@ -297,6 +297,82 @@ export const vinculos = pgTable(
   ],
 );
 
+export const eventos = pgTable(
+  "evento",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    codigo: varchar("codigo", { length: 40 }).notNull(),
+    descricao: varchar("descricao", { length: 180 }).notNull(),
+    natureza: varchar("natureza", { length: 20 }).notNull(),
+    tipoCalculo: varchar("tipo_calculo", { length: 20 }).notNull().default("VALOR"),
+    incideInss: boolean("incide_inss").notNull().default(false),
+    incideIrrf: boolean("incide_irrf").notNull().default(false),
+    ativo: boolean("ativo").notNull().default(true),
+    ...auditoriaBasica,
+  },
+  (table) => [
+    uniqueIndex("uq_evento_empresa_codigo").on(table.empresaId, table.codigo),
+    index("ix_evento_empresa_descricao").on(table.empresaId, table.descricao),
+    check(
+      "ck_evento_natureza",
+      sql`${table.natureza} in ('PROVENTO', 'DESCONTO', 'INFORMATIVO')`,
+    ),
+    check(
+      "ck_evento_tipo_calculo",
+      sql`${table.tipoCalculo} in ('VALOR', 'PERCENTUAL')`,
+    ),
+    check(
+      "ck_evento_informativo_sem_incidencia",
+      sql`${table.natureza} <> 'INFORMATIVO' or (not ${table.incideInss} and not ${table.incideIrrf})`,
+    ),
+  ],
+);
+
+export const eventosRecorrentes = pgTable(
+  "lancamento_evento_recorrente",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    vinculoId: uuid("vinculo_id")
+      .notNull()
+      .references(() => vinculos.id),
+    eventoId: uuid("evento_id")
+      .notNull()
+      .references(() => eventos.id),
+    valor: numeric("valor", { precision: 18, scale: 4 }).notNull(),
+    inicioCompetencia: date("inicio_competencia").notNull(),
+    fimCompetencia: date("fim_competencia"),
+    ativo: boolean("ativo").notNull().default(true),
+    ...auditoriaBasica,
+  },
+  (table) => [
+    uniqueIndex("uq_evento_recorrente_inicio").on(
+      table.vinculoId,
+      table.eventoId,
+      table.inicioCompetencia,
+    ),
+    index("ix_evento_recorrente_empresa_ativo").on(table.empresaId, table.ativo),
+    check("ck_evento_recorrente_valor", sql`${table.valor} >= 0`),
+    check(
+      "ck_evento_recorrente_inicio_mes",
+      sql`${table.inicioCompetencia} = date_trunc('month', ${table.inicioCompetencia})::date`,
+    ),
+    check(
+      "ck_evento_recorrente_fim_mes",
+      sql`${table.fimCompetencia} is null or ${table.fimCompetencia} = date_trunc('month', ${table.fimCompetencia})::date`,
+    ),
+    check(
+      "ck_evento_recorrente_vigencia",
+      sql`${table.fimCompetencia} is null or ${table.fimCompetencia} >= ${table.inicioCompetencia}`,
+    ),
+  ],
+);
+
 export const regrasCalculo = pgTable(
   "regra_calculo_versao",
   {
