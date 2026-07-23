@@ -13,6 +13,7 @@ Este primeiro incremento contém:
 - painel das três competências analisadas;
 - folhas, prestadores, parâmetros e obrigações em dados demonstrativos;
 - motor inicial de INSS e IRRF de 2026;
+- parâmetros fiscais de 2026 conferidos em fontes oficiais e documentados;
 - memória individual anonimizada;
 - bloqueio da divergência previdenciária identificada no legado;
 - modelo PostgreSQL inicial com 19 tabelas, incluindo trilha de importação;
@@ -39,10 +40,12 @@ Abra `http://localhost:3000`.
 ### Testes e build
 
 ```bash
-npm test
-npm run build
+npm run validate
 npm audit
 ```
+
+Sem `DATABASE_URL`, o teste de integração PostgreSQL é marcado como ignorado. No CI,
+um PostgreSQL 16 real recebe todas as migrações e executa os testes de restrições.
 
 ### Banco e migrações
 
@@ -70,6 +73,7 @@ Antes de usar em servidor, defina valores fortes para `POSTGRES_PASSWORD` e `AUT
 - [Modelo de dados](docs/MODELO_DE_DADOS.md)
 - [Engenharia reversa e critérios de evidência](docs/ENGENHARIA_REVERSA.md)
 - [Importação automatizada do GIW](docs/IMPORTACAO_GIW.md)
+- [Regras fiscais confirmadas para 2026](docs/REGRAS_FISCAIS_2026.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Implantação em VPS](docs/DEPLOY_VPS.md)
 - [Como contribuir](CONTRIBUTING.md)

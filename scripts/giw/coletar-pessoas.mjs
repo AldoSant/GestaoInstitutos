@@ -61,6 +61,9 @@ try {
   }
 
   if (!completed) throw new Error("A coleta ultrapassou o limite de 100 páginas.");
+  if (records.length === 0) {
+    throw new Error("O GIW não retornou pessoas; nenhum snapshot foi gravado.");
+  }
 
   await salvarSnapshot({
     entity: "pessoas",

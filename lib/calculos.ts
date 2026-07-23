@@ -23,7 +23,16 @@ export type ResultadoIrrf = {
   valor: number;
 };
 
+function exigirNumeroNaoNegativo(valor: number, campo: string) {
+  if (!Number.isFinite(valor) || valor < 0) {
+    throw new RangeError(`${campo} deve ser um número finito e não negativo.`);
+  }
+}
+
 export function arredondarMoeda(valor: number) {
+  if (!Number.isFinite(valor)) {
+    throw new RangeError("O valor monetário deve ser um número finito.");
+  }
   return Math.round((valor + Number.EPSILON) * 100) / 100;
 }
 
@@ -31,12 +40,23 @@ export function calcularInssPrestador(
   baseTributavel: number,
   baseContribuidaEmOutrasFontes = 0,
 ): ResultadoInss {
-  const baseResidual = Math.max(
-    0,
-    PARAMETROS_2026.tetoBaseInss - baseContribuidaEmOutrasFontes,
+  exigirNumeroNaoNegativo(baseTributavel, "baseTributavel");
+  exigirNumeroNaoNegativo(
+    baseContribuidaEmOutrasFontes,
+    "baseContribuidaEmOutrasFontes",
+  );
+  const baseTributavelNormalizada = arredondarMoeda(baseTributavel);
+  const baseOutrasFontesNormalizada = arredondarMoeda(
+    baseContribuidaEmOutrasFontes,
+  );
+  const baseResidual = arredondarMoeda(
+    Math.max(
+      0,
+      PARAMETROS_2026.tetoBaseInss - baseOutrasFontesNormalizada,
+    ),
   );
   const base = arredondarMoeda(
-    Math.min(Math.max(0, baseTributavel), baseResidual),
+    Math.min(baseTributavelNormalizada, baseResidual),
   );
   const valor = Math.min(
     arredondarMoeda(base * PARAMETROS_2026.aliquotaInssPrestador),
@@ -70,33 +90,46 @@ export function calcularIrrf2026({
   dependentes?: number;
   outrasDeducoes?: number;
 }): ResultadoIrrf {
+  exigirNumeroNaoNegativo(rendimentos, "rendimentos");
+  exigirNumeroNaoNegativo(inssDedutivel, "inssDedutivel");
+  exigirNumeroNaoNegativo(outrasDeducoes, "outrasDeducoes");
+  if (!Number.isInteger(dependentes) || dependentes < 0) {
+    throw new RangeError("dependentes deve ser um inteiro não negativo.");
+  }
+
+  const rendimentosNormalizados = arredondarMoeda(rendimentos);
   const deducaoLegal = arredondarMoeda(
-    Math.max(0, inssDedutivel) +
-      Math.max(0, dependentes) * PARAMETROS_2026.deducaoDependenteIrrf +
-      Math.max(0, outrasDeducoes),
+    arredondarMoeda(inssDedutivel) +
+      dependentes * PARAMETROS_2026.deducaoDependenteIrrf +
+      arredondarMoeda(outrasDeducoes),
   );
   const usarSimplificada =
     PARAMETROS_2026.descontoSimplificadoIrrf > deducaoLegal;
   const deducaoUtilizada = usarSimplificada
     ? PARAMETROS_2026.descontoSimplificadoIrrf
     : deducaoLegal;
-  const base = arredondarMoeda(Math.max(0, rendimentos - deducaoUtilizada));
+  const base = arredondarMoeda(
+    Math.max(0, rendimentosNormalizados - deducaoUtilizada),
+  );
   const impostoBruto = calcularIrrfBruto(base);
 
   let reducao = 0;
-  if (rendimentos <= 5_000) {
+  if (rendimentosNormalizados <= 5_000) {
     reducao = Math.min(impostoBruto, 312.89);
-  } else if (rendimentos <= 7_350) {
+  } else if (rendimentosNormalizados <= 7_350) {
     reducao = Math.min(
       impostoBruto,
-      Math.max(0, arredondarMoeda(978.62 - 0.133145 * rendimentos)),
+      Math.max(
+        0,
+        arredondarMoeda(978.62 - 0.133145 * rendimentosNormalizados),
+      ),
     );
   }
 
   reducao = arredondarMoeda(reducao);
 
   return {
-    rendimentos: arredondarMoeda(rendimentos),
+    rendimentos: rendimentosNormalizados,
     metodoDeducao: usarSimplificada ? "SIMPLIFICADA" : "LEGAL",
     deducaoUtilizada,
     base,
@@ -110,6 +143,8 @@ export function analisarConciliacaoPrevidenciaria(
   inssFolha: number,
   totalObrigacao: number,
 ) {
+  exigirNumeroNaoNegativo(inssFolha, "inssFolha");
+  exigirNumeroNaoNegativo(totalObrigacao, "totalObrigacao");
   const diferenca = arredondarMoeda(totalObrigacao - inssFolha);
   const razao = inssFolha === 0 ? null : totalObrigacao / inssFolha;
   const duplicacaoExata =

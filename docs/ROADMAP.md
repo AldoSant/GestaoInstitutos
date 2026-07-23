@@ -31,6 +31,8 @@ detalhado da migração está em [Importação do GIW](IMPORTACAO_GIW.md).
 
 Progresso: Pessoas, Atividades e Lotações já possuem coleta e importação; Atividades e
 Lotações também possuem tabelas relacionais próprias e chaves opcionais nos vínculos.
+O banco agora rejeita documentos, vigências, totais e estados estruturalmente
+inconsistentes, e o CI aplica as migrações em PostgreSQL 16 antes dos testes.
 
 Critério de aceite: cadastros sobrevivem a reinicializações, dados do GIW são conciliados
 sem duplicação e toda linha importada tem origem rastreável.

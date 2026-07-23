@@ -13,6 +13,23 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://instituto:instituto-ci@localhost:5432/instituto_folha
+      DATABASE_SSL: "false"
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: instituto_folha
+          POSTGRES_USER: instituto
+          POSTGRES_PASSWORD: instituto-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U instituto -d instituto_folha"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
 
     steps:
       - name: Checkout
@@ -30,8 +47,41 @@ jobs:
       - name: Dependency audit
         run: npm audit
 
+      - name: Migration consistency
+        run: npm run db:check
+
+      - name: Database migrations
+        run: npm run db:migrate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: TypeScript
+        run: npm run typecheck
+
       - name: Tests
         run: npm test
 
       - name: Production build
         run: npm run build
+
+      - name: Runtime smoke test
+        run: |
+          npm start > /tmp/gestao-institutos.log 2>&1 &
+          APP_PID=$!
+          trap 'kill $APP_PID' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://localhost:3000/api/health > /dev/null; then
+              curl --fail --silent http://localhost:3000/ > /dev/null
+              curl --fail --silent http://localhost:3000/folhas > /dev/null
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/gestao-institutos.log
+          exit 1
+
+      - name: Container images
+        run: |
+          docker build --target migrator -t gestao-institutos-migrator:ci .
+          docker build --target runner -t gestao-institutos-web:ci .

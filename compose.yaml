@@ -34,5 +34,17 @@ services:
       timeout: 3s
       retries: 5
 
+  migrate:
+    build:
+      context: .
+      target: migrator
+    profiles: ["tools"]
+    environment:
+      DATABASE_URL: postgresql://instituto:${POSTGRES_PASSWORD:-instituto-local}@database:5432/instituto_folha
+      DATABASE_SSL: "false"
+    depends_on:
+      database:
+        condition: service_healthy
+
 volumes:
   postgres_data:

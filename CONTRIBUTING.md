@@ -5,7 +5,7 @@
 1. Use Node.js 22+.
 2. Execute `npm install`.
 3. Copie `.env.example` para `.env` e use apenas valores locais.
-4. Execute `npm test` e `npm run build` antes de abrir pull request.
+4. Execute `npm run validate` e `npm audit` antes de abrir pull request.
 
 ## Fluxo de branches
 

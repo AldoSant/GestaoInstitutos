@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   index,
   integer,
@@ -53,7 +55,10 @@ export const empresas = pgTable(
     ativo: boolean("ativo").notNull().default(true),
     ...auditoriaBasica,
   },
-  (table) => [uniqueIndex("uq_empresa_cnpj").on(table.cnpj)],
+  (table) => [
+    uniqueIndex("uq_empresa_cnpj").on(table.cnpj),
+    check("ck_empresa_cnpj_formato", sql`${table.cnpj} ~ '^[0-9]{14}$'`),
+  ],
 );
 
 export const usuarios = pgTable(
@@ -71,6 +76,7 @@ export const usuarios = pgTable(
   (table) => [
     uniqueIndex("uq_usuario_cpf").on(table.cpf),
     uniqueIndex("uq_usuario_email").on(table.email),
+    check("ck_usuario_cpf_formato", sql`${table.cpf} ~ '^[0-9]{11}$'`),
   ],
 );
 
@@ -109,6 +115,23 @@ export const pessoas = pgTable(
     uniqueIndex("uq_pessoa_empresa_cpf").on(table.empresaId, table.cpf),
     uniqueIndex("uq_pessoa_empresa_cnpj").on(table.empresaId, table.cnpj),
     index("ix_pessoa_empresa_nome").on(table.empresaId, table.nomeRazaoSocial),
+    check(
+      "ck_pessoa_cpf_formato",
+      sql`${table.cpf} is null or ${table.cpf} ~ '^[0-9]{11}$'`,
+    ),
+    check(
+      "ck_pessoa_cnpj_formato",
+      sql`${table.cnpj} is null or ${table.cnpj} ~ '^[0-9]{14}$'`,
+    ),
+    check(
+      "ck_pessoa_documento_exclusivo",
+      sql`not (${table.cpf} is not null and ${table.cnpj} is not null)`,
+    ),
+    check(
+      "ck_pessoa_tipo_documento",
+      sql`(${table.tipo} = 'FISICA' and ${table.cnpj} is null)
+          or (${table.tipo} = 'JURIDICA' and ${table.cpf} is null)`,
+    ),
   ],
 );
 
@@ -155,6 +178,14 @@ export const atividades = pgTable(
   (table) => [
     uniqueIndex("uq_atividade_empresa_codigo").on(table.empresaId, table.codigo),
     index("ix_atividade_empresa_descricao").on(table.empresaId, table.descricao),
+    check(
+      "ck_atividade_carga_horaria",
+      sql`${table.cargaHoraria} is null or ${table.cargaHoraria} >= 0`,
+    ),
+    check(
+      "ck_atividade_valor",
+      sql`${table.valor} is null or ${table.valor} >= 0`,
+    ),
   ],
 );
 
@@ -192,7 +223,11 @@ export const termos = pgTable(
     ativo: boolean("ativo").notNull().default(true),
     ...auditoriaBasica,
   },
-  (table) => [uniqueIndex("uq_termo_empresa_numero").on(table.empresaId, table.numero)],
+  (table) => [
+    uniqueIndex("uq_termo_empresa_numero").on(table.empresaId, table.numero),
+    check("ck_termo_vigencia", sql`${table.fim} is null or ${table.fim} >= ${table.inicio}`),
+    check("ck_termo_valor_global", sql`${table.valorGlobal} >= 0`),
+  ],
 );
 
 export const metas = pgTable(
@@ -238,7 +273,14 @@ export const vinculos = pgTable(
     ativo: boolean("ativo").notNull().default(true),
     ...auditoriaBasica,
   },
-  (table) => [index("ix_vinculo_empresa_ativo").on(table.empresaId, table.ativo)],
+  (table) => [
+    index("ix_vinculo_empresa_ativo").on(table.empresaId, table.ativo),
+    check(
+      "ck_vinculo_vigencia",
+      sql`${table.fim} is null or ${table.fim} >= ${table.inicio}`,
+    ),
+    check("ck_vinculo_valor_retribuicao", sql`${table.valorRetribuicao} >= 0`),
+  ],
 );
 
 export const regrasCalculo = pgTable(
@@ -261,6 +303,11 @@ export const regrasCalculo = pgTable(
       table.empresaId,
       table.codigo,
       table.versao,
+    ),
+    check("ck_regra_versao", sql`${table.versao} > 0`),
+    check(
+      "ck_regra_vigencia",
+      sql`${table.fimVigencia} is null or ${table.fimVigencia} >= ${table.inicioVigencia}`,
     ),
   ],
 );
@@ -294,6 +341,15 @@ export const folhas = pgTable(
       table.numero,
     ),
     index("ix_folha_empresa_status").on(table.empresaId, table.status),
+    check("ck_folha_numero", sql`${table.numero} > 0`),
+    check(
+      "ck_folha_competencia_primeiro_dia",
+      sql`${table.competencia} = date_trunc('month', ${table.competencia})::date`,
+    ),
+    check(
+      "ck_folha_fechamento",
+      sql`${table.status} <> 'FECHADA' or ${table.fechadaEm} is not null`,
+    ),
   ],
 );
 
@@ -321,6 +377,17 @@ export const itensFolha = pgTable(
   },
   (table) => [
     uniqueIndex("uq_folha_item_vinculo").on(table.folhaId, table.vinculoId),
+    check(
+      "ck_folha_item_valores_nao_negativos",
+      sql`${table.totalProventos} >= 0 and ${table.totalDescontos} >= 0
+          and ${table.baseInss} >= 0 and ${table.valorInss} >= 0
+          and ${table.baseIrrf} >= 0 and ${table.irrfBruto} >= 0
+          and ${table.irrfReducao} >= 0 and ${table.valorIrrf} >= 0`,
+    ),
+    check(
+      "ck_folha_item_total_liquido",
+      sql`${table.totalLiquido} = round(${table.totalProventos} - ${table.totalDescontos}, 2)`,
+    ),
   ],
 );
 
@@ -359,7 +426,22 @@ export const obrigacoes = pgTable(
     bloqueioMotivo: text("bloqueio_motivo"),
     criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("ix_obrigacao_empresa_competencia").on(table.empresaId, table.competencia)],
+  (table) => [
+    index("ix_obrigacao_empresa_competencia").on(table.empresaId, table.competencia),
+    check(
+      "ck_obrigacao_valores_nao_negativos",
+      sql`${table.principal} >= 0 and ${table.juros} >= 0
+          and ${table.multa} >= 0 and ${table.total} >= 0`,
+    ),
+    check(
+      "ck_obrigacao_total",
+      sql`${table.total} = round(${table.principal} + ${table.juros} + ${table.multa}, 2)`,
+    ),
+    check(
+      "ck_obrigacao_bloqueio_motivo",
+      sql`${table.status} <> 'BLOQUEADA' or ${table.bloqueioMotivo} is not null`,
+    ),
+  ],
 );
 
 export const obrigacoesFolhas = pgTable(
@@ -402,6 +484,22 @@ export const importacoes = pgTable(
   (table) => [
     index("ix_importacao_empresa_data").on(table.empresaId, table.iniciadoEm),
     index("ix_importacao_checksum").on(table.checksumArquivo),
+    check(
+      "ck_importacao_modo",
+      sql`${table.modo} in ('DRY_RUN', 'APLICAR')`,
+    ),
+    check(
+      "ck_importacao_status",
+      sql`${table.status} in ('EM_ANDAMENTO', 'CONCLUIDA', 'CONCLUIDA_COM_ERROS', 'FALHA')`,
+    ),
+    check(
+      "ck_importacao_totais",
+      sql`${table.totalLidos} >= 0 and ${table.totalInseridos} >= 0
+          and ${table.totalAtualizados} >= 0 and ${table.totalIgnorados} >= 0
+          and ${table.totalErros} >= 0
+          and ${table.totalInseridos} + ${table.totalAtualizados}
+            + ${table.totalIgnorados} + ${table.totalErros} <= ${table.totalLidos}`,
+    ),
   ],
 );
 
@@ -425,6 +523,16 @@ export const importacaoRegistros = pgTable(
   (table) => [
     uniqueIndex("uq_importacao_registro_ordem").on(table.execucaoId, table.ordem),
     index("ix_importacao_registro_legado").on(table.legacyId),
+    check("ck_importacao_registro_ordem", sql`${table.ordem} > 0`),
+    check(
+      "ck_importacao_registro_status",
+      sql`${table.status} in ('INSERIDO', 'ATUALIZADO', 'IGNORADO', 'ERRO')`,
+    ),
+    check(
+      "ck_importacao_registro_erro",
+      sql`(${table.status} = 'ERRO' and ${table.erro} is not null)
+          or (${table.status} <> 'ERRO' and ${table.destinoId} is not null)`,
+    ),
   ],
 );
 

@@ -6,6 +6,7 @@
 | [Modelo de dados](MODELO_DE_DADOS.md) | Estruturas atuais, modelo completo e estratégia de migração. |
 | [Engenharia reversa](ENGENHARIA_REVERSA.md) | Evidências, confiança e como transformar observação em regra. |
 | [Importação do GIW](IMPORTACAO_GIW.md) | Coleta, dry-run, aplicação, conciliação e expansão por etapas. |
+| [Regras fiscais de 2026](REGRAS_FISCAIS_2026.md) | Fontes oficiais, vigência, parâmetros implementados e limites atuais. |
 | [Roadmap](ROADMAP.md) | Incrementos, critérios de aceite e ordem recomendada. |
 | [Deploy em VPS](DEPLOY_VPS.md) | Preparação, segredos, proxy, banco, backup e atualização. |
 | [ADR 0001](decisoes/0001-stack-e-implantacao.md) | Por que Next.js, PostgreSQL e Docker. |

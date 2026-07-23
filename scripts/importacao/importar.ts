@@ -497,6 +497,7 @@ async function executar() {
             registro,
           ],
         );
+        await client.query(`release savepoint ${savepoint}`);
       }
     }
 

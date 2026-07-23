@@ -18,6 +18,11 @@ As três estruturas de importação guardam a execução, a decisão por registr
 correspondência durável entre o código do GIW e o UUID local. Isso permite simular,
 reexecutar e auditar a migração sem duplicar cadastros.
 
+A migração `0003` adiciona restrições de domínio para documentos, vigências, valores
+não negativos, competência no primeiro dia do mês, consistência dos totais da folha e
+da obrigação e estados da importação. Essas regras protegem o banco inclusive quando
+uma gravação não passa pela interface web.
+
 ```mermaid
 erDiagram
   EMPRESA ||--o{ ATIVIDADE : possui

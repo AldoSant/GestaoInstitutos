@@ -40,10 +40,15 @@ A porta do PostgreSQL está vinculada a `127.0.0.1` no Compose. Não publique a 
 
 Antes do primeiro uso e de atualizações com mudança de schema, faça backup e aplique as migrações a partir de um checkout confiável:
 
+Com Docker Compose, use o alvo de migração incluído no projeto:
+
 ```bash
-npm ci
-npm run db:migrate
+docker compose build migrate
+docker compose run --rm migrate
 ```
+
+Em uma instalação sem Docker, a alternativa é `npm ci` seguido de
+`npm run db:migrate` com `DATABASE_URL` configurada.
 
 Em produção madura, a migração deve ser uma etapa única e controlada do pipeline, não executada simultaneamente por várias réplicas.
 
@@ -63,13 +68,14 @@ Encaminhe o domínio para `127.0.0.1:3000`. Habilite HTTPS, redirecionamento de 
 
 ```bash
 git pull --ff-only
-npm ci
-npm test
-npm run build
+docker compose build migrate web
+docker compose run --rm migrate
 docker compose up -d --build
 ```
 
-Valide `/api/health`, logs, login e uma consulta de leitura após a atualização.
+Valide `/api/health`, logs, login e uma consulta de leitura após a atualização. O
+endpoint de saúde agora devolve HTTP 503 quando não consegue consultar o PostgreSQL;
+uma resposta HTTP 200 confirma aplicação e banco acessíveis.
 
 ## Antes de ampliar o acesso além da equipe interna
 

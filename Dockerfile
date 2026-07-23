@@ -10,6 +10,12 @@ COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
+FROM dependencies AS migrator
+COPY drizzle ./drizzle
+COPY db ./db
+COPY drizzle.config.ts tsconfig.json ./
+CMD ["npm", "run", "db:migrate"]
+
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
