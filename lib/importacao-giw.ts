@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { hashJson } from "./json-canonico";
 
 export type GiwPessoa = {
   legacyId: string;
@@ -1138,18 +1138,6 @@ export function validarSnapshotGiw(value: unknown): ValidationResult<GiwSnapshot
   };
 }
 
-function canonical(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (!objectLike(value)) return value;
-  return Object.fromEntries(
-    Object.keys(value)
-      .sort()
-      .map((key) => [key, canonical(value[key])]),
-  );
-}
-
 export function checksum(value: unknown): string {
-  return createHash("sha256")
-    .update(JSON.stringify(canonical(value)))
-    .digest("hex");
+  return hashJson(value);
 }

@@ -23,6 +23,9 @@ function destino(mensagem: string, erro = false) {
 
 function mensagemBanco(error: unknown) {
   if (typeof error === "object" && error !== null && "code" in error) {
+    if (error.code === "23P01") {
+      return "Já existe um vínculo ativo ocupando essa vigência.";
+    }
     if (error.code === "23503") return "Um cadastro relacionado não foi encontrado.";
     if (error.code === "23514") return "O banco rejeitou a vigência ou os valores informados.";
   }

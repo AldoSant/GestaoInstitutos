@@ -1,9 +1,28 @@
+import {
+  aplicarFormulaLinear,
+  aplicarProporcao,
+  deCentavos,
+  paraCentavos,
+} from "./dinheiro";
+import {
+  REGRA_FISCAL_2026,
+  type RegraFiscalParametros,
+} from "./regras-fiscais";
+
 export const PARAMETROS_2026 = {
-  tetoBaseInss: 8_475.55,
-  tetoContribuicaoInss: 932.31,
-  aliquotaInssPrestador: 0.11,
-  descontoSimplificadoIrrf: 607.2,
-  deducaoDependenteIrrf: 189.59,
+  tetoBaseInss: deCentavos(REGRA_FISCAL_2026.inss.tetoBaseCentavos),
+  tetoContribuicaoInss: deCentavos(
+    REGRA_FISCAL_2026.inss.tetoContribuicaoCentavos,
+  ),
+  aliquotaInssPrestador:
+    REGRA_FISCAL_2026.inss.aliquotaNumerador /
+    REGRA_FISCAL_2026.inss.aliquotaDenominador,
+  descontoSimplificadoIrrf: deCentavos(
+    REGRA_FISCAL_2026.irrf.descontoSimplificadoCentavos,
+  ),
+  deducaoDependenteIrrf: deCentavos(
+    REGRA_FISCAL_2026.irrf.deducaoDependenteCentavos,
+  ),
 } as const;
 
 export type ResultadoInss = {
@@ -30,53 +49,70 @@ function exigirNumeroNaoNegativo(valor: number, campo: string) {
 }
 
 export function arredondarMoeda(valor: number) {
-  if (!Number.isFinite(valor)) {
-    throw new RangeError("O valor monetário deve ser um número finito.");
-  }
-  return Math.round((valor + Number.EPSILON) * 100) / 100;
+  return deCentavos(paraCentavos(valor));
 }
 
 export function calcularInssPrestador(
   baseTributavel: number,
   baseContribuidaEmOutrasFontes = 0,
+  regra: RegraFiscalParametros = REGRA_FISCAL_2026,
 ): ResultadoInss {
   exigirNumeroNaoNegativo(baseTributavel, "baseTributavel");
   exigirNumeroNaoNegativo(
     baseContribuidaEmOutrasFontes,
     "baseContribuidaEmOutrasFontes",
   );
-  const baseTributavelNormalizada = arredondarMoeda(baseTributavel);
-  const baseOutrasFontesNormalizada = arredondarMoeda(
+  const baseTributavelCentavos = paraCentavos(baseTributavel);
+  const baseOutrasFontesCentavos = paraCentavos(
     baseContribuidaEmOutrasFontes,
   );
-  const baseResidual = arredondarMoeda(
-    Math.max(
-      0,
-      PARAMETROS_2026.tetoBaseInss - baseOutrasFontesNormalizada,
+  const tetoBaseCentavos = regra.inss.tetoBaseCentavos;
+  const tetoContribuicaoCentavos = regra.inss.tetoContribuicaoCentavos;
+  const baseResidualCentavos = Math.max(
+    0,
+    tetoBaseCentavos - baseOutrasFontesCentavos,
+  );
+  const baseCentavos = Math.min(
+    baseTributavelCentavos,
+    baseResidualCentavos,
+  );
+  const valorCentavos = Math.min(
+    aplicarProporcao(
+      baseCentavos,
+      regra.inss.aliquotaNumerador,
+      regra.inss.aliquotaDenominador,
     ),
+    tetoContribuicaoCentavos,
   );
-  const base = arredondarMoeda(
-    Math.min(baseTributavelNormalizada, baseResidual),
-  );
-  const valor = Math.min(
-    arredondarMoeda(base * PARAMETROS_2026.aliquotaInssPrestador),
-    PARAMETROS_2026.tetoContribuicaoInss,
-  );
+  const base = deCentavos(baseCentavos);
+  const valor = deCentavos(valorCentavos);
 
   return {
     base,
-    aliquota: PARAMETROS_2026.aliquotaInssPrestador,
+    aliquota:
+      regra.inss.aliquotaNumerador / regra.inss.aliquotaDenominador,
     valor,
-    tetoAtingido: baseResidual === 0 || base === baseResidual,
+    tetoAtingido:
+      baseResidualCentavos === 0 || baseCentavos === baseResidualCentavos,
   };
 }
 
-function calcularIrrfBruto(base: number) {
-  if (base <= 2_428.8) return 0;
-  if (base <= 2_826.65) return arredondarMoeda(base * 0.075 - 182.16);
-  if (base <= 3_751.05) return arredondarMoeda(base * 0.15 - 394.16);
-  if (base <= 4_664.68) return arredondarMoeda(base * 0.225 - 675.49);
-  return arredondarMoeda(base * 0.275 - 908.73);
+function calcularIrrfBrutoCentavos(
+  base: number,
+  regra: RegraFiscalParametros,
+) {
+  const faixa = regra.irrf.faixas.find(
+    (item) =>
+      item.limiteSuperiorCentavos === null ||
+      base <= item.limiteSuperiorCentavos,
+  );
+  if (!faixa) throw new Error("A regra fiscal não possui faixa final de IRRF.");
+  return aplicarFormulaLinear({
+    valor: base,
+    numerador: faixa.aliquotaNumerador,
+    denominador: faixa.aliquotaDenominador,
+    parcela: faixa.parcelaDeduzirCentavos,
+  });
 }
 
 export function calcularIrrf2026({
@@ -84,11 +120,13 @@ export function calcularIrrf2026({
   inssDedutivel,
   dependentes = 0,
   outrasDeducoes = 0,
+  regra = REGRA_FISCAL_2026,
 }: {
   rendimentos: number;
   inssDedutivel: number;
   dependentes?: number;
   outrasDeducoes?: number;
+  regra?: RegraFiscalParametros;
 }): ResultadoIrrf {
   exigirNumeroNaoNegativo(rendimentos, "rendimentos");
   exigirNumeroNaoNegativo(inssDedutivel, "inssDedutivel");
@@ -97,36 +135,54 @@ export function calcularIrrf2026({
     throw new RangeError("dependentes deve ser um inteiro não negativo.");
   }
 
-  const rendimentosNormalizados = arredondarMoeda(rendimentos);
-  const deducaoLegal = arredondarMoeda(
-    arredondarMoeda(inssDedutivel) +
-      dependentes * PARAMETROS_2026.deducaoDependenteIrrf +
-      arredondarMoeda(outrasDeducoes),
-  );
+  const rendimentosCentavos = paraCentavos(rendimentos);
+  const deducaoLegalCentavos =
+    paraCentavos(inssDedutivel) +
+    dependentes * regra.irrf.deducaoDependenteCentavos +
+    paraCentavos(outrasDeducoes);
+  const descontoSimplificadoCentavos =
+    regra.irrf.descontoSimplificadoCentavos;
   const usarSimplificada =
-    PARAMETROS_2026.descontoSimplificadoIrrf > deducaoLegal;
-  const deducaoUtilizada = usarSimplificada
-    ? PARAMETROS_2026.descontoSimplificadoIrrf
-    : deducaoLegal;
-  const base = arredondarMoeda(
-    Math.max(0, rendimentosNormalizados - deducaoUtilizada),
+    descontoSimplificadoCentavos > deducaoLegalCentavos;
+  const deducaoUtilizadaCentavos = usarSimplificada
+    ? descontoSimplificadoCentavos
+    : deducaoLegalCentavos;
+  const baseCentavos = Math.max(
+    0,
+    rendimentosCentavos - deducaoUtilizadaCentavos,
   );
-  const impostoBruto = calcularIrrfBruto(base);
+  const impostoBrutoCentavos = calcularIrrfBrutoCentavos(
+    baseCentavos,
+    regra,
+  );
 
-  let reducao = 0;
-  if (rendimentosNormalizados <= 5_000) {
-    reducao = Math.min(impostoBruto, 312.89);
-  } else if (rendimentosNormalizados <= 7_350) {
-    reducao = Math.min(
-      impostoBruto,
+  let reducaoCentavos = 0;
+  const reducao = regra.irrf.reducao;
+  if (rendimentosCentavos <= reducao.integralAteCentavos) {
+    reducaoCentavos = Math.min(
+      impostoBrutoCentavos,
+      reducao.integralLimiteCentavos,
+    );
+  } else if (rendimentosCentavos <= reducao.decrescenteAteCentavos) {
+    reducaoCentavos = Math.min(
+      impostoBrutoCentavos,
       Math.max(
         0,
-        arredondarMoeda(978.62 - 0.133145 * rendimentosNormalizados),
+        aplicarFormulaLinear({
+          valor: rendimentosCentavos,
+          numerador: -reducao.coeficienteNumerador,
+          denominador: reducao.coeficienteDenominador,
+          parcela: -reducao.constanteCentavos,
+        }),
       ),
     );
   }
 
-  reducao = arredondarMoeda(reducao);
+  const rendimentosNormalizados = deCentavos(rendimentosCentavos);
+  const deducaoUtilizada = deCentavos(deducaoUtilizadaCentavos);
+  const base = deCentavos(baseCentavos);
+  const impostoBruto = deCentavos(impostoBrutoCentavos);
+  const reducaoCalculada = deCentavos(reducaoCentavos);
 
   return {
     rendimentos: rendimentosNormalizados,
@@ -134,8 +190,10 @@ export function calcularIrrf2026({
     deducaoUtilizada,
     base,
     impostoBruto,
-    reducao,
-    valor: arredondarMoeda(Math.max(0, impostoBruto - reducao)),
+    reducao: reducaoCalculada,
+    valor: deCentavos(
+      Math.max(0, impostoBrutoCentavos - reducaoCentavos),
+    ),
   };
 }
 

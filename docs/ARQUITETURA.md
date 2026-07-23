@@ -47,6 +47,31 @@ Toda ação financeira relevante registra usuário, instante, estado anterior, e
 - Dados reais não entram em testes; use fixtures anonimizadas ou sintéticas.
 - Multi-organização será aplicada em todas as consultas e validada em testes.
 
+## Base operacional implementada
+
+- um único pool PostgreSQL é reutilizado pelo processo Node, inclusive em produção;
+- tamanho do pool, conexão, consulta, comando e transação ociosa têm limites configuráveis;
+- Vínculos e Eventos recorrentes possuem restrições de exclusão no PostgreSQL, evitando
+  sobreposição mesmo sob requisições concorrentes;
+- relações cadastrais críticas usam chaves estrangeiras compostas com a organização;
+  o banco rejeita referências acidentais entre empresas;
+- alterações em Vínculos, Eventos, Folhas e Obrigações geram auditoria automática com
+  estado anterior e posterior;
+- Folhas fechadas são imutáveis no banco; a reabertura exige transação autorizada e motivo;
+- tarefas persistentes possuem idempotência, prioridade, reserva com `SKIP LOCKED`,
+  retentativas e recuperação de reservas expiradas;
+- operações monetárias do motor usam centavos e proporções inteiras, evitando que o
+  ponto flutuante binário decida arredondamentos fiscais;
+- regras fiscais completas são persistidas por versão e vigência, rejeitam sobreposição,
+  possuem hash canônico conferido na leitura e podem ser específicas da organização;
+- o Compose não aceita segredos padrão, limita a exposição ao host local e controla logs;
+- scripts de backup, checksum e restauração de teste estão versionados.
+
+O serviço worker já reserva tarefas com exclusão concorrente e possui um handler
+operacional de validação da regra fiscal por competência. Cada novo tipo de processamento,
+inclusive `PROCESSAR_FOLHA`, deverá possuir um handler de domínio testado antes de entrar
+no registro aceito pelo worker.
+
 ## Estrutura do repositório
 
 ```text
@@ -73,8 +98,8 @@ para o mesmo prestador, termo e meta. Todas as operações são filtradas pela
 empresa ativa, alterações são validadas no servidor e a exclusão física foi substituída
 por inativação. Eventos controlam natureza, modo de cálculo e incidências; lançamentos
 recorrentes os ligam ao Vínculo por intervalo de competências e não podem se sobrepor.
-As páginas de folha, parâmetros e obrigações ainda usam dados
-demonstrativos.
+As páginas de folha e obrigações ainda usam dados demonstrativos. A página de Parâmetros
+já consulta e valida as regras fiscais publicadas no PostgreSQL.
 
 Na substituição progressiva dessas páginas por repositórios PostgreSQL, os contratos de
 cálculo em `lib/calculos.ts` devem ser preservados, separando:

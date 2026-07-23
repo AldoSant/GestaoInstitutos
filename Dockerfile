@@ -13,9 +13,22 @@ RUN npm run build
 FROM dependencies AS migrator
 COPY drizzle ./drizzle
 COPY db ./db
-COPY scripts/db/migrate.mjs ./scripts/db/migrate.mjs
+COPY lib ./lib
+COPY scripts/db ./scripts/db
 COPY drizzle.config.ts tsconfig.json ./
 CMD ["npm", "run", "db:migrate"]
+
+FROM node:22-alpine AS worker
+WORKDIR /app
+ENV NODE_ENV=production
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 worker
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY --chown=worker:nodejs package.json tsconfig.json ./
+COPY --chown=worker:nodejs db ./db
+COPY --chown=worker:nodejs lib ./lib
+COPY --chown=worker:nodejs scripts/worker ./scripts/worker
+USER worker
+CMD ["npm", "run", "worker:start"]
 
 FROM node:22-alpine AS runner
 WORKDIR /app

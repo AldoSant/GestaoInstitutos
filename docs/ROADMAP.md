@@ -60,6 +60,13 @@ sem duplicação e toda linha importada tem origem rastreável.
 - memória de cálculo e snapshots;
 - fechamento e reabertura auditados.
 
+Progresso de infraestrutura: fila persistente e idempotente, reserva concorrente de
+tarefas, auditoria automática e proteção de Folha fechada já estão implementadas no
+PostgreSQL. A regra fiscal de 2026 agora é persistida com vigência, fonte, hash e conteúdo
+completo; o motor recebe a versão selecionada e a tela de Parâmetros consulta o banco.
+Ainda faltam o handler do worker e o caso de uso transacional que materializa Pessoa,
+Vínculos, Lançamentos e Memórias de uma competência.
+
 Critério de aceite: as três competências anonimizadas fecham centavo a centavo ou possuem diferença formalmente explicada.
 
 ## Incremento 3 — obrigações

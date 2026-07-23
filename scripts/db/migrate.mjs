@@ -3,8 +3,16 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 
 function connectionOptions() {
+  const ssl =
+    process.env.DATABASE_SSL === "true"
+      ? {
+          rejectUnauthorized:
+            process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false",
+        }
+      : undefined;
+
   if (process.env.DATABASE_URL) {
-    return { connectionString: process.env.DATABASE_URL };
+    return { connectionString: process.env.DATABASE_URL, ssl };
   }
 
   const host = process.env.DATABASE_HOST;
@@ -19,10 +27,21 @@ function connectionOptions() {
     );
   }
 
-  return { host, user, password, database, port };
+  return { host, user, password, database, port, ssl };
 }
 
-const pool = new pg.Pool(connectionOptions());
+const pool = new pg.Pool({
+  ...connectionOptions(),
+  max: 1,
+  application_name:
+    process.env.DATABASE_APPLICATION_NAME ?? "gestao-institutos-migrator",
+  connectionTimeoutMillis: Number(
+    process.env.DATABASE_CONNECTION_TIMEOUT_MS ?? "5000",
+  ),
+  statement_timeout: Number(
+    process.env.DATABASE_STATEMENT_TIMEOUT_MS ?? "60000",
+  ),
+});
 
 try {
   await migrate(drizzle(pool), { migrationsFolder: "./drizzle" });

@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   date,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -12,6 +13,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
   varchar,
@@ -35,6 +37,13 @@ export const statusObrigacao = pgEnum("status_obrigacao", [
   "APURADA",
   "BLOQUEADA",
   "EMITIDA",
+  "CANCELADA",
+]);
+export const statusTarefa = pgEnum("status_tarefa", [
+  "PENDENTE",
+  "EXECUTANDO",
+  "CONCLUIDA",
+  "FALHA",
   "CANCELADA",
 ]);
 
@@ -138,6 +147,7 @@ export const pessoas = pgTable(
   (table) => [
     uniqueIndex("uq_pessoa_empresa_cpf").on(table.empresaId, table.cpf),
     uniqueIndex("uq_pessoa_empresa_cnpj").on(table.empresaId, table.cnpj),
+    uniqueIndex("uq_pessoa_empresa_id").on(table.empresaId, table.id),
     index("ix_pessoa_empresa_nome").on(table.empresaId, table.nomeRazaoSocial),
     check(
       "ck_pessoa_cpf_formato",
@@ -181,6 +191,11 @@ export const pessoasEnderecos = pgTable(
   },
   (table) => [
     uniqueIndex("uq_pessoa_endereco_pessoa").on(table.empresaId, table.pessoaId),
+    foreignKey({
+      columns: [table.empresaId, table.pessoaId],
+      foreignColumns: [pessoas.empresaId, pessoas.id],
+      name: "fk_pessoa_endereco_empresa_pessoa",
+    }),
   ],
 );
 
@@ -204,6 +219,11 @@ export const pessoasContasBancarias = pgTable(
   },
   (table) => [
     uniqueIndex("uq_pessoa_conta_pessoa").on(table.empresaId, table.pessoaId),
+    foreignKey({
+      columns: [table.empresaId, table.pessoaId],
+      foreignColumns: [pessoas.empresaId, pessoas.id],
+      name: "fk_pessoa_conta_empresa_pessoa",
+    }),
     check(
       "ck_pessoa_conta_tipo",
       sql`${table.tipo} is null or ${table.tipo} in ('CORRENTE', 'POUPANCA')`,
@@ -239,6 +259,11 @@ export const dependentes = pgTable(
     ),
     uniqueIndex("uq_dependente_pessoa_cpf").on(table.pessoaId, table.cpf),
     index("ix_dependente_empresa_nome").on(table.empresaId, table.nome),
+    foreignKey({
+      columns: [table.empresaId, table.pessoaId],
+      foreignColumns: [pessoas.empresaId, pessoas.id],
+      name: "fk_dependente_empresa_pessoa",
+    }),
     check(
       "ck_dependente_cpf",
       sql`${table.cpf} is null or ${table.cpf} ~ '^[0-9]{11}$'`,
@@ -264,11 +289,17 @@ export const prestadores = pgTable(
     ...auditoriaBasica,
   },
   (table) => [
+    uniqueIndex("uq_prestador_empresa_id").on(table.empresaId, table.id),
     uniqueIndex("uq_prestador_empresa_pessoa").on(table.empresaId, table.pessoaId),
     uniqueIndex("uq_prestador_empresa_matricula").on(
       table.empresaId,
       table.matricula,
     ),
+    foreignKey({
+      columns: [table.empresaId, table.pessoaId],
+      foreignColumns: [pessoas.empresaId, pessoas.id],
+      name: "fk_prestador_empresa_pessoa",
+    }),
   ],
 );
 
@@ -287,6 +318,7 @@ export const atividades = pgTable(
     ...auditoriaBasica,
   },
   (table) => [
+    uniqueIndex("uq_atividade_empresa_id").on(table.empresaId, table.id),
     uniqueIndex("uq_atividade_empresa_codigo").on(table.empresaId, table.codigo),
     index("ix_atividade_empresa_descricao").on(table.empresaId, table.descricao),
     check(
@@ -313,6 +345,7 @@ export const lotacoes = pgTable(
     ...auditoriaBasica,
   },
   (table) => [
+    uniqueIndex("uq_lotacao_empresa_id").on(table.empresaId, table.id),
     uniqueIndex("uq_lotacao_empresa_codigo").on(table.empresaId, table.codigo),
     index("ix_lotacao_empresa_descricao").on(table.empresaId, table.descricao),
   ],
@@ -335,6 +368,7 @@ export const termos = pgTable(
     ...auditoriaBasica,
   },
   (table) => [
+    uniqueIndex("uq_termo_empresa_id").on(table.empresaId, table.id),
     uniqueIndex("uq_termo_empresa_numero").on(table.empresaId, table.numero),
     check("ck_termo_vigencia", sql`${table.fim} is null or ${table.fim} >= ${table.inicio}`),
     check("ck_termo_valor_global", sql`${table.valorGlobal} >= 0`),
@@ -355,6 +389,7 @@ export const metas = pgTable(
     ativo: boolean("ativo").notNull().default(true),
   },
   (table) => [
+    uniqueIndex("uq_meta_termo_id").on(table.termoId, table.id),
     uniqueIndex("uq_meta_termo_codigo").on(table.termoId, table.codigo),
     check(
       "ck_meta_valor_previsto",
@@ -396,6 +431,32 @@ export const vinculos = pgTable(
   },
   (table) => [
     index("ix_vinculo_empresa_ativo").on(table.empresaId, table.ativo),
+    uniqueIndex("uq_vinculo_empresa_id").on(table.empresaId, table.id),
+    foreignKey({
+      columns: [table.empresaId, table.prestadorId],
+      foreignColumns: [prestadores.empresaId, prestadores.id],
+      name: "fk_vinculo_empresa_prestador",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.termoId],
+      foreignColumns: [termos.empresaId, termos.id],
+      name: "fk_vinculo_empresa_termo",
+    }),
+    foreignKey({
+      columns: [table.termoId, table.metaId],
+      foreignColumns: [metas.termoId, metas.id],
+      name: "fk_vinculo_termo_meta",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.atividadeId],
+      foreignColumns: [atividades.empresaId, atividades.id],
+      name: "fk_vinculo_empresa_atividade",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.lotacaoId],
+      foreignColumns: [lotacoes.empresaId, lotacoes.id],
+      name: "fk_vinculo_empresa_lotacao",
+    }),
     check(
       "ck_vinculo_vigencia",
       sql`${table.fim} is null or ${table.fim} >= ${table.inicio}`,
@@ -425,6 +486,7 @@ export const eventos = pgTable(
     ...auditoriaBasica,
   },
   (table) => [
+    uniqueIndex("uq_evento_empresa_id").on(table.empresaId, table.id),
     uniqueIndex("uq_evento_empresa_codigo").on(table.empresaId, table.codigo),
     index("ix_evento_empresa_descricao").on(table.empresaId, table.descricao),
     check(
@@ -468,6 +530,16 @@ export const eventosRecorrentes = pgTable(
       table.inicioCompetencia,
     ),
     index("ix_evento_recorrente_empresa_ativo").on(table.empresaId, table.ativo),
+    foreignKey({
+      columns: [table.empresaId, table.vinculoId],
+      foreignColumns: [vinculos.empresaId, vinculos.id],
+      name: "fk_evento_recorrente_empresa_vinculo",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.eventoId],
+      foreignColumns: [eventos.empresaId, eventos.id],
+      name: "fk_evento_recorrente_empresa_evento",
+    }),
     check("ck_evento_recorrente_valor", sql`${table.valor} >= 0`),
     check(
       "ck_evento_recorrente_inicio_mes",
@@ -500,12 +572,14 @@ export const regrasCalculo = pgTable(
     criadaEm: timestamp("criada_em", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("uq_regra_empresa_codigo_versao").on(
-      table.empresaId,
-      table.codigo,
-      table.versao,
-    ),
+    unique("uq_regra_empresa_codigo_versao")
+      .on(table.empresaId, table.codigo, table.versao)
+      .nullsNotDistinct(),
     check("ck_regra_versao", sql`${table.versao} > 0`),
+    check(
+      "ck_regra_hash",
+      sql`${table.hashConteudo} ~ '^[0-9a-f]{64}$'`,
+    ),
     check(
       "ck_regra_vigencia",
       sql`${table.fimVigencia} is null or ${table.fimVigencia} >= ${table.inicioVigencia}`,
@@ -542,6 +616,16 @@ export const folhas = pgTable(
       table.numero,
     ),
     index("ix_folha_empresa_status").on(table.empresaId, table.status),
+    foreignKey({
+      columns: [table.empresaId, table.termoId],
+      foreignColumns: [termos.empresaId, termos.id],
+      name: "fk_folha_empresa_termo",
+    }),
+    foreignKey({
+      columns: [table.termoId, table.metaId],
+      foreignColumns: [metas.termoId, metas.id],
+      name: "fk_folha_termo_meta",
+    }),
     check("ck_folha_numero", sql`${table.numero} > 0`),
     check(
       "ck_folha_competencia_primeiro_dia",
@@ -765,5 +849,109 @@ export const chavesLegado = pgTable(
       columns: [table.empresaId, table.origem, table.entidade, table.legacyId],
     }),
     index("ix_legado_chave_destino").on(table.destinoTabela, table.destinoId),
+  ],
+);
+
+export const auditorias = pgTable(
+  "auditoria",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    usuarioId: uuid("usuario_id").references(() => usuarios.id),
+    ator: varchar("ator", { length: 160 }).notNull(),
+    entidade: varchar("entidade", { length: 80 }).notNull(),
+    registroId: uuid("registro_id").notNull(),
+    acao: varchar("acao", { length: 30 }).notNull(),
+    motivo: text("motivo"),
+    dadosAnteriores: jsonb("dados_anteriores"),
+    dadosPosteriores: jsonb("dados_posteriores"),
+    correlacaoId: uuid("correlacao_id").notNull().defaultRandom(),
+    ocorridoEm: timestamp("ocorrido_em", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("ix_auditoria_registro").on(
+      table.empresaId,
+      table.entidade,
+      table.registroId,
+      table.ocorridoEm,
+    ),
+    index("ix_auditoria_correlacao").on(table.correlacaoId),
+    check(
+      "ck_auditoria_acao",
+      sql`${table.acao} in (
+        'CRIACAO', 'ALTERACAO', 'INATIVACAO', 'REATIVACAO', 'EXCLUSAO',
+        'PROCESSAMENTO', 'FECHAMENTO', 'REABERTURA',
+        'CANCELAMENTO', 'ESTORNO', 'IMPORTACAO'
+      )`,
+    ),
+    check(
+      "ck_auditoria_conteudo",
+      sql`${table.dadosAnteriores} is not null or ${table.dadosPosteriores} is not null`,
+    ),
+  ],
+);
+
+export const tarefasProcessamento = pgTable(
+  "tarefa_processamento",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    tipo: varchar("tipo", { length: 60 }).notNull(),
+    chaveIdempotencia: varchar("chave_idempotencia", { length: 180 }).notNull(),
+    status: statusTarefa("status").notNull().default("PENDENTE"),
+    prioridade: integer("prioridade").notNull().default(100),
+    payload: jsonb("payload").notNull(),
+    resultado: jsonb("resultado"),
+    tentativas: integer("tentativas").notNull().default(0),
+    maxTentativas: integer("max_tentativas").notNull().default(3),
+    disponivelEm: timestamp("disponivel_em", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    bloqueadaEm: timestamp("bloqueada_em", { withTimezone: true }),
+    bloqueadaPor: varchar("bloqueada_por", { length: 120 }),
+    iniciadaEm: timestamp("iniciada_em", { withTimezone: true }),
+    concluidaEm: timestamp("concluida_em", { withTimezone: true }),
+    ultimoErro: text("ultimo_erro"),
+    ...auditoriaBasica,
+  },
+  (table) => [
+    uniqueIndex("uq_tarefa_idempotencia").on(
+      table.empresaId,
+      table.tipo,
+      table.chaveIdempotencia,
+    ),
+    index("ix_tarefa_disponivel").on(
+      table.status,
+      table.disponivelEm,
+      table.prioridade,
+    ),
+    index("ix_tarefa_empresa_data").on(table.empresaId, table.criadoEm),
+    check("ck_tarefa_prioridade", sql`${table.prioridade} >= 0`),
+    check(
+      "ck_tarefa_tentativas",
+      sql`${table.tentativas} >= 0
+          and ${table.maxTentativas} > 0
+          and ${table.tentativas} <= ${table.maxTentativas}`,
+    ),
+    check(
+      "ck_tarefa_execucao",
+      sql`${table.status} <> 'EXECUTANDO'
+          or (${table.bloqueadaEm} is not null and ${table.bloqueadaPor} is not null)`,
+    ),
+    check(
+      "ck_tarefa_conclusao",
+      sql`${table.status} <> 'CONCLUIDA'
+          or (${table.concluidaEm} is not null and ${table.resultado} is not null)`,
+    ),
+    check(
+      "ck_tarefa_falha",
+      sql`${table.status} <> 'FALHA' or ${table.ultimoErro} is not null`,
+    ),
   ],
 );

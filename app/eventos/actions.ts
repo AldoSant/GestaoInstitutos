@@ -16,6 +16,9 @@ function destino(mensagem: string, erro = false, ancora = "") {
 
 function mensagemBanco(error: unknown) {
   if (typeof error === "object" && error !== null && "code" in error) {
+    if (error.code === "23P01") {
+      return "Já existe um lançamento ativo ocupando essa vigência.";
+    }
     if (error.code === "23505") return "Já existe um registro com a mesma chave inicial.";
     if (error.code === "23503") return "Um cadastro relacionado não foi encontrado.";
     if (error.code === "23514") return "O banco rejeitou o tipo, a vigência ou o valor.";

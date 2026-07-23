@@ -9,7 +9,8 @@ emissor oficial de obrigação.
 Fonte primária: [Tributação de 2026 — Receita Federal](https://www.gov.br/receitafederal/pt-br/assuntos/meu-imposto-de-renda/tabelas/2026),
 baseada na [Lei nº 15.270/2025](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/l15270.htm).
 
-Parâmetros implementados em `lib/calculos.ts`:
+Parâmetros definidos em `lib/regras-fiscais.ts`, persistidos em
+`regra_calculo_versao` e consumidos pelo motor em `lib/calculos.ts`:
 
 - tabela progressiva mensal com faixas de R$ 2.428,80, R$ 2.826,65,
   R$ 3.751,05 e R$ 4.664,68;

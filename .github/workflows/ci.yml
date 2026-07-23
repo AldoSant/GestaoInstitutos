@@ -50,6 +50,15 @@ jobs:
       - name: Migration consistency
         run: npm run db:check
 
+      - name: Deployment configuration
+        env:
+          POSTGRES_PASSWORD: ci-compose-password
+          AUTH_SECRET: ci-compose-secret-with-at-least-32-bytes
+        run: |
+          docker compose config > /dev/null
+          sh -n scripts/ops/backup-postgres.sh
+          sh -n scripts/ops/verificar-restauracao-postgres.sh
+
       - name: Database migrations
         run: npm run db:migrate
 
@@ -58,6 +67,25 @@ jobs:
           npm run db:bootstrap:empresa --
           --cnpj 99999999000191
           --razao-social "Organização sintética da CI"
+
+      - name: Bootstrap fiscal rules
+        run: npm run db:bootstrap:regras
+
+      - name: Worker queue smoke test
+        shell: bash
+        run: |
+          npm run worker:start > /tmp/gestao-institutos-worker.log 2>&1 &
+          WORKER_PID=$!
+          trap 'kill $WORKER_PID 2>/dev/null || true' EXIT
+          npm run worker:validar-regra -- 2026-06
+          for attempt in $(seq 1 20); do
+            if grep -q "VALIDAR_REGRA_FISCAL) concluída" /tmp/gestao-institutos-worker.log; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/gestao-institutos-worker.log
+          exit 1
 
       - name: GIW import chain and idempotency
         shell: bash
@@ -105,4 +133,5 @@ jobs:
       - name: Container images
         run: |
           docker build --target migrator -t gestao-institutos-migrator:ci .
+          docker build --target worker -t gestao-institutos-worker:ci .
           docker build --target runner -t gestao-institutos-web:ci .
