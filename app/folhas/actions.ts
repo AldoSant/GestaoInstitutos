@@ -1,15 +1,18 @@
 "use server";
 
+import { Buffer } from "node:buffer";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import {
+  cancelarFolha,
   criarFolha,
   fecharFolha,
   reabrirFolha,
   registrarConferenciaFolha,
   solicitarReprocessamentoFolha,
 } from "@/db/folhas";
+import { registrarHomologacaoFolha } from "@/db/homologacoes";
 
 function mensagem(error: unknown) {
   if (typeof error === "object" && error !== null && "code" in error) {
@@ -119,4 +122,58 @@ export async function reabrir(formData: FormData) {
   revalidatePath("/folhas");
   revalidatePath(`/folhas/${folhaId}`);
   redirect(destino(folhaId, erro || "Folha reaberta com trilha de auditoria.", Boolean(erro)));
+}
+
+export async function importarHomologacao(formData: FormData) {
+  const folhaId = String(formData.get("folhaId") ?? "");
+  const arquivo = formData.get("arquivo");
+  let erro = "";
+  let resultado = "";
+  try {
+    if (!(arquivo instanceof File) || arquivo.size === 0) {
+      throw new Error("Selecione um arquivo CSV de referência.");
+    }
+    if (arquivo.size > 5 * 1024 * 1024) {
+      throw new Error("O CSV de referência deve possuir até 5 MB.");
+    }
+    const empresa = await resolverEmpresaAtiva();
+    const registrada = await registrarHomologacaoFolha({
+      empresaId: empresa.id,
+      folhaId,
+      origem: String(formData.get("origem") ?? ""),
+      referencia: String(formData.get("referencia") ?? ""),
+      nomeArquivo: arquivo.name,
+      conteudo: Buffer.from(await arquivo.arrayBuffer()),
+      ator: String(formData.get("responsavel") ?? ""),
+    });
+    resultado = registrada.reutilizada
+      ? "Este arquivo já havia sido homologado para a revisão atual."
+      : registrada.status === "CONCILIADA"
+        ? `Homologação concluída: ${registrada.conciliados} item(ns) conciliado(s), sem divergências.`
+        : `Homologação concluída com ${registrada.divergentes} divergência(s) para análise.`;
+  } catch (error) {
+    erro = mensagem(error);
+  }
+  revalidatePath(`/folhas/${folhaId}`);
+  redirect(destino(folhaId, erro || resultado, Boolean(erro)));
+}
+
+export async function cancelar(formData: FormData) {
+  const folhaId = String(formData.get("folhaId") ?? "");
+  const motivo = String(formData.get("motivo") ?? "");
+  let erro = "";
+  try {
+    await cancelarFolha(folhaId, motivo);
+  } catch (error) {
+    erro = mensagem(error);
+  }
+  revalidatePath("/folhas");
+  revalidatePath(`/folhas/${folhaId}`);
+  redirect(
+    destino(
+      folhaId,
+      erro || "Folha cancelada e tarefas pendentes interrompidas.",
+      Boolean(erro),
+    ),
+  );
 }

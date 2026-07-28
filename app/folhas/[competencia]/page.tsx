@@ -9,13 +9,17 @@ import {
   LockKeyhole,
   RefreshCw,
   UnlockKeyhole,
+  XCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { carregarFolha } from "@/db/folhas";
+import { carregarHomologacoesFolha } from "@/db/homologacoes";
 import {
+  cancelar,
   fechar,
+  importarHomologacao,
   reabrir,
   registrarConferencia,
   solicitarReprocessamento,
@@ -65,13 +69,20 @@ export default async function FolhaDetalhePage({
   const sucesso = primeiro(mensagens.sucesso);
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
   let dados: Awaited<ReturnType<typeof carregarFolha>>;
+  let homologacoes: Awaited<ReturnType<typeof carregarHomologacoesFolha>>;
   try {
     empresa = await resolverEmpresaAtiva();
-    dados = await carregarFolha(empresa.id, folhaId);
+    [dados, homologacoes] = await Promise.all([
+      carregarFolha(empresa.id, folhaId),
+      carregarHomologacoesFolha(empresa.id, folhaId),
+    ]);
   } catch {
     notFound();
   }
   const folha = dados.folha;
+  const homologacaoAtual = homologacoes.lotes[0];
+  const homologacaoDaRevisao =
+    homologacaoAtual?.hash_folha === folha.hash_resultado;
   const conferenciaAtual = dados.conferencias.find(
     (item) => item.hash_resultado === folha.hash_resultado,
   );
@@ -80,9 +91,62 @@ export default async function FolhaDetalhePage({
     (total, item) => ({
       proventos: total.proventos + Number(item.total_proventos),
       descontos: total.descontos + Number(item.total_descontos),
+      baseInss: total.baseInss + Number(item.base_inss),
+      inss: total.inss + Number(item.valor_inss),
+      baseIrrf: total.baseIrrf + Number(item.base_irrf),
+      irrf: total.irrf + Number(item.valor_irrf),
       liquido: total.liquido + Number(item.total_liquido),
     }),
-    { proventos: 0, descontos: 0, liquido: 0 },
+    {
+      proventos: 0,
+      descontos: 0,
+      baseInss: 0,
+      inss: 0,
+      baseIrrf: 0,
+      irrf: 0,
+      liquido: 0,
+    },
+  );
+  const mapaRubricas = new Map<
+    string,
+    {
+      codigo: string;
+      descricao: string;
+      natureza: string;
+      incideInss: boolean;
+      incideIrrf: boolean;
+      ocorrencias: number;
+      total: number;
+    }
+  >();
+  for (const item of dados.itens) {
+    for (const linha of item.eventos as Array<Record<string, unknown>>) {
+      const codigo = String(linha.codigo ?? "");
+      const natureza = String(linha.natureza ?? "");
+      const incideInss = Boolean(linha.incide_inss);
+      const incideIrrf = Boolean(linha.incide_irrf);
+      const chave = `${natureza}:${codigo}:${incideInss}:${incideIrrf}`;
+      const existente = mapaRubricas.get(chave);
+      if (existente) {
+        existente.ocorrencias += 1;
+        existente.total += Number(linha.valor ?? 0);
+      } else {
+        mapaRubricas.set(chave, {
+          codigo,
+          descricao: String(linha.descricao ?? ""),
+          natureza,
+          incideInss,
+          incideIrrf,
+          ocorrencias: 1,
+          total: Number(linha.valor ?? 0),
+        });
+      }
+    }
+  }
+  const rubricas = [...mapaRubricas.values()].sort(
+    (a, b) =>
+      a.natureza.localeCompare(b.natureza, "pt-BR") ||
+      a.codigo.localeCompare(b.codigo, "pt-BR"),
   );
   return (
       <AppShell
@@ -113,6 +177,8 @@ export default async function FolhaDetalhePage({
           <div><span>Status</span><StatusBadge>{nomeStatus(folha.status)}</StatusBadge></div>
           <div><span>Prestadores</span><strong>{dados.itens.length}</strong></div>
           <div><span>Proventos</span><strong>{moeda(String(totais.proventos))}</strong></div>
+          <div><span>INSS retido</span><strong>{moeda(String(totais.inss))}</strong></div>
+          <div><span>IRRF retido</span><strong>{moeda(String(totais.irrf))}</strong></div>
           <div><span>Descontos</span><strong>{moeda(String(totais.descontos))}</strong></div>
           <div><span>Líquido</span><strong>{moeda(String(totais.liquido))}</strong></div>
           <div className="locked">
@@ -137,6 +203,38 @@ export default async function FolhaDetalhePage({
           <section className="alert-box">
             <RefreshCw size={22} />
             <div><strong>Processamento enfileirado</strong><p>O worker materializará esta revisão. Atualize a página em alguns instantes.</p></div>
+          </section>
+        )}
+
+        {["RASCUNHO", "ABERTA"].includes(folha.status) && (
+          <section className="panel">
+            <div className="panel-header">
+              <div>
+                <span className="section-kicker">Encerramento administrativo</span>
+                <h2>Cancelar esta Folha</h2>
+                <p>
+                  O cancelamento preserva itens, histórico e evidências existentes
+                  e interrompe tarefas ainda pendentes.
+                </p>
+              </div>
+              <StatusBadge tone="danger">Ação terminal</StatusBadge>
+            </div>
+            <form action={cancelar} className="crud-form">
+              <input type="hidden" name="folhaId" value={folha.id} />
+              <label className="field-wide">
+                <span>Motivo do cancelamento</span>
+                <input
+                  name="motivo"
+                  required
+                  minLength={10}
+                  maxLength={2000}
+                  placeholder="Descreva a decisão administrativa e a referência que a autoriza"
+                />
+              </label>
+              <button className="button secondary" type="submit">
+                <XCircle size={16} /> Cancelar Folha
+              </button>
+            </form>
           </section>
         )}
 
@@ -221,6 +319,78 @@ export default async function FolhaDetalhePage({
 
         <section className="panel">
           <div className="panel-header">
+            <div>
+              <span className="section-kicker">Resumo fiscal e contábil</span>
+              <h2>Bases e rubricas da revisão</h2>
+              <p>
+                Totais agregados exclusivamente dos itens e eventos congelados
+                nesta Folha.
+              </p>
+            </div>
+          </div>
+          <div className="detail-summary">
+            <div>
+              <span>Base de INSS</span>
+              <strong>{moeda(String(totais.baseInss))}</strong>
+            </div>
+            <div>
+              <span>INSS do segurado</span>
+              <strong>{moeda(String(totais.inss))}</strong>
+            </div>
+            <div>
+              <span>Base de IRRF</span>
+              <strong>{moeda(String(totais.baseIrrf))}</strong>
+            </div>
+            <div>
+              <span>IRRF</span>
+              <strong>{moeda(String(totais.irrf))}</strong>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Rubrica</th>
+                  <th>Natureza</th>
+                  <th>Incidências</th>
+                  <th>Ocorrências</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rubricas.map((rubrica) => (
+                  <tr
+                    key={`${rubrica.natureza}:${rubrica.codigo}:${rubrica.incideInss}:${rubrica.incideIrrf}`}
+                  >
+                    <td>
+                      <strong>{rubrica.codigo}</strong>
+                      <small>{rubrica.descricao}</small>
+                    </td>
+                    <td>{rubrica.natureza}</td>
+                    <td>
+                      INSS {rubrica.incideInss ? "✓" : "—"} · IRRF{" "}
+                      {rubrica.incideIrrf ? "✓" : "—"}
+                    </td>
+                    <td>{rubrica.ocorrencias}</td>
+                    <td>
+                      <strong>{moeda(String(rubrica.total))}</strong>
+                    </td>
+                  </tr>
+                ))}
+                {rubricas.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="empty-cell">
+                      Aguardando eventos processados.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-header">
             <div><span className="section-kicker">Memória individual</span><h2>Prestadores calculados</h2><p>Valores e rubricas congelados nesta revisão.</p></div>
             {folha.hash_resultado && <StatusBadge tone="info">Hash {folha.hash_resultado.slice(0, 12)}…</StatusBadge>}
           </div>
@@ -264,6 +434,247 @@ export default async function FolhaDetalhePage({
             </table>
           </div>
         </section>
+
+        <section className="panel">
+          <div className="panel-header">
+            <div>
+              <span className="section-kicker">Homologação paralela</span>
+              <h2>Comparação com GIW ou planilha do RH</h2>
+              <p>
+                Importe os totais de referência. O sistema compara por matrícula,
+                centavo a centavo, sem alterar o cálculo novo.
+              </p>
+            </div>
+            {homologacaoAtual ? (
+              <StatusBadge
+                tone={
+                  homologacaoDaRevisao &&
+                  homologacaoAtual.status === "CONCILIADA"
+                    ? "success"
+                    : "danger"
+                }
+              >
+                {!homologacaoDaRevisao
+                  ? "Revisão atual pendente"
+                  : homologacaoAtual.status === "CONCILIADA"
+                    ? "Conciliada"
+                    : `${homologacaoAtual.divergentes} divergência(s)`}
+              </StatusBadge>
+            ) : (
+              <StatusBadge tone="info">Sem referência importada</StatusBadge>
+            )}
+          </div>
+
+          {folha.hash_resultado ? (
+            <form
+              action={importarHomologacao}
+              className="crud-form vinculo-form"
+            >
+              <input type="hidden" name="folhaId" value={folha.id} />
+              <label>
+                <span>Origem</span>
+                <select name="origem" defaultValue="GIW" required>
+                  <option value="GIW">Sistema GIW</option>
+                  <option value="PLANILHA_RH">Planilha do RH</option>
+                  <option value="OUTRO">Outra fonte controlada</option>
+                </select>
+              </label>
+              <label>
+                <span>Referência</span>
+                <input
+                  name="referencia"
+                  required
+                  minLength={3}
+                  maxLength={200}
+                  placeholder="Ex.: exportação GIW de 05/2026"
+                />
+              </label>
+              <label>
+                <span>Responsável</span>
+                <input
+                  name="responsavel"
+                  required
+                  minLength={3}
+                  maxLength={160}
+                  placeholder="Nome de quem importou e conferiu"
+                />
+              </label>
+              <label>
+                <span>Arquivo CSV (até 5 MB)</span>
+                <input
+                  type="file"
+                  name="arquivo"
+                  accept=".csv,text/csv"
+                  required
+                />
+              </label>
+              <div className="row-actions">
+                <button className="button primary" type="submit">
+                  <FileSpreadsheet size={16} /> Comparar referência
+                </button>
+                <Link
+                  className="button secondary"
+                  href={`/folhas/${folha.id}/homologacao/modelo`}
+                >
+                  <Download size={16} /> Baixar modelo CSV
+                </Link>
+              </div>
+            </form>
+          ) : (
+            <p className="empty-state">
+              Aguarde o processamento para importar uma referência.
+            </p>
+          )}
+
+          {homologacaoAtual && (
+            <>
+              <div className="detail-summary">
+                <div>
+                  <span>Referência</span>
+                  <strong>{homologacaoAtual.origem}</strong>
+                  <small>{homologacaoAtual.referencia}</small>
+                </div>
+                <div>
+                  <span>Revisão comparada</span>
+                  <strong>{homologacaoAtual.revisao}</strong>
+                  <small>Hash {homologacaoAtual.hash_folha.slice(0, 12)}…</small>
+                </div>
+                <div>
+                  <span>Linhas</span>
+                  <strong>{homologacaoAtual.total_linhas}</strong>
+                </div>
+                <div>
+                  <span>Conciliadas</span>
+                  <strong>{homologacaoAtual.conciliados}</strong>
+                </div>
+                <div>
+                  <span>Divergências</span>
+                  <strong>{homologacaoAtual.divergentes}</strong>
+                </div>
+              </div>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Prestador</th>
+                      <th>Situação</th>
+                      <th>Proventos</th>
+                      <th>INSS</th>
+                      <th>IRRF</th>
+                      <th>Descontos</th>
+                      <th>Líquido</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {homologacoes.itens.map((item) => (
+                      <tr key={item.id}>
+                        <td>
+                          <strong>{item.nome || "Nome não informado"}</strong>
+                          <small>Matrícula {item.matricula}</small>
+                        </td>
+                        <td>
+                          <StatusBadge
+                            tone={
+                              item.situacao === "CONCILIADO"
+                                ? "success"
+                                : "danger"
+                            }
+                          >
+                            {item.situacao.replaceAll("_", " ")}
+                          </StatusBadge>
+                        </td>
+                        {(
+                          [
+                            "proventos",
+                            "inss",
+                            "irrf",
+                            "descontos",
+                            "liquido",
+                          ] as const
+                        ).map((campo) => (
+                          <td key={campo}>
+                            <strong>{moeda(item[`atual_${campo}`])}</strong>
+                            <small>Ref. {moeda(item[`esperado_${campo}`])}</small>
+                            <small>
+                              Δ {moeda(item[`diferenca_${campo}`])}
+                            </small>
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </section>
+
+        {homologacoes.lotes.length > 0 && (
+          <section className="panel">
+            <div className="panel-header">
+              <div>
+                <span className="section-kicker">Auditoria de homologação</span>
+                <h2>Referências já comparadas</h2>
+                <p>
+                  Cada lote é imutável e preserva os hashes da Folha e do
+                  arquivo importado.
+                </p>
+              </div>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Revisão</th>
+                    <th>Origem</th>
+                    <th>Arquivo</th>
+                    <th>Resultado</th>
+                    <th>Responsável</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {homologacoes.lotes.map((lote) => (
+                    <tr key={lote.id}>
+                      <td>
+                        {new Intl.DateTimeFormat("pt-BR", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        }).format(new Date(lote.criado_em))}
+                      </td>
+                      <td>
+                        {lote.revisao}
+                        <small>Hash {lote.hash_folha.slice(0, 12)}…</small>
+                      </td>
+                      <td>
+                        {lote.origem}
+                        <small>{lote.referencia}</small>
+                      </td>
+                      <td>
+                        {lote.nome_arquivo}
+                        <small>SHA-256 {lote.hash_arquivo.slice(0, 12)}…</small>
+                      </td>
+                      <td>
+                        <StatusBadge
+                          tone={
+                            lote.status === "CONCILIADA"
+                              ? "success"
+                              : "danger"
+                          }
+                        >
+                          {lote.status === "CONCILIADA"
+                            ? "Conciliada"
+                            : `${lote.divergentes} divergência(s)`}
+                        </StatusBadge>
+                      </td>
+                      <td>{lote.criado_por}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
         <section className="panel">
           <div className="panel-header"><div><span className="section-kicker">Conferência do RH</span><h2>Decisões registradas</h2><p>Registros imutáveis vinculados à revisão e ao hash processado.</p></div></div>

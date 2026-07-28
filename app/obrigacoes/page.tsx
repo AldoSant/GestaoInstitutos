@@ -1,16 +1,23 @@
+import Link from "next/link";
 import {
   AlertTriangle,
   CheckCircle2,
   Database,
+  Download,
   FileCheck2,
   FileText,
   ShieldAlert,
+  XCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { listarObrigacoes } from "@/db/obrigacoes";
-import { apurarObrigacao, registrarDocumento } from "./actions";
+import {
+  apurarObrigacao,
+  cancelarObrigacaoFiscal,
+  registrarDocumento,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +87,7 @@ export default async function ObrigacoesPage({
           <div>
             <span className="section-kicker">Folhas fechadas</span>
             <h2>Apurar retenções dos segurados</h2>
-            <p>O processo recompõe segurado e patronal com origem, enquadramento e snapshot da memória.</p>
+            <p>O processo exige todas as Folhas fechadas e recompõe segurado e patronal com origem, enquadramento e snapshot. Reapurar invalida conferências documentais anteriores.</p>
           </div>
           <StatusBadge tone="warning"><ShieldAlert size={14} /> Guia ainda bloqueada</StatusBadge>
         </div>
@@ -98,10 +105,18 @@ export default async function ObrigacoesPage({
               <h2>{moeda(item.total)}</h2>
               <p>{item.folhas} Folha(s) · {item.itens} item(ns) rastreáveis</p>
             </div>
-            <StatusBadge tone={item.status === "BLOQUEADA" ? "danger" : item.status === "EMITIDA" ? "success" : "info"}>
-              {item.status === "BLOQUEADA" ? <AlertTriangle size={14} /> : <FileCheck2 size={14} />}
-              {item.status}
-            </StatusBadge>
+            <div className="row-actions">
+              <Link
+                className="button secondary"
+                href={`/obrigacoes/${item.id}/espelho`}
+              >
+                <Download size={16} /> Espelho CSV
+              </Link>
+              <StatusBadge tone={item.status === "BLOQUEADA" ? "danger" : item.status === "EMITIDA" ? "success" : item.status === "CANCELADA" ? "warning" : "info"}>
+                {item.status === "BLOQUEADA" ? <AlertTriangle size={14} /> : <FileCheck2 size={14} />}
+                {item.status}
+              </StatusBadge>
+            </div>
           </div>
           <dl className="large-reconciliation">
             <div><dt>Retenção dos segurados</dt><dd>{moeda(item.segurado)}</dd><small>Alíquota conforme o regime congelado</small></div>
@@ -111,6 +126,8 @@ export default async function ObrigacoesPage({
               <dd>
                 {item.status === "EMITIDA"
                   ? "DARF registrado"
+                  : item.status === "CANCELADA"
+                    ? "Obrigação cancelada"
                   : item.diferenca === "0.00"
                     ? "Totalizador conciliado"
                     : item.diferenca
@@ -120,35 +137,39 @@ export default async function ObrigacoesPage({
               <small>{item.bloqueio_motivo ?? "Documento verificado e conciliado."}</small>
             </div>
           </dl>
-          <div className="panel-header">
-            <div>
-              <span className="section-kicker">Evidência externa</span>
-              <h3>Registrar documento da DCTFWeb</h3>
-              <p>
-                Marcar como verificado altera o estado somente se os valores
-                satisfizerem as travas de conciliação.
-              </p>
-            </div>
-          </div>
-          <form action={registrarDocumento} className="crud-form">
-            <input type="hidden" name="obrigacaoId" value={item.id} />
-            <label>
-              <span>Tipo</span>
-              <select name="tipo" required defaultValue="">
-                <option value="" disabled>Selecione</option>
-                <option value="TOTALIZADOR_DCTFWEB">Totalizador DCTFWeb</option>
-                <option value="RECIBO_DCTFWEB">Recibo DCTFWeb</option>
-                <option value="DARF">DARF</option>
-              </select>
-            </label>
-            <label><span>Referência/protocolo</span><input name="referencia" required maxLength={160} /></label>
-            <label><span>Valor total (recibo pode ficar vazio)</span><input name="valorTotal" inputMode="decimal" placeholder="0,00" /></label>
-            <label><span>Data de emissão</span><input name="emitidoEm" type="date" required /></label>
-            <label className="field-wide"><span>Localizador do documento</span><input name="localizador" required maxLength={2000} placeholder="Caminho interno, ID do arquivo ou protocolo" /></label>
-            <label className="field-wide"><span>Hash SHA-256, se disponível</span><input name="hashSha256" maxLength={64} /></label>
-            <label className="checkbox-field"><input name="verificado" type="checkbox" /><span>Documento conferido contra o portal oficial</span></label>
-            <button className="button secondary" type="submit"><FileCheck2 size={16} /> Registrar documento</button>
-          </form>
+          {item.status !== "CANCELADA" && (
+            <>
+              <div className="panel-header">
+                <div>
+                  <span className="section-kicker">Evidência externa</span>
+                  <h3>Registrar documento da DCTFWeb</h3>
+                  <p>
+                    Marcar como verificado altera o estado somente se os valores
+                    satisfizerem as travas de conciliação.
+                  </p>
+                </div>
+              </div>
+              <form action={registrarDocumento} className="crud-form">
+                <input type="hidden" name="obrigacaoId" value={item.id} />
+                <label>
+                  <span>Tipo</span>
+                  <select name="tipo" required defaultValue="">
+                    <option value="" disabled>Selecione</option>
+                    <option value="TOTALIZADOR_DCTFWEB">Totalizador DCTFWeb</option>
+                    <option value="RECIBO_DCTFWEB">Recibo DCTFWeb</option>
+                    <option value="DARF">DARF</option>
+                  </select>
+                </label>
+                <label><span>Referência/protocolo</span><input name="referencia" required maxLength={160} /></label>
+                <label><span>Valor total (recibo pode ficar vazio)</span><input name="valorTotal" inputMode="decimal" placeholder="0,00" /></label>
+                <label><span>Data de emissão</span><input name="emitidoEm" type="date" required /></label>
+                <label className="field-wide"><span>Localizador do documento</span><input name="localizador" required maxLength={2000} placeholder="Caminho interno, ID do arquivo ou protocolo" /></label>
+                <label className="field-wide"><span>Hash SHA-256, se disponível</span><input name="hashSha256" maxLength={64} /></label>
+                <label className="checkbox-field"><input name="verificado" type="checkbox" /><span>Documento conferido contra o portal oficial</span></label>
+                <button className="button secondary" type="submit"><FileCheck2 size={16} /> Registrar documento</button>
+              </form>
+            </>
+          )}
           {item.documentos.length > 0 && (
             <div className="table-wrap">
               <table>
@@ -167,6 +188,29 @@ export default async function ObrigacoesPage({
                 </tbody>
               </table>
             </div>
+          )}
+          {["RASCUNHO", "BLOQUEADA", "APURADA"].includes(item.status) && (
+            <details>
+              <summary className="button secondary">
+                <XCircle size={16} /> Cancelar obrigação
+              </summary>
+              <form action={cancelarObrigacaoFiscal} className="crud-form">
+                <input type="hidden" name="obrigacaoId" value={item.id} />
+                <label className="field-wide">
+                  <span>Motivo do cancelamento</span>
+                  <input
+                    name="motivo"
+                    required
+                    minLength={10}
+                    maxLength={2000}
+                    placeholder="Informe a decisão, o responsável e a referência administrativa"
+                  />
+                </label>
+                <button className="button secondary" type="submit">
+                  <XCircle size={16} /> Confirmar cancelamento
+                </button>
+              </form>
+            </details>
           )}
           <details>
             <summary className="button secondary"><FileText size={16} /> Conferir itens</summary>

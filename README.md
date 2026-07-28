@@ -16,7 +16,7 @@ Este primeiro incremento contém:
 - parâmetros fiscais de 2026 conferidos em fontes oficiais e documentados;
 - memória individual anonimizada;
 - bloqueio da divergência previdenciária identificada no legado;
-- modelo PostgreSQL com 33 tabelas, integridade relacional e trilha de importação;
+- modelo PostgreSQL com 45 tabelas, integridade relacional e trilha de importação;
 - coletores e importadores idempotentes de Pessoas completas, Atividades, Lotações,
   Termos, Metas e Vínculos do GIW;
 - migração da ficha civil/profissional, contatos, endereço, conta bancária e dependentes
@@ -28,6 +28,8 @@ Este primeiro incremento contém:
   abatimento controlado do teto previdenciário;
 - apuração persistente e rastreável das retenções previdenciárias dos segurados a
   partir de Folhas fechadas, com emissão bloqueada até a conciliação completa;
+- espelho CSV previdenciário com Folha, revisão, hash, base, alíquota, valor e
+  documentos; apuração parcial e fontes alteradas são recusadas;
 - enquadramento versionado da cota patronal e da alíquota do segurado, sem presumir
   imunidade pelo nome ou pela natureza sem fins lucrativos;
 - conciliação documental de totalizador, recibo e DARF da DCTFWeb;
@@ -37,14 +39,29 @@ Este primeiro incremento contém:
   e incidências de INSS/IRRF;
 - medições mensais por percentual, quantidade × valor unitário ou valor explícito,
   com evidência, conferência e bloqueio quando obrigatórias;
+- homologação paralela por CSV contra GIW ou planilha do RH, com comparação por
+  matrícula e cinco totais em centavos, hashes, idempotência e histórico imutável;
+- bloqueio transacional da mesma pessoa em Folhas separadas da competência enquanto
+  o rateio fiscal multi-lote não estiver homologado;
+- diagnóstico mensal de pessoas multi-lote, com casos versionados por hash, fontes
+  congeladas, decisão auditada do RH, invalidação automática e exportação CSV;
+- simulação fiscal consolidada por Pessoa e competência, com INSS/IRRF agregados,
+  rateio determinístico por maior resto, fontes imutáveis, quatro hashes, estados de
+  homologação e espelho CSV; o resultado permanece isolado da Folha;
+- homologação mensal com sete controles integrados, versões imutáveis, aprovação
+  auditada, dossiê CSV e campanha de três competências para execução paralela;
+- cancelamento auditado de Folhas e obrigações, com tarefas interrompidas, estados
+  terminais e invalidação automática das evidências afetadas;
 - cadastro persistente de Eventos/Rubricas e lançamentos recorrentes por Vínculo e
   competência, com validação de natureza, incidências, vigência e sobreposição;
-- migrações Drizzle versionadas até `0021_monthly-measurements`;
+- migrações Drizzle versionadas até `0027_legacy-payroll-evidence`;
 - Dockerfile e Compose para implantação própria;
 - testes automatizados e pipeline de integração contínua.
 
 Os módulos `/cadastros`, `/prestadores`, `/instrumentos`, `/vinculos`, `/medicoes`,
-`/eventos`, `/folhas`, `/obrigacoes` e `/parametros` usam PostgreSQL. O login ainda é
+`/eventos`, `/folhas`, `/consolidacoes`, `/consolidacoes/simulacoes`,
+`/homologacoes`, `/obrigacoes` e `/parametros`
+usam PostgreSQL. O login ainda é
 demonstrativo e nenhuma obrigação é transmitida. Consulte o
 [andamento ponderado do MVP](docs/ANDAMENTO.md).
 
@@ -97,9 +114,16 @@ Antes de usar em servidor, defina valores fortes para `POSTGRES_PASSWORD` e `AUT
 - [Modelo de dados](docs/MODELO_DE_DADOS.md)
 - [Engenharia reversa e critérios de evidência](docs/ENGENHARIA_REVERSA.md)
 - [Importação automatizada do GIW](docs/IMPORTACAO_GIW.md)
+- [Migração histórica de Folhas e guias](docs/MIGRACAO_HISTORICA.md)
 - [Regras fiscais confirmadas para 2026](docs/REGRAS_FISCAIS_2026.md)
 - [Biblioteca contábil e fiscal](docs/BIBLIOTECA_CONTABIL_FISCAL.md)
 - [Medições e homologação do RH](docs/MEDICOES_E_HOMOLOGACAO.md)
+- [Homologação paralela da Folha](docs/HOMOLOGACAO_FOLHA.md)
+- [Homologação mensal e execução paralela](docs/HOMOLOGACAO_MENSAL.md)
+- [Consolidação mensal por pessoa](docs/CONSOLIDACAO_MENSAL.md)
+- [Simulação fiscal consolidada](docs/SIMULACAO_FISCAL_CONSOLIDADA.md)
+- [Obrigação previdenciária e conciliação](docs/OBRIGACAO_PREVIDENCIARIA.md)
+- [Cancelamentos e retificações](docs/CANCELAMENTOS_E_RETIFICACOES.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Andamento do MVP](docs/ANDAMENTO.md)
 - [Implantação em VPS](docs/DEPLOY_VPS.md)

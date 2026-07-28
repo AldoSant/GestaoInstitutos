@@ -6,6 +6,7 @@ import {
   Banknote,
   CheckCircle2,
   CircleDollarSign,
+  ClipboardCheck,
   FileCheck2,
   LockKeyhole,
   UsersRound,
@@ -91,7 +92,8 @@ export default function Home() {
           <li className="done"><span>2</span><div><strong>Consolidação por CPF</strong><small>Múltiplos contratos conciliados</small></div></li>
           <li className="done"><span>3</span><div><strong>Cálculo e memória</strong><small>Resultados congelados e assinados</small></div></li>
           <li className="attention"><span>4</span><div><strong>Obrigação previdenciária</strong><small>Aguardando explicação da diferença</small></div></li>
-          <li><span>5</span><div><strong>Transmissão e pagamento</strong><small>Fora do protótipo atual</small></div></li>
+          <li className="attention"><span>5</span><div><strong>Homologação mensal</strong><small>Sete controles e campanha paralela</small></div></li>
+          <li><span>6</span><div><strong>Transmissão e pagamento</strong><small>Fora do protótipo atual</small></div></li>
         </ol>
       </section>
 
@@ -99,6 +101,7 @@ export default function Home() {
         <Link href="/prestadores" className="quick-card"><UsersRound /><span><strong>Conferir prestadores</strong><small>Cadastros e incidências</small></span><ArrowRight /></Link>
         <Link href="/folhas/2026-06" className="quick-card"><BadgeDollarSign /><span><strong>Auditar memória</strong><small>Bases, eventos e tributos</small></span><ArrowRight /></Link>
         <Link href="/obrigacoes" className="quick-card"><FileCheck2 /><span><strong>Conciliar obrigação</strong><small>Itens e origens do débito</small></span><ArrowRight /></Link>
+        <Link href="/homologacoes" className="quick-card"><ClipboardCheck /><span><strong>Fechar competência</strong><small>Checklist, dossiê e paralelo</small></span><ArrowRight /></Link>
       </section>
     </AppShell>
   );

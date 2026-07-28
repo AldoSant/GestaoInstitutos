@@ -1,4 +1,19 @@
 import { hashJson } from "./json-canonico";
+import {
+  validarSnapshotFolhasHistoricas,
+  validarSnapshotGuiasInssHistoricas,
+  type GiwSnapshotFolhasHistoricas,
+  type GiwSnapshotGuiasInssHistoricas,
+} from "./migracao-historica";
+
+export type {
+  GiwFolhaHistorica,
+  GiwFolhaItemHistorico,
+  GiwGuiaInssHistorica,
+  GiwRubricaHistorica,
+  GiwSnapshotFolhasHistoricas,
+  GiwSnapshotGuiasInssHistoricas,
+} from "./migracao-historica";
 
 export type GiwPessoa = {
   legacyId: string;
@@ -187,7 +202,9 @@ export type GiwSnapshot =
   | GiwSnapshotAtividades
   | GiwSnapshotLotacoes
   | GiwSnapshotTermos
-  | GiwSnapshotVinculos;
+  | GiwSnapshotVinculos
+  | GiwSnapshotFolhasHistoricas
+  | GiwSnapshotGuiasInssHistoricas;
 
 export type ValidationIssue = {
   record: number | null;
@@ -1132,6 +1149,12 @@ export function validarSnapshotGiw(value: unknown): ValidationResult<GiwSnapshot
   if (value.entity === "lotacoes") return validarSnapshotLotacoes(value);
   if (value.entity === "termos") return validarSnapshotTermos(value);
   if (value.entity === "vinculos") return validarSnapshotVinculos(value);
+  if (value.entity === "folhas_historicas") {
+    return validarSnapshotFolhasHistoricas(value);
+  }
+  if (value.entity === "guias_inss_historicas") {
+    return validarSnapshotGuiasInssHistoricas(value);
+  }
   return {
     snapshot: null,
     issues: [{ record: null, field: "entity", message: "entidade não suportada" }],

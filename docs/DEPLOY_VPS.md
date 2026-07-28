@@ -61,14 +61,33 @@ docker compose run --rm migrate npm run db:bootstrap:regras
 
 Após aplicar as migrações `0015_payroll-processing`,
 `0016_other-source-contributions`, `0017_social-security-assessment`,
-`0018_social-security-profile`, `0019_dctfweb-reconciliation` e
-`0020_payroll-hr-review` e `0021_monthly-measurements`, confirme no log
+`0018_social-security-profile`, `0019_dctfweb-reconciliation`,
+`0020_payroll-hr-review`, `0021_monthly-measurements`,
+`0022_payroll-reconciliation`, `0023_obligation-source-integrity`,
+`0024_monthly-consolidation-cases` e `0025_monthly-homologation`, confirme no log
 do worker que
 `PROCESSAR_FOLHA` aparece entre os tipos registrados. Antes da primeira Folha real,
 crie um lote de homologação, aguarde “Em conferência”, exporte a memória, registre uma
-aprovação sintética do RH e teste o fechamento. Se o Vínculo exigir medição, registre-a
+aprovação sintética do RH, importe o CSV de referência em **Homologação paralela** e
+teste o fechamento. Se o Vínculo exigir medição, registre-a
 em `/medicoes` antes de criar a Folha. As fórmulas de produtividade e
 proporcionalização ainda exigem homologação contratual.
+
+A migração `0023` preenche revisão e hash das Folhas já ligadas a obrigações. Ela
+interrompe a atualização se encontrar uma fonte antiga sem hash, evitando publicar
+uma integridade apenas aparente. Nesse caso, preserve o backup, identifique a Folha
+afetada e reapure a competência em ambiente controlado antes de repetir a migração.
+
+A migração `0024` cria os casos mensais e os espelhos imutáveis usados por
+`/consolidacoes`. Após aplicá-la, abra uma competência multi-lote, use **Congelar
+diagnóstico atual**, registre um caso em análise e confirme que a exportação CSV contém
+o hash e o estado. Alterar uma medição ou Folha e congelar novamente deve invalidar a
+versão anterior.
+
+A migração `0025` cria o dossiê de homologação e seus sete itens imutáveis. Depois de
+aplicá-la, acesse `/homologacoes`, escolha uma competência sintética, congele o
+diagnóstico e exporte o CSV. Tentar aprovar com qualquer controle pendente deve ser
+recusado pelo servidor. O teste de restauração agora exige ao menos 39 tabelas públicas.
 
 Em uma instalação sem Docker, a alternativa é `npm ci` seguido de
 `npm run db:migrate` com `DATABASE_URL` configurada.

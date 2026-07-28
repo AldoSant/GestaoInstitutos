@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "1.0",
+  "source": {
+    "system": "GIW",
+    "formId": "464569390",
+    "extractedAt": "2026-06-30T18:00:00.000Z"
+  },
+  "entity": "folhas_historicas",
+  "records": [
+    {
+      "legacyId": "FOLHA-EXEMPLO-1",
+      "competencia": "2026-06-01",
+      "numero": "1",
+      "termoLegacyId": "TERMO-EXEMPLO",
+      "metaLegacyId": "META-EXEMPLO",
+      "status": "FECHADA",
+      "dataPagamento": "2026-07-05",
+      "totalProventos": "1000.00",
+      "totalDescontos": "110.00",
+      "baseInss": "1000.00",
+      "valorInss": "110.00",
+      "baseIrrf": "890.00",
+      "valorIrrf": "0.00",
+      "totalLiquido": "890.00",
+      "itens": [
+        {
+          "legacyId": "ITEM-EXEMPLO-1",
+          "pessoaLegacyId": "PESSOA-EXEMPLO",
+          "vinculoLegacyId": "VINCULO-EXEMPLO",
+          "matricula": "0001",
+          "nome": "PESSOA EXCLUSIVAMENTE FICTÍCIA",
+          "cpf": null,
+          "totalProventos": "1000.00",
+          "totalDescontos": "110.00",
+          "baseInss": "1000.00",
+          "valorInss": "110.00",
+          "baseIrrf": "890.00",
+          "valorIrrf": "0.00",
+          "totalLiquido": "890.00",
+          "rubricas": [
+            {
+              "legacyId": "RUBRICA-EXEMPLO-1",
+              "eventoLegacyId": "EVENTO-EXEMPLO",
+              "codigo": "001",
+              "descricao": "Retribuição fictícia",
+              "natureza": "PROVENTO",
+              "referencia": "100",
+              "baseCalculo": "1000.00",
+              "valor": "1000.00",
+              "incideInss": true,
+              "incideIrrf": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

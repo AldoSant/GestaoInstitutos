@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "1.0",
+  "source": {
+    "system": "GIW",
+    "formId": "464569421",
+    "extractedAt": "2026-07-01T12:00:00.000Z"
+  },
+  "entity": "guias_inss_historicas",
+  "records": [
+    {
+      "legacyId": "GUIA-EXEMPLO-1",
+      "competencia": "2026-06-01",
+      "tipo": "GPS",
+      "status": "EMITIDA",
+      "identificador": "EXEMPLO SEM VALIDADE",
+      "codigoReceita": "2100",
+      "vencimento": "2026-07-20",
+      "pagamento": null,
+      "principal": "110.00",
+      "juros": "0.00",
+      "multa": "0.00",
+      "compensacoes": "0.00",
+      "total": "110.00",
+      "folhaLegacyIds": [
+        "FOLHA-EXEMPLO-1"
+      ]
+    }
+  ]
+}

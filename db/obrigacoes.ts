@@ -1,5 +1,13 @@
 import type { PoolClient } from "pg";
+import {
+  normalizarMotivoCancelamento,
+  validarStatusCancelamentoObrigacao,
+} from "@/lib/cancelamento";
 import type { TipoDocumentoObrigacao } from "@/lib/documentos-obrigacao";
+import {
+  validarEstadoFolhasParaApuracao,
+  validarIntegridadeFontesObrigacao,
+} from "@/lib/integridade-obrigacao";
 import { getPool } from "./index";
 
 function validarId(valor: string, campo: string) {
@@ -53,6 +61,10 @@ export async function apurarRetencoesSegurados({
     );
     await client.query(
       "select pg_advisory_xact_lock(hashtext($1), hashtext($2))",
+      [empresaId, data],
+    );
+    await client.query(
+      "select pg_advisory_xact_lock(hashtext($1), hashtext($2))",
       [empresaId, `OBRIGACAO_PREVIDENCIARIA:${data}`],
     );
 
@@ -87,26 +99,18 @@ export async function apurarRetencoesSegurados({
       [empresaId, data],
     );
     const resumo = estados.rows[0];
-    if (!resumo || resumo.fechadas === 0 || resumo.itens === 0) {
-      throw new Error(
-        "A apuração exige ao menos uma Folha fechada com itens na competência.",
-      );
-    }
-    if (resumo.sem_enquadramento > 0) {
-      throw new Error(
-        `${resumo.sem_enquadramento} item(ns) de Folha não possuem enquadramento previdenciário congelado. Reabra e reprocesse essas Folhas antes da apuração.`,
-      );
-    }
+    if (!resumo) throw new Error("Não foi possível conferir as Folhas da competência.");
+    validarEstadoFolhasParaApuracao({
+      fechadas: resumo.fechadas,
+      pendentes: resumo.pendentes,
+      itens: resumo.itens,
+      semEnquadramento: resumo.sem_enquadramento,
+    });
 
     const motivos = [
       "Segurado e cota patronal do contribuinte individual foram calculados conforme o enquadramento congelado.",
       "A emissão depende da conferência de outras categorias eventualmente existentes e dos totalizadores/recibos do eSocial/DCTFWeb.",
     ];
-    if (resumo.pendentes > 0) {
-      motivos.unshift(
-        `${resumo.pendentes} Folha(s) da competência ainda não estão fechadas.`,
-      );
-    }
     const bloqueioMotivo = motivos.join(" ");
 
     const obrigacao = await client.query<{ id: string }>(
@@ -129,6 +133,16 @@ export async function apurarRetencoesSegurados({
     }
     const obrigacaoId = obrigacao.rows[0].id;
 
+    await client.query(
+      `update obrigacao_fiscal_documento
+          set verificado = false,
+              conteudo = conteudo || jsonb_build_object(
+                'invalidadoPorReapuracaoEm', now(),
+                'motivo', 'A obrigação foi recalculada e exige nova conferência.'
+              )
+        where obrigacao_id = $1 and verificado`,
+      [obrigacaoId],
+    );
     await client.query("delete from obrigacao_fiscal_item where obrigacao_id = $1", [
       obrigacaoId,
     ]);
@@ -136,8 +150,9 @@ export async function apurarRetencoesSegurados({
       obrigacaoId,
     ]);
     await client.query(
-      `insert into obrigacao_fiscal_folha (obrigacao_id, folha_id)
-       select $1, f.id
+      `insert into obrigacao_fiscal_folha
+         (obrigacao_id, folha_id, revisao, hash_folha)
+       select $1, f.id, f.revisao, f.hash_resultado
          from folha f
         where f.empresa_id = $2 and f.competencia = $3::date
           and f.status = 'FECHADA'
@@ -150,7 +165,13 @@ export async function apurarRetencoesSegurados({
           descricao, base_calculo, aliquota, valor, snapshot)
        select f.empresa_id, $1, fi.id, 'SEGURADO', 'FOLHA',
               'Retenção previdenciária do contribuinte individual',
-              fi.base_inss, 11.000000, fi.valor_inss,
+              fi.base_inss,
+              round(
+                ((fi.memoria #>> '{inss,aliquotaNumerador}')::numeric * 100)
+                / (fi.memoria #>> '{inss,aliquotaDenominador}')::numeric,
+                6
+              ),
+              fi.valor_inss,
               jsonb_build_object(
                 'folhaId', f.id,
                 'folhaNumero', f.numero,
@@ -349,6 +370,154 @@ export async function listarObrigacoes(empresaId: string) {
   return resultado.rows;
 }
 
+export async function carregarEspelhoObrigacao(
+  empresaId: string,
+  obrigacaoId: string,
+) {
+  validarId(empresaId, "Empresa");
+  validarId(obrigacaoId, "Obrigação");
+  const [cabecalho, itens, documentos] = await Promise.all([
+    getPool().query<{
+      id: string;
+      competencia: string;
+      tipo: string;
+      status: string;
+      principal: string;
+      juros: string;
+      multa: string;
+      total: string;
+      valor_declarado: string | null;
+      diferenca: string | null;
+      criado_em: Date;
+    }>(
+      `select id, competencia::text, tipo, status, principal::text,
+              juros::text, multa::text, total::text,
+              valor_declarado::text, diferenca::text, criado_em
+         from obrigacao_fiscal
+        where id = $1 and empresa_id = $2`,
+      [obrigacaoId, empresaId],
+    ),
+    getPool().query<{
+      id: string;
+      natureza: string;
+      origem: string;
+      descricao: string;
+      base_calculo: string;
+      aliquota: string | null;
+      valor: string;
+      snapshot: Record<string, unknown>;
+      folha_numero: number | null;
+      folha_revisao: number | null;
+      folha_hash: string | null;
+      termo_numero: string | null;
+      meta_codigo: string | null;
+    }>(
+      `select item.id, item.natureza, item.origem, item.descricao,
+              item.base_calculo::text, item.aliquota::text, item.valor::text,
+              item.snapshot, folha.numero folha_numero,
+              fonte.revisao folha_revisao, fonte.hash_folha folha_hash,
+              termo.numero termo_numero, meta.codigo meta_codigo
+         from obrigacao_fiscal_item item
+         left join folha_item folha_item on folha_item.id = item.folha_item_id
+         left join folha on folha.id = folha_item.folha_id
+         left join obrigacao_fiscal_folha fonte
+           on fonte.obrigacao_id = item.obrigacao_id
+          and fonte.folha_id = folha.id
+         left join termo on termo.id = folha.termo_id
+         left join termo_meta meta on meta.id = folha.meta_id
+        where item.obrigacao_id = $1 and item.empresa_id = $2
+        order by item.natureza, folha.numero, item.id`,
+      [obrigacaoId, empresaId],
+    ),
+    getPool().query<{
+      tipo: string;
+      referencia: string;
+      valor_total: string;
+      emitido_em: string;
+      verificado: boolean;
+      hash_sha256: string | null;
+    }>(
+      `select tipo, referencia, valor_total::text, emitido_em::text,
+              verificado, hash_sha256
+         from obrigacao_fiscal_documento
+        where obrigacao_id = $1 and empresa_id = $2
+        order by emitido_em, tipo, referencia`,
+      [obrigacaoId, empresaId],
+    ),
+  ]);
+  if (!cabecalho.rows[0]) throw new Error("Obrigação não encontrada.");
+  if (itens.rowCount === 0) {
+    throw new Error("A obrigação não possui itens para exportação.");
+  }
+  return {
+    obrigacao: cabecalho.rows[0],
+    itens: itens.rows,
+    documentos: documentos.rows,
+  };
+}
+
+async function validarFontesObrigacaoAtuais(
+  client: PoolClient,
+  empresaId: string,
+  obrigacaoId: string,
+) {
+  const resultado = await client.query<{
+    vinculadas: number;
+    pendentes: number;
+    fechadas_novas: number;
+    alteradas: number;
+  }>(
+    `select
+       (
+         select count(*)::int
+           from obrigacao_fiscal_folha fonte
+          where fonte.obrigacao_id = o.id
+       ) vinculadas,
+       (
+         select count(*)::int
+           from folha f
+          where f.empresa_id = o.empresa_id
+            and f.competencia = o.competencia
+            and f.status not in ('FECHADA', 'CANCELADA')
+       ) pendentes,
+       (
+         select count(*)::int
+           from folha f
+          where f.empresa_id = o.empresa_id
+            and f.competencia = o.competencia
+            and f.status = 'FECHADA'
+            and not exists (
+              select 1
+                from obrigacao_fiscal_folha fonte
+               where fonte.obrigacao_id = o.id
+                 and fonte.folha_id = f.id
+            )
+       ) fechadas_novas,
+       (
+         select count(*)::int
+           from obrigacao_fiscal_folha fonte
+           join folha f on f.id = fonte.folha_id
+          where fonte.obrigacao_id = o.id
+            and (
+              f.status <> 'FECHADA'
+              or f.revisao <> fonte.revisao
+              or f.hash_resultado is distinct from fonte.hash_folha
+            )
+       ) alteradas
+     from obrigacao_fiscal o
+    where o.id = $1 and o.empresa_id = $2`,
+    [obrigacaoId, empresaId],
+  );
+  const fontes = resultado.rows[0];
+  if (!fontes) throw new Error("Obrigação não encontrada.");
+  validarIntegridadeFontesObrigacao({
+    vinculadas: fontes.vinculadas,
+    pendentes: fontes.pendentes,
+    fechadasNovas: fontes.fechadas_novas,
+    alteradas: fontes.alteradas,
+  });
+}
+
 export async function registrarDocumentoObrigacao({
   empresaId,
   obrigacaoId,
@@ -387,8 +556,9 @@ export async function registrarDocumentoObrigacao({
       id: string;
       status: string;
       total: string;
+      competencia: string;
     }>(
-      `select id, status, total::text
+      `select id, status, total::text, competencia::text
          from obrigacao_fiscal
         where id = $1 and empresa_id = $2
         for update`,
@@ -401,6 +571,13 @@ export async function registrarDocumentoObrigacao({
     }
     if (obrigacao.status === "EMITIDA" && tipo !== "RECIBO_DCTFWEB") {
       throw new Error("Obrigação já emitida não aceita novo totalizador ou DARF.");
+    }
+    if (verificado) {
+      await client.query(
+        "select pg_advisory_xact_lock(hashtext($1), hashtext($2))",
+        [empresaId, obrigacao.competencia],
+      );
+      await validarFontesObrigacaoAtuais(client, empresaId, obrigacaoId);
     }
 
     const inserido = await client.query<{ id: string }>(
@@ -480,5 +657,57 @@ export async function registrarDocumentoObrigacao({
       );
     }
     return { id: inserido.rows[0].id, obrigacaoId, tipo };
+  });
+}
+
+export async function cancelarObrigacao({
+  empresaId,
+  obrigacaoId,
+  motivo,
+  ator = "OPERADOR_INTERNO",
+}: {
+  empresaId: string;
+  obrigacaoId: string;
+  motivo: string;
+  ator?: string;
+}) {
+  validarId(empresaId, "Empresa");
+  validarId(obrigacaoId, "Obrigação");
+  const justificativa = normalizarMotivoCancelamento(motivo, "Obrigação");
+  return transacao(async (client) => {
+    await client.query(
+      `select set_config('app.ator', $1, true),
+              set_config('app.motivo', $2, true)`,
+      [ator.trim().slice(0, 160) || "OPERADOR_INTERNO", justificativa],
+    );
+    const atual = await client.query<{ id: string; status: string }>(
+      `select id, status
+         from obrigacao_fiscal
+        where id = $1 and empresa_id = $2
+        for update`,
+      [obrigacaoId, empresaId],
+    );
+    const obrigacao = atual.rows[0];
+    if (!obrigacao) throw new Error("Obrigação não encontrada.");
+    validarStatusCancelamentoObrigacao(obrigacao.status);
+    await client.query(
+      `update obrigacao_fiscal_documento
+          set verificado = false,
+              conteudo = conteudo || jsonb_build_object(
+                'invalidadoPorCancelamentoEm', now(),
+                'motivo', $2::text
+              )
+        where obrigacao_id = $1 and verificado`,
+      [obrigacaoId, justificativa],
+    );
+    await client.query(
+      `update obrigacao_fiscal
+          set status = 'CANCELADA',
+              conciliada_em = null,
+              bloqueio_motivo = $2
+        where id = $1`,
+      [obrigacaoId, `Obrigação cancelada: ${justificativa}`],
+    );
+    return { obrigacaoId };
   });
 }

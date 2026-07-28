@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import {
   apurarRetencoesSegurados,
+  cancelarObrigacao,
   registrarDocumentoObrigacao,
 } from "@/db/obrigacoes";
 import { validarDocumentoObrigacao } from "@/lib/documentos-obrigacao";
@@ -57,6 +58,31 @@ export async function registrarDocumento(formData: FormData) {
   const params = new URLSearchParams({
     [erro ? "erro" : "sucesso"]:
       erro || "Documento registrado e estado da conciliação atualizado.",
+  });
+  redirect(`/obrigacoes?${params.toString()}`);
+}
+
+export async function cancelarObrigacaoFiscal(formData: FormData) {
+  const obrigacaoId = String(formData.get("obrigacaoId") ?? "");
+  const motivo = String(formData.get("motivo") ?? "");
+  let erro = "";
+  try {
+    const empresa = await resolverEmpresaAtiva();
+    await cancelarObrigacao({
+      empresaId: empresa.id,
+      obrigacaoId,
+      motivo,
+    });
+  } catch (error) {
+    erro =
+      error instanceof Error
+        ? error.message
+        : "Não foi possível cancelar a obrigação.";
+  }
+  revalidatePath("/obrigacoes");
+  const params = new URLSearchParams({
+    [erro ? "erro" : "sucesso"]:
+      erro || "Obrigação cancelada com invalidação das conferências documentais.",
   });
   redirect(`/obrigacoes?${params.toString()}`);
 }

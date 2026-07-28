@@ -34,7 +34,7 @@ test(
           where table_schema = 'public'
             and table_type = 'BASE TABLE'`,
       );
-      assert.equal(Number(tabelas.rows[0].total), 33);
+      assert.equal(Number(tabelas.rows[0].total), 45);
 
       const restricoes = await client.query<{ conname: string }>(
         `select conname
@@ -109,10 +109,88 @@ test(
             'ck_medicao_valores_nao_negativos',
             'ck_medicao_campos_tipo',
             'ck_medicao_evidencia',
-            'fk_folha_item_empresa_medicao'
+            'fk_folha_item_empresa_medicao',
+            'fk_folha_homologacao_empresa_folha',
+            'ck_folha_homologacao_revisao',
+            'ck_folha_homologacao_hashes',
+            'ck_folha_homologacao_origem',
+            'ck_folha_homologacao_status',
+            'ck_folha_homologacao_contagens',
+            'fk_folha_homologacao_item_empresa_lote',
+            'fk_folha_homologacao_item_empresa_folha_item',
+            'ck_folha_homologacao_item_situacao',
+            'ck_folha_homologacao_item_nao_negativo',
+            'ck_folha_homologacao_item_diferencas',
+            'ck_obrigacao_folha_revisao',
+            'ck_obrigacao_folha_hash',
+            'fk_consolidacao_caso_empresa_pessoa',
+            'ck_consolidacao_caso_competencia',
+            'ck_consolidacao_caso_hash',
+            'ck_consolidacao_caso_status',
+            'ck_consolidacao_caso_decisao',
+            'ck_consolidacao_caso_resolucao',
+            'fk_consolidacao_fonte_empresa_caso',
+            'fk_consolidacao_fonte_empresa_vinculo',
+            'fk_consolidacao_fonte_empresa_medicao',
+            'fk_consolidacao_fonte_empresa_folha',
+            'ck_consolidacao_fonte_valores',
+            'fk_homologacao_competencia_empresa',
+            'ck_homologacao_competencia_mes',
+            'ck_homologacao_competencia_versao',
+            'ck_homologacao_competencia_hash',
+            'ck_homologacao_competencia_status',
+            'ck_homologacao_competencia_resumo',
+            'ck_homologacao_competencia_decisao',
+            'fk_homologacao_item_empresa_lote',
+            'ck_homologacao_item_tipo',
+            'ck_homologacao_item_status',
+            'ck_homologacao_item_contagens',
+            'ck_homologacao_item_estado_contagens',
+            'ck_homologacao_item_hash',
+            'ck_homologacao_item_detalhes',
+            'fk_simulacao_fiscal_empresa_caso',
+            'fk_simulacao_fiscal_empresa_pessoa',
+            'fk_simulacao_fiscal_regra',
+            'fk_simulacao_fiscal_empresa_enquadramento',
+            'ck_simulacao_fiscal_competencia',
+            'ck_simulacao_fiscal_versao',
+            'ck_simulacao_fiscal_status',
+            'ck_simulacao_fiscal_hipotese',
+            'ck_simulacao_fiscal_hashes',
+            'ck_simulacao_fiscal_valores',
+            'ck_simulacao_fiscal_memoria',
+            'ck_simulacao_fiscal_decisao',
+            'fk_simulacao_fonte_empresa_simulacao',
+            'fk_simulacao_fonte_empresa_vinculo',
+            'fk_simulacao_fonte_empresa_medicao',
+            'fk_simulacao_fonte_empresa_folha',
+            'ck_simulacao_fonte_ordem',
+            'ck_simulacao_fonte_hash',
+            'ck_simulacao_fonte_valores',
+            'ck_simulacao_fonte_snapshot',
+            'fk_legado_folha_empresa',
+            'ck_legado_folha_competencia',
+            'ck_legado_folha_valores',
+            'ck_legado_folha_checksum',
+            'ck_legado_folha_snapshot',
+            'fk_legado_folha_item_empresa_folha',
+            'ck_legado_folha_item_cpf',
+            'ck_legado_folha_item_valores',
+            'ck_legado_folha_item_snapshot',
+            'fk_legado_folha_rubrica_empresa_item',
+            'ck_legado_folha_rubrica_natureza',
+            'ck_legado_folha_rubrica_valores',
+            'ck_legado_folha_rubrica_snapshot',
+            'fk_legado_guia_empresa',
+            'ck_legado_guia_competencia',
+            'ck_legado_guia_tipo',
+            'ck_legado_guia_valores',
+            'ck_legado_guia_folhas',
+            'ck_legado_guia_checksum',
+            'ck_legado_guia_snapshot'
           )`,
       );
-      assert.equal(restricoes.rowCount, 70);
+      assert.equal(restricoes.rowCount, 148);
 
       const gatilhos = await client.query<{ tgname: string }>(
         `select tgname
@@ -138,10 +216,25 @@ test(
               'tr_proteger_conferencia_folha',
               'tr_auditar_conferencia_folha',
               'tr_proteger_medicao_fechada',
-              'tr_auditar_medicao_mensal'
+              'tr_auditar_medicao_mensal',
+              'tr_proteger_folha_homologacao',
+              'tr_proteger_folha_homologacao_item',
+              'tr_auditar_folha_homologacao',
+              'tr_proteger_exclusao_consolidacao_caso',
+              'tr_proteger_consolidacao_fonte',
+              'tr_auditar_consolidacao_caso',
+              'tr_auditar_consolidacao_fonte',
+              'tr_proteger_exclusao_homologacao_competencia',
+              'tr_proteger_item_homologacao_competencia',
+              'tr_auditar_homologacao_competencia',
+              'tr_auditar_homologacao_competencia_item',
+              'tr_proteger_simulacao_fiscal',
+              'tr_proteger_simulacao_fiscal_fonte',
+              'tr_auditar_simulacao_fiscal',
+              'tr_auditar_simulacao_fiscal_fonte'
             )`,
       );
-      assert.equal(gatilhos.rowCount, 20);
+      assert.equal(gatilhos.rowCount, 35);
 
       await client.query("begin");
       const empresaId = randomUUID();
@@ -334,6 +427,317 @@ test(
          values ($1, $2, $3, $4, $5, 'Atividade de teste',
                  date '2026-01-01', date '2026-06-30', 1000)`,
         [vinculoId, empresaId, prestadorId, termoId, metaId],
+      );
+
+      const casoConsolidacaoId = randomUUID();
+      const fonteConsolidacaoId = randomUUID();
+      await client.query(
+        `select set_config('app.ator', 'TESTE_AUTOMATIZADO', true),
+                set_config(
+                  'app.motivo',
+                  'Teste de integridade da consolidação mensal.',
+                  true
+                )`,
+      );
+      await client.query(
+        `insert into consolidacao_mensal_caso
+           (id, empresa_id, pessoa_id, competencia, hash_fontes, criado_por)
+         values ($1, $2, $3, date '2026-01-01', repeat('a', 64),
+                 'TESTE_AUTOMATIZADO')`,
+        [casoConsolidacaoId, empresaId, pessoaId],
+      );
+      await client.query(
+        `insert into consolidacao_mensal_fonte
+           (id, empresa_id, caso_id, vinculo_id, termo_numero, meta_codigo,
+            atividade, valor_contratual, valor_previsto, exige_medicao,
+            snapshot)
+         values ($1, $2, $3, $4, 'TERMO-CONCORRENCIA', 'META-1',
+                 'Atividade de teste', 1000, 1000, false,
+                 '{"origem":"teste"}'::jsonb)`,
+        [
+          fonteConsolidacaoId,
+          empresaId,
+          casoConsolidacaoId,
+          vinculoId,
+        ],
+      );
+
+      await client.query("savepoint fonte_consolidacao_imutavel");
+      await assert.rejects(
+        client.query(
+          `update consolidacao_mensal_fonte
+              set valor_previsto = 999
+            where id = $1`,
+          [fonteConsolidacaoId],
+        ),
+        (error: unknown) =>
+          error instanceof Error && "code" in error && error.code === "55000",
+      );
+      await client.query("rollback to savepoint fonte_consolidacao_imutavel");
+
+      await client.query("savepoint caso_resolvido_incompleto");
+      await assert.rejects(
+        client.query(
+          `update consolidacao_mensal_caso
+              set status = 'RESOLVIDO'
+            where id = $1`,
+          [casoConsolidacaoId],
+        ),
+        (error: unknown) =>
+          error instanceof Error &&
+          "constraint" in error &&
+          error.constraint === "ck_consolidacao_caso_resolucao",
+      );
+      await client.query("rollback to savepoint caso_resolvido_incompleto");
+
+      await client.query("savepoint caso_consolidacao_nao_excluivel");
+      await assert.rejects(
+        client.query(
+          `delete from consolidacao_mensal_caso where id = $1`,
+          [casoConsolidacaoId],
+        ),
+        (error: unknown) =>
+          error instanceof Error && "code" in error && error.code === "55000",
+      );
+      await client.query(
+        "rollback to savepoint caso_consolidacao_nao_excluivel",
+      );
+
+      await client.query(
+        `update consolidacao_mensal_caso
+            set status = 'RESOLVIDO', decisao = 'RATEIO_NECESSARIO',
+                justificativa = 'Rateio sintético conferido para o teste.',
+                responsavel = 'TESTE_AUTOMATIZADO', resolvido_em = now()
+          where id = $1`,
+        [casoConsolidacaoId],
+      );
+      const regraFiscal = await client.query<{ id: string }>(
+        `select id from regra_calculo_versao
+          where empresa_id = $1 and codigo = $2 and versao = 1`,
+        [empresaId, CODIGO_REGRA_FOLHA_PRESTADOR],
+      );
+      const enquadramento = await client.query<{ id: string }>(
+        `insert into enquadramento_previdenciario
+           (empresa_id, regime, inicio_vigencia, fim_vigencia,
+            aliquota_segurado_numerador, aliquota_segurado_denominador,
+            aliquota_patronal_numerador, aliquota_patronal_denominador,
+            evidencia, fonte_normativa, publicado)
+         values ($1, 'EMPRESA_GERAL', date '2026-01-01', date '2026-12-31',
+                 11, 100, 20, 100, 'Evidência sintética',
+                 'Fonte normativa sintética', true)
+         returning id`,
+        [empresaId],
+      );
+      const simulacaoFiscalId = randomUUID();
+      const simulacaoFiscalFonteId = randomUUID();
+      await client.query(
+        `insert into consolidacao_fiscal_simulacao
+           (id, empresa_id, caso_id, pessoa_id, competencia,
+            regra_calculo_id, enquadramento_previdenciario_id, versao,
+            hash_fontes, hash_regra, hash_enquadramento, hash_resultado,
+            total_proventos, total_descontos, total_liquido,
+            base_inss_bruta, base_inss, valor_inss, rendimentos_irrf,
+            base_irrf, irrf_bruto, irrf_reducao, valor_irrf, memoria,
+            criado_por)
+         values ($1, $2, $3, $4, date '2026-01-01', $5, $6, 1,
+                 repeat('d', 64), repeat('e', 64), repeat('f', 64),
+                 repeat('0', 64), 1000, 110, 890, 1000, 1000, 110,
+                 1000, 0, 0, 0, 0,
+                 '{"modo":"SIMULACAO_NAO_HOMOLOGADA",
+                    "hipoteseRateio":"PROPORCIONAL_MAIOR_RESTO"}'::jsonb,
+                 'TESTE_AUTOMATIZADO')`,
+        [
+          simulacaoFiscalId,
+          empresaId,
+          casoConsolidacaoId,
+          pessoaId,
+          regraFiscal.rows[0].id,
+          enquadramento.rows[0].id,
+        ],
+      );
+      await client.query(
+        `insert into consolidacao_fiscal_simulacao_fonte
+           (id, empresa_id, simulacao_id, vinculo_id, ordem, hash_entrada,
+            total_proventos, descontos_eventos, total_descontos, total_liquido,
+            base_inss_bruta, base_inss_rateada, valor_inss_rateado,
+            base_irrf_bruta, base_irrf_rateada, irrf_bruto_rateado,
+            irrf_reducao_rateada, valor_irrf_rateado, snapshot)
+         values ($1, $2, $3, $4, 1, repeat('1', 64), 1000, 0, 110, 890,
+                 1000, 1000, 110, 1000, 0, 0, 0, 0,
+                 '{"origem":"teste"}'::jsonb)`,
+        [simulacaoFiscalFonteId, empresaId, simulacaoFiscalId, vinculoId],
+      );
+
+      await client.query("savepoint simulacao_conteudo_imutavel");
+      await assert.rejects(
+        client.query(
+          `update consolidacao_fiscal_simulacao
+              set total_proventos = 999
+            where id = $1`,
+          [simulacaoFiscalId],
+        ),
+        (error: unknown) =>
+          error instanceof Error && "code" in error && error.code === "55000",
+      );
+      await client.query("rollback to savepoint simulacao_conteudo_imutavel");
+
+      await client.query("savepoint simulacao_fonte_imutavel");
+      await assert.rejects(
+        client.query(
+          `update consolidacao_fiscal_simulacao_fonte
+              set valor_inss_rateado = 109
+            where id = $1`,
+          [simulacaoFiscalFonteId],
+        ),
+        (error: unknown) =>
+          error instanceof Error && "code" in error && error.code === "55000",
+      );
+      await client.query("rollback to savepoint simulacao_fonte_imutavel");
+
+      await client.query("savepoint simulacao_salto_homologacao");
+      await assert.rejects(
+        client.query(
+          `update consolidacao_fiscal_simulacao
+              set status = 'HOMOLOGADA',
+                  responsavel = 'TESTE_AUTOMATIZADO',
+                  justificativa = 'Tentativa inválida de pular uma etapa.',
+                  decidido_em = now()
+            where id = $1`,
+          [simulacaoFiscalId],
+        ),
+        (error: unknown) =>
+          error instanceof Error && "code" in error && error.code === "55000",
+      );
+      await client.query("rollback to savepoint simulacao_salto_homologacao");
+
+      await client.query(
+        `update consolidacao_fiscal_simulacao
+            set status = 'EM_HOMOLOGACAO',
+                responsavel = 'TESTE_AUTOMATIZADO',
+                atualizado_em = now()
+          where id = $1`,
+        [simulacaoFiscalId],
+      );
+      await client.query(
+        `update consolidacao_fiscal_simulacao
+            set status = 'HOMOLOGADA',
+                responsavel = 'TESTE_AUTOMATIZADO',
+                justificativa = 'Cálculo sintético conferido integralmente.',
+                decidido_em = now(), atualizado_em = now()
+          where id = $1`,
+        [simulacaoFiscalId],
+      );
+
+      await client.query("savepoint simulacao_terminal_imutavel");
+      await assert.rejects(
+        client.query(
+          `update consolidacao_fiscal_simulacao
+              set justificativa = 'Tentativa de alterar decisão terminal.'
+            where id = $1`,
+          [simulacaoFiscalId],
+        ),
+        (error: unknown) =>
+          error instanceof Error && "code" in error && error.code === "55000",
+      );
+      await client.query("rollback to savepoint simulacao_terminal_imutavel");
+
+      await client.query("savepoint simulacao_nao_excluivel");
+      await assert.rejects(
+        client.query(
+          `delete from consolidacao_fiscal_simulacao where id = $1`,
+          [simulacaoFiscalId],
+        ),
+        (error: unknown) =>
+          error instanceof Error && "code" in error && error.code === "55000",
+      );
+      await client.query("rollback to savepoint simulacao_nao_excluivel");
+
+      const homologacaoCompetenciaId = randomUUID();
+      const homologacaoCompetenciaItemId = randomUUID();
+      await client.query(
+        `insert into homologacao_competencia
+           (id, empresa_id, competencia, versao, hash_fontes, resumo,
+            criado_por)
+         values ($1, $2, date '2026-01-01', 1, repeat('b', 64),
+                 '{"pronta":true,"bloqueios":[],"conformes":7,"total":7}'::jsonb,
+                 'TESTE_AUTOMATIZADO')`,
+        [homologacaoCompetenciaId, empresaId],
+      );
+      await client.query(
+        `insert into homologacao_competencia_item
+           (id, empresa_id, homologacao_id, tipo, status, total, conformes,
+            pendentes, hash_evidencia, detalhes)
+         values ($1, $2, $3, 'FOLHAS', 'OK', 1, 1, 0, repeat('c', 64),
+                 '{"folha":"sintetica"}'::jsonb)`,
+        [
+          homologacaoCompetenciaItemId,
+          empresaId,
+          homologacaoCompetenciaId,
+        ],
+      );
+
+      await client.query("savepoint homologacao_mensal_estado_incoerente");
+      await assert.rejects(
+        client.query(
+          `insert into homologacao_competencia_item
+             (empresa_id, homologacao_id, tipo, status, total, conformes,
+              pendentes, hash_evidencia, detalhes)
+           values ($1, $2, 'MEDICOES', 'OK', 1, 0, 1, repeat('d', 64),
+                   '{}'::jsonb)`,
+          [empresaId, homologacaoCompetenciaId],
+        ),
+        (error: unknown) =>
+          error instanceof Error &&
+          "constraint" in error &&
+          error.constraint === "ck_homologacao_item_estado_contagens",
+      );
+      await client.query(
+        "rollback to savepoint homologacao_mensal_estado_incoerente",
+      );
+
+      await client.query("savepoint homologacao_mensal_decisao_incompleta");
+      await assert.rejects(
+        client.query(
+          `update homologacao_competencia
+              set status = 'APROVADA'
+            where id = $1`,
+          [homologacaoCompetenciaId],
+        ),
+        (error: unknown) =>
+          error instanceof Error &&
+          "constraint" in error &&
+          error.constraint === "ck_homologacao_competencia_decisao",
+      );
+      await client.query(
+        "rollback to savepoint homologacao_mensal_decisao_incompleta",
+      );
+
+      await client.query("savepoint homologacao_mensal_item_imutavel");
+      await assert.rejects(
+        client.query(
+          `update homologacao_competencia_item
+              set status = 'PENDENTE'
+            where id = $1`,
+          [homologacaoCompetenciaItemId],
+        ),
+        (error: unknown) =>
+          error instanceof Error && "code" in error && error.code === "55000",
+      );
+      await client.query(
+        "rollback to savepoint homologacao_mensal_item_imutavel",
+      );
+
+      await client.query("savepoint homologacao_mensal_nao_excluivel");
+      await assert.rejects(
+        client.query(
+          `delete from homologacao_competencia where id = $1`,
+          [homologacaoCompetenciaId],
+        ),
+        (error: unknown) =>
+          error instanceof Error && "code" in error && error.code === "55000",
+      );
+      await client.query(
+        "rollback to savepoint homologacao_mensal_nao_excluivel",
       );
 
       await client.query("savepoint vinculo_sobreposto");

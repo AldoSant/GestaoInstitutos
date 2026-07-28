@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
+import {
+  normalizarMotivoCancelamento,
+  validarStatusCancelamentoFolha,
+} from "@/lib/cancelamento";
 import { normalizarConferenciaFolha } from "@/lib/conferencia-folha";
+import { validarAusenciaDeConflitoPessoaCompetencia } from "@/lib/consolidacao-folha";
 import { hashJson } from "@/lib/json-canonico";
 import {
   processarVinculoFolha,
@@ -252,6 +257,83 @@ async function prevalidarCriacaoFolha(
   }
 }
 
+async function validarPessoaEmFolhaUnicaNaCompetencia(
+  client: PoolClient,
+  {
+    empresaId,
+    termoId,
+    metaId,
+    competencia,
+    folhaAtualId = null,
+  }: {
+    empresaId: string;
+    termoId: string;
+    metaId: string;
+    competencia: string;
+    folhaAtualId?: string | null;
+  },
+) {
+  const conflitos = await client.query<{
+    nome: string;
+    matricula: string;
+    folha_id: string;
+    termo_numero: string;
+    meta_codigo: string;
+  }>(
+    `select distinct pessoa.nome_razao_social nome, atual.matricula,
+            f.id folha_id, termo.numero termo_numero, meta.codigo meta_codigo
+       from prestador_vinculo vinculo_atual
+       join prestador atual
+         on atual.id = vinculo_atual.prestador_id
+        and atual.empresa_id = vinculo_atual.empresa_id
+       join pessoa
+         on pessoa.id = atual.pessoa_id
+        and pessoa.empresa_id = atual.empresa_id
+       join folha f
+         on f.empresa_id = vinculo_atual.empresa_id
+        and f.competencia = $4::date
+        and f.status <> 'CANCELADA'
+        and ($5::uuid is null or f.id <> $5::uuid)
+       join prestador_vinculo vinculo_existente
+         on vinculo_existente.empresa_id = f.empresa_id
+        and vinculo_existente.termo_id = f.termo_id
+        and vinculo_existente.meta_id = f.meta_id
+        and vinculo_existente.ativo
+        and vinculo_existente.inicio <= f.competencia
+        and (
+          vinculo_existente.fim is null
+          or vinculo_existente.fim >= f.competencia
+        )
+       join prestador existente
+         on existente.id = vinculo_existente.prestador_id
+        and existente.empresa_id = vinculo_existente.empresa_id
+        and existente.pessoa_id = atual.pessoa_id
+       join termo on termo.id = f.termo_id
+       join termo_meta meta on meta.id = f.meta_id
+      where vinculo_atual.empresa_id = $1
+        and vinculo_atual.termo_id = $2
+        and vinculo_atual.meta_id = $3
+        and vinculo_atual.ativo
+        and vinculo_atual.inicio <= $4::date
+        and (
+          vinculo_atual.fim is null
+          or vinculo_atual.fim >= $4::date
+        )
+      order by pessoa.nome_razao_social
+      limit 8`,
+    [empresaId, termoId, metaId, competencia, folhaAtualId],
+  );
+  validarAusenciaDeConflitoPessoaCompetencia(
+    conflitos.rows.map((item) => ({
+      nome: item.nome,
+      matricula: item.matricula,
+      folhaId: item.folha_id,
+      termoNumero: item.termo_numero,
+      metaCodigo: item.meta_codigo,
+    })),
+  );
+}
+
 export async function criarFolha({
   empresaId,
   termoId,
@@ -272,6 +354,10 @@ export async function criarFolha({
 
   return transacao(async (client) => {
     await configurarAuditoria(client, ator, "Criação e enfileiramento da Folha.");
+    await client.query(
+      "select pg_advisory_xact_lock(hashtext($1), hashtext($2))",
+      [empresaId, data],
+    );
     const instrumento = await client.query(
       `select 1
          from termo t
@@ -292,16 +378,18 @@ export async function criarFolha({
       metaId,
       data,
     );
+    await validarPessoaEmFolhaUnicaNaCompetencia(client, {
+      empresaId,
+      termoId,
+      metaId,
+      competencia: data,
+    });
     const enquadramento = await carregarEnquadramentoPorCompetencia(
       empresaId,
       data,
       client,
     );
 
-    await client.query(
-      "select pg_advisory_xact_lock(hashtext($1), hashtext($2))",
-      [empresaId, data],
-    );
     const numero = await client.query<{ proximo: number }>(
       `select coalesce(max(numero), 0)::int + 1 as proximo
          from folha
@@ -420,6 +508,17 @@ export async function processarFolha(
     if (!["RASCUNHO", "ABERTA"].includes(folha.status)) {
       throw new Error(`Folha em estado ${folha.status} não pode ser processada.`);
     }
+    await client.query(
+      "select pg_advisory_xact_lock(hashtext($1), hashtext($2))",
+      [folha.empresa_id, folha.competencia],
+    );
+    await validarPessoaEmFolhaUnicaNaCompetencia(client, {
+      empresaId: folha.empresa_id,
+      termoId: folha.termo_id,
+      metaId: folha.meta_id,
+      competencia: folha.competencia,
+      folhaAtualId: folha.id,
+    });
 
     const regra = await carregarRegraFiscalPorCompetencia(
       folha.competencia.slice(0, 7),
@@ -1060,6 +1159,51 @@ export async function reabrirFolha(
   }
   return transacao(async (client) => {
     await configurarAuditoria(client, ator, justificativa);
+    const obrigacoesEmitidas = await client.query<{ total: number }>(
+      `select count(*)::int total
+         from obrigacao_fiscal_folha fonte
+         join obrigacao_fiscal obrigacao
+           on obrigacao.id = fonte.obrigacao_id
+        where fonte.folha_id = $1 and obrigacao.status = 'EMITIDA'`,
+      [folhaId],
+    );
+    if (obrigacoesEmitidas.rows[0].total > 0) {
+      throw new Error(
+        "A Folha compõe uma obrigação já emitida. Registre o procedimento fiscal de retificação antes de reabri-la.",
+      );
+    }
+    await client.query(
+      `update obrigacao_fiscal obrigacao
+          set status = 'BLOQUEADA',
+              valor_declarado = null,
+              diferenca = null,
+              conciliada_em = null,
+              bloqueio_motivo =
+                'Uma Folha de origem foi reaberta. Reapure a competência.'
+        where obrigacao.id in (
+          select fonte.obrigacao_id
+            from obrigacao_fiscal_folha fonte
+           where fonte.folha_id = $1
+        )
+          and obrigacao.status in ('BLOQUEADA', 'APURADA')`,
+      [folhaId],
+    );
+    await client.query(
+      `update obrigacao_fiscal_documento documento
+          set verificado = false,
+              conteudo = conteudo || jsonb_build_object(
+                'invalidadoPorReaberturaDaFolhaEm', now(),
+                'folhaId', $1::uuid,
+                'motivo', $2::text
+              )
+        where documento.obrigacao_id in (
+          select fonte.obrigacao_id
+            from obrigacao_fiscal_folha fonte
+           where fonte.folha_id = $1
+        )
+          and documento.verificado`,
+      [folhaId, justificativa],
+    );
     await client.query(
       "select set_config('app.permitir_reabertura', 'true', true)",
     );
@@ -1080,6 +1224,59 @@ export async function reabrirFolha(
       justificativa,
     );
     return { folhaId };
+  });
+}
+
+export async function cancelarFolha(
+  folhaId: string,
+  motivo: string,
+  ator = "OPERADOR_INTERNO",
+) {
+  validarId(folhaId, "Folha");
+  const justificativa = normalizarMotivoCancelamento(motivo, "Folha");
+  return transacao(async (client) => {
+    await configurarAuditoria(client, ator, justificativa);
+    const atual = await client.query<{
+      id: string;
+      empresa_id: string;
+      status: StatusFolha;
+    }>(
+      `select id, empresa_id, status
+         from folha
+        where id = $1
+        for update`,
+      [folhaId],
+    );
+    const folha = atual.rows[0];
+    if (!folha) throw new Error("Folha não encontrada.");
+    validarStatusCancelamentoFolha(folha.status);
+    await client.query(
+      `update tarefa_processamento
+          set status = 'CANCELADA',
+              concluida_em = now(),
+              atualizado_em = now(),
+              ultimo_erro = 'Cancelada junto com a Folha pelo operador.'
+        where empresa_id = $1
+          and tipo = 'PROCESSAR_FOLHA'
+          and status = 'PENDENTE'
+          and payload ->> 'folhaId' = $2`,
+      [folha.empresa_id, folha.id],
+    );
+    await client.query(
+      `update folha
+          set status = 'CANCELADA', fechada_em = null, atualizado_em = now()
+        where id = $1`,
+      [folha.id],
+    );
+    await inserirHistorico(
+      client,
+      folha.id,
+      folha.status,
+      "CANCELADA",
+      ator,
+      justificativa,
+    );
+    return { folhaId: folha.id };
   });
 }
 

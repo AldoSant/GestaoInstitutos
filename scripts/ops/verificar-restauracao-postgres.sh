@@ -56,7 +56,7 @@ case "$TABLE_COUNT" in
     ;;
 esac
 
-if [ "$TABLE_COUNT" -lt 26 ]; then
+if [ "$TABLE_COUNT" -lt 39 ]; then
   echo "Restauração incompleta: apenas $TABLE_COUNT tabelas públicas." >&2
   exit 1
 fi

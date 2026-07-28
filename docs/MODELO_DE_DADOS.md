@@ -1,20 +1,30 @@
 # Modelo de dados
 
-## Implementado no primeiro incremento
+## Modelo implementado
 
-As migrações Drizzle criam 24 tabelas:
+As migrações Drizzle criam 45 tabelas, agrupadas em:
 
-- `empresa`;
-- `usuario` e `usuario_empresa`;
-- `pessoa` e `prestador`;
-- `termo`, `termo_meta` e `prestador_vinculo`;
-- `regra_calculo_versao`;
-- `folha`, `folha_item` e `folha_status_historico`;
-- `obrigacao_fiscal` e `obrigacao_fiscal_folha`.
-- `importacao_execucao`, `importacao_registro` e `legado_chave`.
-- `atividade` e `lotacao`, agora referenciáveis por `prestador_vinculo`.
-- `evento` e `lancamento_evento_recorrente`.
-- `pessoa_endereco`, `pessoa_conta_bancaria` e `dependente`.
+- organização e acesso: `empresa`, `usuario`, `usuario_empresa`;
+- pessoas: `pessoa`, `pessoa_endereco`, `pessoa_conta_bancaria`, `dependente`,
+  `prestador`;
+- contratos: `atividade`, `lotacao`, `termo`, `termo_meta`,
+  `prestador_vinculo`;
+- cálculo e parâmetros: `evento`, `lancamento_evento_recorrente`,
+  `regra_calculo_versao`, `enquadramento_previdenciario`, `medicao_mensal`,
+  `contribuicao_outra_fonte`;
+- folha: `folha`, `folha_item`, `folha_item_evento`,
+  `folha_status_historico`, `folha_conferencia`, `folha_homologacao`,
+  `folha_homologacao_item`;
+- obrigação: `obrigacao_fiscal`, `obrigacao_fiscal_folha`,
+  `obrigacao_fiscal_item`, `obrigacao_fiscal_documento`;
+- migração: `importacao_execucao`, `importacao_registro`, `legado_chave`,
+  `legado_folha`, `legado_folha_item`, `legado_folha_item_rubrica`,
+  `legado_guia_inss`;
+- operação: `auditoria`, `tarefa_processamento`;
+- homologação mensal: `consolidacao_mensal_caso`,
+  `consolidacao_mensal_fonte`, `homologacao_competencia`,
+  `homologacao_competencia_item`, `consolidacao_fiscal_simulacao`,
+  `consolidacao_fiscal_simulacao_fonte`.
 
 As três estruturas de importação guardam a execução, a decisão por registro e a
 correspondência durável entre o código do GIW e o UUID local. Isso permite simular,
@@ -37,12 +47,27 @@ erDiagram
   PESSOA ||--o| PESSOA_ENDERECO : reside
   PESSOA ||--o| PESSOA_CONTA_BANCARIA : recebe
   PESSOA ||--o{ DEPENDENTE : declara
+  PESSOA ||--o{ CONSOLIDACAO_MENSAL_CASO : exige
+  CONSOLIDACAO_MENSAL_CASO ||--|{ CONSOLIDACAO_MENSAL_FONTE : congela
+  PRESTADOR_VINCULO ||--o{ CONSOLIDACAO_MENSAL_FONTE : origina
+  CONSOLIDACAO_MENSAL_CASO ||--o{ CONSOLIDACAO_FISCAL_SIMULACAO : autoriza
+  PESSOA ||--o{ CONSOLIDACAO_FISCAL_SIMULACAO : agrega
+  CONSOLIDACAO_FISCAL_SIMULACAO ||--|{ CONSOLIDACAO_FISCAL_SIMULACAO_FONTE : rateia
+  PRESTADOR_VINCULO ||--o{ CONSOLIDACAO_FISCAL_SIMULACAO_FONTE : compoe
+  EMPRESA ||--o{ HOMOLOGACAO_COMPETENCIA : executa
+  HOMOLOGACAO_COMPETENCIA ||--|{ HOMOLOGACAO_COMPETENCIA_ITEM : verifica
   EMPRESA ||--o{ IMPORTACAO_EXECUCAO : executa
   IMPORTACAO_EXECUCAO ||--o{ IMPORTACAO_REGISTRO : detalha
   IMPORTACAO_EXECUCAO ||--o{ LEGADO_CHAVE : atualiza
+  EMPRESA ||--o{ LEGADO_FOLHA : preserva
+  LEGADO_FOLHA ||--|{ LEGADO_FOLHA_ITEM : detalha
+  LEGADO_FOLHA_ITEM ||--o{ LEGADO_FOLHA_ITEM_RUBRICA : explica
+  EMPRESA ||--o{ LEGADO_GUIA_INSS : preserva
 ```
 
-Esse recorte sustenta o primeiro vertical slice. Não representa ainda todas as 47 estruturas do modelo aprofundado.
+Esse recorte sustenta a cadeia operacional do MVP. O rateio já pode ser simulado,
+versionado e homologado, mas continua propositalmente fora do processamento produtivo
+da Folha até a validação com competências reais.
 
 ## Modelo completo de referência
 
@@ -66,7 +91,7 @@ Consulte:
 ## Próximas tabelas prioritárias
 
 - composições de eventos/rubricas;
-- consolidação mensal por pessoa e rateio por vínculo;
+- ativação produtiva do agregado fiscal mensal já implementado em modo de simulação;
 - fontes pagadoras concomitantes;
 - lançamentos e memória granular;
 - itens da obrigação fiscal;

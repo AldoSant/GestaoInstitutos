@@ -76,6 +76,24 @@ de medições antes de enfileirar. Percentual, quantidade × valor unitário e v
 explícito são suportados sem pressupor fórmulas contratuais. Ainda falta homologação
 centavo a centavo com as três competências reais antes de liberar o uso financeiro.
 
+A revisão estrutural identificou que o rateio entre Folhas diferentes da mesma pessoa
+e competência ainda não está homologado. Até o agregado mensal ser implementado, a
+criação e o worker bloqueiam esse cenário sob trava transacional. O desenho e os
+critérios estão em [Consolidação mensal por pessoa](CONSOLIDACAO_MENSAL.md). A tela da
+Folha agora também apresenta bases totais de INSS/IRRF e resumo de rubricas. O
+diagnóstico `/consolidacoes` antecipa pessoas multi-lote, medições e Folhas existentes.
+O operador congela as fontes em casos versionados por SHA-256; o RH registra andamento,
+decisão, justificativa e responsável. Mudança nas fontes invalida automaticamente a
+decisão anterior, preservando-a para auditoria. O CSV inclui o estado da homologação.
+O motor agregado agora existe em modo controlado: calcula INSS/IRRF uma única vez por
+Pessoa, rateia por maior resto, versiona entradas e resultado e possui fluxo próprio de
+homologação em `/consolidacoes/simulacoes`. Ele não remove o bloqueio da Folha; a
+ativação depende das três competências reais e de mudança técnica separada.
+
+Folha na fila ou aberta pode ser cancelada com motivo e preservação da memória.
+Reabrir uma Folha invalida automaticamente obrigação e documentos ainda não emitidos;
+fontes de obrigação emitida são bloqueadas até existir fluxo formal de retificação.
+
 Critério de aceite: as três competências anonimizadas fecham centavo a centavo ou possuem diferença formalmente explicada.
 
 ## Incremento 3 — obrigações
@@ -92,7 +110,14 @@ prestador, outras fontes e enquadramento. Regime geral e imunidade beneficente n
 compartilham alíquotas: a segunda exige CEBAS válido e evidência. Totalizador, recibo
 e DARF da DCTFWeb podem ser registrados com hash; a máquina de estados só considera
 emitida a obrigação com totalizador idêntico, recibo verificado e DARF do mesmo valor.
-Ainda faltam integração/exportação oficial e homologação com documentos reais.
+A apuração parcial agora é recusada. A relação com cada Folha congela revisão e hash;
+documentos verificados só são aceitos se nenhuma fonte mudou ou foi acrescentada.
+Reapurar invalida conferências anteriores. O espelho CSV detalha cada item e as
+evidências para conferência contábil. Ainda faltam integração/exportação oficial e
+homologação com documentos reais.
+
+Obrigações ainda não emitidas podem ser canceladas de modo terminal e auditado,
+invalidando documentos verificados sem apagar a composição histórica.
 
 Critério de aceite: nenhuma obrigação é emitida com item sem origem ou com diferença não aprovada.
 
@@ -103,6 +128,27 @@ Critério de aceite: nenhuma obrigação é emitida com item sem origem ou com d
 - testes de segurança, backup e restauração;
 - treinamento e documentação operacional;
 - plano de reversão.
+
+Progresso: a tela da Folha já importa uma referência CSV do GIW ou do RH, associa
+linhas por matrícula e compara proventos, INSS, IRRF, descontos e líquido em centavos.
+Cada execução preserva hashes do arquivo e da revisão, responsável, totais e diferenças
+em registros imutáveis. Repetir o mesmo arquivo é idempotente. O contrato e o roteiro
+estão em [Homologação paralela da Folha](HOMOLOGACAO_FOLHA.md).
+
+`/homologacoes` agora consolida sete gates por competência: medições, casos
+multi-vínculo, Folhas fechadas, conferência do RH, comparação GIW, obrigação e
+documentos DCTFWeb/DARF. Cada fotografia possui hash, versão, itens imutáveis, decisão
+auditada e dossiê CSV. A campanha móvel apresenta três competências e só as considera
+concluídas quando a versão vigente estiver aprovada. O procedimento está em
+[Homologação mensal](HOMOLOGACAO_MENSAL.md). Ainda faltam executar os meses reais,
+explicar diferenças, treinar operadores e ensaiar corte e reversão.
+
+O acervo histórico agora possui modelo próprio para Folhas, itens, rubricas e guias,
+validação de fechamento, checksum e importação idempotente. `/migracoes` compara o GIW
+com a operação nova por competência e pessoa e exporta um dossiê CSV. O desenho está em
+[Migração histórica](MIGRACAO_HISTORICA.md). O adaptador visual permanece condicionado
+à reconexão do endereço do GIW; a sonda retomável já está pronta para confirmar os
+seletores sem alterar o legado.
 
 ## Incremento 5 — acesso e endurecimento
 

@@ -30,12 +30,45 @@ Pessoa física/jurídica, prestador, termo, meta e vínculo. Dados contratuais u
 
 Regras por vigência, eventos, consolidação mensal por pessoa, folha, item, memória e histórico de estados. Uma folha fechada não deve ser editada silenciosamente.
 
+O agregado multi-lote por pessoa está implementado em modo de simulação controlada.
+Enquanto sua hipótese não for homologada com competências reais, a Folha continua
+bloqueando a mesma pessoa em mais de um lote da competência. A verificação ocorre na
+criação e no worker, sob trava transacional por organização e mês.
+O modelo-alvo está em [Consolidação mensal por pessoa](CONSOLIDACAO_MENSAL.md).
+A aplicação consulta Vínculos, Termos, Metas, medições, Folhas e outras fontes sem
+executar rateio fiscal. O diagnóstico pode ser materializado em
+`consolidacao_mensal_caso`; cada versão guarda o SHA-256 canônico das entradas e possui
+fontes imutáveis em `consolidacao_mensal_fonte`. O RH classifica o caso com responsável
+e justificativa. Nova entrada invalida a decisão anterior sem apagá-la. Assim,
+homologação operacional e cálculo fiscal permanecem responsabilidades separadas.
+Casos resolvidos alimentam `consolidacao_fiscal_simulacao`; o motor agrega INSS/IRRF
+por Pessoa, rateia por maior resto e congela cada entrada em
+`consolidacao_fiscal_simulacao_fonte`. Quatro hashes protegem fontes, regra,
+enquadramento e resultado. Homologação ainda não cria caminho para alterar a Folha.
+
 ### Medições mensais
 
 O Vínculo define se a medição é obrigatória. Cada competência pode registrar percentual,
 quantidade × valor unitário ou valor apurado, sempre com responsável e evidência. A
 Folha referencia a medição e congela seus parâmetros no snapshot. Alteração posterior
 invalida o fechamento até novo processamento; Folha fechada protege a medição utilizada.
+
+### Homologação paralela
+
+Uma referência CSV do GIW ou do RH é comparada com os itens congelados da Folha pela
+matrícula. O comparador converte valores em centavos, classifica diferenças e ausências
+e não possui caminho para alterar o cálculo. O lote guarda SHA-256 do arquivo e da
+revisão da Folha; lote e itens são imutáveis e auditados. Uma nova revisão exige nova
+comparação, preservando a evidência anterior.
+
+### Homologação da competência
+
+O fechamento mensal é um agregado de evidências, não um segundo motor de cálculo. Ele
+consulta sete controles operacionais, calcula hashes por item e um hash global, e
+materializa uma versão imutável. A aprovação reexecuta o diagnóstico dentro da
+transação e somente aceita o mesmo hash sem bloqueios. Fontes alteradas invalidam a
+versão, preservando a decisão anterior. A campanha apresenta três competências
+consecutivas para orientar a execução paralela e o corte.
 
 ### Apuração previdenciária
 
@@ -45,7 +78,9 @@ origem, base, alíquota, valor, item de Folha e snapshot. A primeira etapa mater
 A obrigação nasce bloqueada. Um totalizador DCTFWeb verificado e idêntico muda o
 estado para apurada; somente recibo verificado e DARF do mesmo valor permitem o estado
 emitida. Repetir a apuração recompõe a mesma chave empresa–competência–tipo sem
-duplicação e invalida a conciliação anterior.
+duplicação e invalida a conciliação anterior. A apuração exige todas as Folhas
+fechadas e congela revisão e hash de cada origem. Antes de aceitar um documento
+verificado, o servidor recusa Folha nova, pendente, reaberta ou com hash diferente.
 
 ### Obrigações
 
@@ -83,6 +118,23 @@ Toda ação financeira relevante registra usuário, instante, estado anterior, e
   possuem hash canônico conferido na leitura e podem ser específicas da organização;
 - o Compose não aceita segredos padrão, limita a exposição ao host local e controla logs;
 - scripts de backup, checksum e restauração de teste estão versionados.
+- lotes de homologação e suas diferenças são idempotentes por arquivo e hash da Folha,
+  imutáveis no banco e vinculados à organização por chaves compostas.
+- criação e processamento de Folhas da mesma competência são serializados por
+  organização; conflitos da mesma pessoa entre lotes são recusados até existir
+  consolidação fiscal determinística.
+- casos de consolidação são serializados por organização e competência, materializados
+  de forma idempotente, versionados pelo conteúdo e auditados no PostgreSQL; fontes
+  congeladas não aceitam edição ou exclusão.
+- simulações fiscais são serializadas por caso, idempotentes pelo conteúdo completo,
+  versionadas, auditadas e protegidas por transições de estado; conteúdo calculado e
+  decisões terminais são imutáveis.
+- homologações mensais usam `REPEATABLE READ`, trava por organização/competência,
+  versões idempotentes e itens imutáveis; o CSV do dossiê identifica os hashes global
+  e individuais.
+- cancelamentos preservam dados e usam transições de estado. Reabrir uma fonte
+  bloqueia obrigações e invalida documentos; obrigação emitida impede alteração
+  silenciosa da Folha.
 
 O serviço worker já reserva tarefas com exclusão concorrente e possui um handler
 operacional de validação da regra fiscal por competência e o handler `PROCESSAR_FOLHA`.
@@ -117,7 +169,9 @@ por inativação. Eventos controlam natureza, modo de cálculo e incidências; l
 recorrentes os ligam ao Vínculo por intervalo de competências e não podem se sobrepor.
 As páginas de Folhas já usam dados persistentes: criam o lote, acompanham o worker,
 exibem itens e linhas, solicitam revisão, fecham, reabrem com justificativa e exportam a
-memória. A página de Obrigações ainda usa dados demonstrativos. A página de Parâmetros
+memória. Também importam a referência de homologação e apresentam diferenças por
+matrícula. A página de Obrigações usa a apuração previdenciária e a conciliação
+documental persistentes. A página de Parâmetros
 consulta e valida as regras fiscais publicadas no PostgreSQL.
 
 O processamento usa a medição conferida da competência quando existente; sem medição,

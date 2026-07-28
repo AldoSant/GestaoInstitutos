@@ -7,8 +7,11 @@ simulação, aplicação e conferência antes de liberar a próxima.
 ## Situação atual
 
 Os fluxos implementados coletam e importam **Pessoas completas**, **Atividades**, **Lotações**,
-**Termos**, **Metas** e **Vínculos**. Eles estabelecem o padrão que será reutilizado por
-eventos, tabelas fiscais, produtividade, folhas e guias.
+**Termos**, **Metas** e **Vínculos**. O importador também aceita snapshots normalizados de
+**Folhas históricas completas** — cabeçalho, pessoas e rubricas — e **Guias
+previdenciárias históricas**. O mapeador retomável dos formulários de lançamentos,
+Folhas e GPS coleta evidências estruturais para manter os adaptadores sincronizados com
+o layout Webrun.
 
 Dados reais nunca são versionados. O coletor grava em `.private/importacoes/giw`, pasta
 ignorada pelo Git. Usuário e senha são lidos exclusivamente de variáveis de ambiente.
@@ -27,6 +30,7 @@ ignorada pelo Git. Usuário e senha são lidos exclusivamente de variáveis de a
 10. Executar novamente em dry-run: todos os registros inalterados devem aparecer como
    `ignorar`.
 11. Comparar total, documentos ausentes e duplicidades entre GIW e sistema novo.
+12. Abrir `/migracoes`, selecionar a competência e exportar o dossiê CSV.
 
 O modo padrão do importador é sempre `dry-run`. Só há gravação quando `--aplicar` é
 informado explicitamente.
@@ -140,6 +144,43 @@ DATABASE_URL='postgresql://...' npm run giw:importar -- \
 
 Se existir exatamente uma empresa ativa, `--empresa-id` pode ser omitido.
 
+Os contratos completos dos dois snapshots históricos estão em:
+
+- `docs/exemplos/giw-folhas-historicas.json`;
+- `docs/exemplos/giw-guias-inss-historicas.json`.
+
+Os exemplos são fictícios e podem ser usados para testar apenas a validação estrutural.
+
+## Mapear movimentos históricos sem alterar o GIW
+
+Quando o endereço do legado estiver respondendo, execute:
+
+```bash
+GIW_USUARIO='seu-usuario' \
+GIW_SENHA='sua-senha' \
+npm run giw:mapear:historico
+```
+
+O comando abre exclusivamente consultas de **Lançamentos de eventos**, **Folhas** e
+**Emissão de GPS**. Para cada formulário, preserva em `.private`:
+
+- abas, rótulos, IDs e nomes dos campos;
+- cabeçalhos e linhas de todas as páginas do localizador;
+- amostras estruturais de até cinco fichas;
+- checkpoint após cada página.
+
+Para retomar uma interrupção, informe o mesmo arquivo e habilite a retomada:
+
+```bash
+GIW_OUTPUT_HISTORICO='.private/importacoes/giw/mapeamento-historico.json' \
+GIW_RESUME=true \
+npm run giw:mapear:historico
+```
+
+`GIW_MAP_MAX_PAGES` limita páginas e `GIW_MAP_MAX_DETAILS` limita fichas abertas por
+formulário. O resultado é evidência de engenharia reversa; dados reais continuam fora
+do Git.
+
 ## Como a repetição segura funciona
 
 - `importacao_execucao` registra arquivo, checksum, modo, totais e resultado;
@@ -167,8 +208,8 @@ final. Assim a simulação usa as mesmas consultas e validações da aplicação
 | 9 | Vínculos | 464569258 | pessoa, termo, meta, atividade e lotação | coletor e importador prontos |
 | 10 | Lançamentos de eventos | 464569425 | pessoa, termo e evento | mapeado |
 | 11 | Produtividade | 464569461 | vínculo e competência | mapeado |
-| 12 | Folhas | 464569390 | todos os anteriores | mapeado |
-| 13 | Emissão de GPS | 464569421 | folha fechada | mapeado |
+| 12 | Folhas | 464569390 | todos os anteriores | contrato, persistência e importador prontos; adaptador visual pendente de reconexão |
+| 13 | Emissão de GPS | 464569421 | folha fechada | contrato, persistência e importador prontos; adaptador visual pendente de reconexão |
 
 As listagens Webrun usam `basic_query.jsp`, paginação própria e grids com campos
 identificados. IDs de formulário são tratados como adaptadores do legado, nunca como
@@ -207,10 +248,16 @@ observadas no GIW permanecem separadas das regras normativas confirmadas.
 
 Critério de saída: eventos históricos explicam proventos, descontos e bases.
 
-### Etapa E — folha e guia
+### Etapa E — folha e guia — núcleo implementado
 
-Importar cabeçalhos, itens e memórias de três competências; reconciliar totais por
-pessoa e bloquear a duplicidade previdenciária já detectada no legado.
+As tabelas `legado_folha`, `legado_folha_item`, `legado_folha_item_rubrica` e
+`legado_guia_inss` preservam o acervo sem misturá-lo com a folha oficial. O importador
+é idempotente, substitui os filhos de uma versão alterada dentro da mesma transação e
+registra checksum e trilha de execução. A tela `/migracoes` reconcilia por competência,
+pessoa, lote e guia.
+
+Falta executar o adaptador visual contra o GIW disponível e importar três competências
+reais para classificar divergências.
 
 Critério de saída: resultado centavo a centavo ou divergência formalmente classificada.
 
@@ -228,4 +275,6 @@ diferenças, aprovar o corte e manter plano de retorno.
 - o coletor de Termos opera sobre o ano selecionado no GIW; anos históricos devem ser
   selecionados e coletados separadamente;
 - nenhuma guia é transmitida e nenhum registro do GIW é alterado;
+- a sonda histórica captura a estrutura e amostras privadas, mas depende do GIW
+  acessível para confirmar os seletores do adaptador normalizado;
 - o importador pressupõe que as migrações novas já foram aplicadas.
