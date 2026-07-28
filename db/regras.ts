@@ -3,6 +3,7 @@ import {
   CODIGO_REGRA_FOLHA_PRESTADOR,
   validarRegraFiscal,
 } from "@/lib/regras-fiscais";
+import type { PoolClient } from "pg";
 import { getPool } from "./index";
 
 type LinhaRegra = {
@@ -55,9 +56,10 @@ function mapearRegra(linha: LinhaRegra) {
 export async function carregarRegraFiscalPorCompetencia(
   competencia: string,
   empresaId: string,
+  executor: Pick<PoolClient, "query"> = getPool(),
 ) {
   const data = competenciaNormalizada(competencia);
-  const resultado = await getPool().query<LinhaRegra>(
+  const resultado = await executor.query<LinhaRegra>(
     `select id, empresa_id, codigo, versao, inicio_vigencia::text,
             fim_vigencia::text, parametros, fonte_normativa, hash_conteudo,
             publicada, criada_em
@@ -89,4 +91,26 @@ export async function listarRegrasFiscais(empresaId: string) {
     [CODIGO_REGRA_FOLHA_PRESTADOR, empresaId],
   );
   return resultado.rows.map(mapearRegra);
+}
+
+export async function carregarRegraFiscalPorId(
+  regraId: string,
+  empresaId: string,
+  executor: Pick<PoolClient, "query"> = getPool(),
+) {
+  const resultado = await executor.query<LinhaRegra>(
+    `select id, empresa_id, codigo, versao, inicio_vigencia::text,
+            fim_vigencia::text, parametros, fonte_normativa, hash_conteudo,
+            publicada, criada_em
+       from regra_calculo_versao
+      where id = $1
+        and publicada
+        and (empresa_id = $2 or empresa_id is null)
+      limit 1`,
+    [regraId, empresaId],
+  );
+  if (!resultado.rows[0]) {
+    throw new Error("A regra fiscal congelada na Folha não foi encontrada.");
+  }
+  return mapearRegra(resultado.rows[0]);
 }

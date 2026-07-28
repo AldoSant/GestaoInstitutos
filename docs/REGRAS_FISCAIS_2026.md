@@ -1,8 +1,13 @@
 # Regras fiscais confirmadas para 2026
 
-Verificação realizada em 22 de julho de 2026. Este documento registra as fontes do
+Verificação atualizada em 27 de julho de 2026. Este documento registra as fontes do
 motor inicial; ele não substitui homologação contábil nem transforma o protótipo em
 emissor oficial de obrigação.
+
+O catálogo completo de cenários, obrigações e fontes está em
+[`BIBLIOTECA_CONTABIL_FISCAL.md`](./BIBLIOTECA_CONTABIL_FISCAL.md). O catálogo
+executável e o bloqueio preventivo de enquadramentos não homologados ficam em
+`lib/inteligencia-contabil.ts`.
 
 ## IRRF mensal
 
@@ -30,21 +35,30 @@ valores de entrada são normalizados em centavos e entradas negativas, infinitas
 Fontes primárias:
 
 - [Contribuições previdenciárias — Receita Federal](https://www.gov.br/receitafederal/pt-br/assuntos/orientacao-tributaria/tributos/contribuicoes-previdenciarias-pj);
-- [IN RFB nº 2.110/2022, texto compilado](https://normas.receita.fazenda.gov.br/sijut2consulta/normas..receita.fazenda.gov.br/sijut2consulta/link.action?idAto=126687);
+- [IN RFB nº 2.110/2022, texto compilado](https://normas.receita.fazenda.gov.br/sijut2consulta/link.action?idAto=126687);
 - [Tabela de contribuição mensal — INSS](https://www.gov.br/inss/pt-br/direitos-e-deveres/inscricao-e-contribuicao/tabela-de-contribuicao-mensal).
 
 Escopo implementado:
 
 - retenção do segurado contribuinte individual à alíquota de 11% quando presta
   serviço a empresa em geral;
+- contribuição patronal de 20% sobre a remuneração no regime geral;
+- quando a contratante beneficente está efetivamente em gozo da imunidade, cota
+  patronal zero e retenção do segurado de 20%, exigindo CEBAS válido e evidência;
 - limite máximo do salário de contribuição em R$ 8.475,55 a partir da competência
   janeiro de 2026;
 - retenção máxima mensal de R$ 932,31;
 - abatimento da base comprovadamente contribuída em outras fontes no mesmo mês.
 
-O motor ainda não calcula contribuição patronal, RAT, terceiros, hipóteses de entidade
-beneficente isenta, cessão de mão de obra ou demais incidências. Esses itens devem ser
-modelados separadamente na obrigação fiscal, com tipo e origem próprios.
+Esse cálculo é liberado somente para pessoa física classificada na categoria eSocial
+701. Categoria ausente, outra categoria de contribuinte individual ou pessoa
+jurídica interrompem o processamento com a lista dos dados e documentos necessários;
+o sistema não presume um tratamento tributário.
+
+O motor calcula segurado e patronal dos dois enquadramentos expressamente publicados.
+RAT, terceiros, cessão de mão de obra e outras categorias não são presumidos; devem ser
+modelados separadamente com tipo, origem e evidência. A apuração continua bloqueada para
+emissão até a reconciliação com eSocial/DCTFWeb.
 
 ## Controles de mudança
 

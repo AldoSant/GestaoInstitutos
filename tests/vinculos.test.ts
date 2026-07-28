@@ -18,6 +18,7 @@ test("normaliza vínculo completo e valores brasileiros", () => {
     fim: "31/08/2026",
     valorRetribuicao: "4.080,00",
     cargaHoraria: "200",
+    exigeMedicaoMensal: true,
     descontaInss: true,
     descontaIrrf: false,
   });
@@ -31,6 +32,7 @@ test("normaliza vínculo completo e valores brasileiros", () => {
     fim: "2026-08-31",
     valorRetribuicao: "4080.00",
     cargaHoraria: "200",
+    exigeMedicaoMensal: true,
     descontaInss: true,
     descontaIrrf: false,
   });

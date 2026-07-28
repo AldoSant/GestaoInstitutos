@@ -46,6 +46,7 @@ export async function salvarVinculo(formData: FormData) {
     fim: formData.get("fim"),
     valorRetribuicao: formData.get("valorRetribuicao"),
     cargaHoraria: formData.get("cargaHoraria"),
+    exigeMedicaoMensal: formData.get("exigeMedicaoMensal") === "on",
     descontaInss: formData.get("descontaInss") === "on",
     descontaIrrf: formData.get("descontaIrrf") === "on",
   });
@@ -141,6 +142,7 @@ export async function salvarVinculo(formData: FormData) {
       fim: dados.fim,
       valorRetribuicao: dados.valorRetribuicao,
       cargaHoraria: dados.cargaHoraria,
+      exigeMedicaoMensal: dados.exigeMedicaoMensal,
       descontaInss: dados.descontaInss,
       descontaIrrf: dados.descontaIrrf,
       atualizadoEm: new Date(),

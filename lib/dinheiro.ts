@@ -28,6 +28,33 @@ function inteiroSeguro(valor: bigint, campo: string) {
   return Number(valor);
 }
 
+export function decimalParaInteiro(
+  valor: string | number,
+  casasDecimais: number,
+) {
+  if (!Number.isSafeInteger(casasDecimais) || casasDecimais < 0) {
+    throw new RangeError("A escala decimal deve ser um inteiro não negativo.");
+  }
+  const texto = String(valor).trim();
+  const correspondencia = texto.match(/^([+-]?)(\d+)(?:\.(\d+))?$/);
+  if (!correspondencia) {
+    throw new RangeError("O valor decimal deve usar o formato numérico canônico.");
+  }
+
+  const sinal = correspondencia[1] === "-" ? -1n : 1n;
+  const inteira = correspondencia[2];
+  const fracionaria = correspondencia[3] ?? "";
+  const mantida = fracionaria.slice(0, casasDecimais).padEnd(casasDecimais, "0");
+  let resultado =
+    BigInt(inteira) * potenciaDeDez(casasDecimais) + BigInt(mantida || "0");
+
+  const descartada = fracionaria.slice(casasDecimais);
+  if (descartada.length > 0 && Number(descartada[0]) >= 5) {
+    resultado += 1n;
+  }
+  return inteiroSeguro(resultado * sinal, "valor decimal");
+}
+
 export function paraCentavos(valor: number) {
   if (!Number.isFinite(valor)) {
     throw new RangeError("O valor monetário deve ser um número finito.");

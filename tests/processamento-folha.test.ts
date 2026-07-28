@@ -1,0 +1,263 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { processarVinculoFolha } from "../lib/processamento-folha";
+import { REGRA_FISCAL_2026 } from "../lib/regras-fiscais";
+
+const ENQUADRAMENTO_GERAL = {
+  id: "00000000-0000-4000-8000-000000000099",
+  regime: "EMPRESA_GERAL",
+  aliquotaSeguradoNumerador: 11,
+  aliquotaSeguradoDenominador: 100,
+  aliquotaPatronalNumerador: 20,
+  aliquotaPatronalDenominador: 100,
+  fonteNormativa: "Fonte normativa de teste",
+} as const;
+
+test("processa retribuição, eventos, INSS e IRRF com memória em centavos", () => {
+  const resultado = processarVinculoFolha(
+    {
+      vinculoId: "00000000-0000-4000-8000-000000000001",
+      tipoPessoa: "FISICA",
+      categoriaContribuinte: "701",
+      valorRetribuicao: "6000.00",
+      descontaInss: true,
+      descontaIrrf: true,
+      isentoInss: false,
+      baseOutrasFontes: "0",
+      outrasFontes: [],
+      enquadramentoPrevidenciario: ENQUADRAMENTO_GERAL,
+      dependentesIrrf: 1,
+      eventos: [
+        {
+          id: "00000000-0000-4000-8000-000000000002",
+          codigo: "BONUS",
+          descricao: "Bônus de desempenho",
+          natureza: "PROVENTO",
+          tipoCalculo: "PERCENTUAL",
+          valor: "10.0000",
+          incideInss: true,
+          incideIrrf: true,
+        },
+        {
+          id: "00000000-0000-4000-8000-000000000003",
+          codigo: "AJUSTE",
+          descricao: "Desconto autorizado",
+          natureza: "DESCONTO",
+          tipoCalculo: "VALOR",
+          valor: "100.00",
+          incideInss: false,
+          incideIrrf: false,
+        },
+      ],
+    },
+    REGRA_FISCAL_2026,
+  );
+
+  assert.equal(resultado.totalProventosCentavos, 660_000);
+  assert.equal(resultado.baseInssCentavos, 660_000);
+  assert.equal(resultado.valorInssCentavos, 72_600);
+  assert.equal(resultado.baseIrrfCentavos, 568_441);
+  assert.equal(resultado.irrfBrutoCentavos, 65_448);
+  assert.equal(resultado.irrfReducaoCentavos, 9_986);
+  assert.equal(resultado.valorIrrfCentavos, 55_462);
+  assert.equal(resultado.totalDescontosCentavos, 138_062);
+  assert.equal(resultado.totalLiquidoCentavos, 521_938);
+  assert.deepEqual(
+    resultado.linhas.map((linha) => linha.codigo),
+    ["RETRIBUICAO", "AJUSTE", "BONUS", "INSS", "IRRF"],
+  );
+});
+
+test("bloqueia Pessoa Jurídica no motor de contribuinte individual", () => {
+  assert.throws(
+    () =>
+      processarVinculoFolha(
+        {
+          vinculoId: "00000000-0000-4000-8000-000000000004",
+          tipoPessoa: "JURIDICA",
+          categoriaContribuinte: null,
+          valorRetribuicao: "2500.00",
+          descontaInss: true,
+          descontaIrrf: true,
+          isentoInss: false,
+          baseOutrasFontes: "0",
+          outrasFontes: [],
+          enquadramentoPrevidenciario: ENQUADRAMENTO_GERAL,
+          dependentesIrrf: 0,
+          eventos: [],
+        },
+        REGRA_FISCAL_2026,
+      ),
+    /Pessoa Jurídica exige documento fiscal/,
+  );
+});
+
+test("rejeita percentuais fora do contrato do Evento", () => {
+  assert.throws(
+    () =>
+      processarVinculoFolha(
+        {
+          vinculoId: "00000000-0000-4000-8000-000000000005",
+          tipoPessoa: "FISICA",
+          categoriaContribuinte: "701",
+          valorRetribuicao: "1000.00",
+          descontaInss: true,
+          descontaIrrf: true,
+          isentoInss: false,
+          baseOutrasFontes: "0",
+          outrasFontes: [],
+          enquadramentoPrevidenciario: ENQUADRAMENTO_GERAL,
+          dependentesIrrf: 0,
+          eventos: [
+            {
+              id: "00000000-0000-4000-8000-000000000006",
+              codigo: "INVALIDO",
+              descricao: "Percentual inválido",
+              natureza: "PROVENTO",
+              tipoCalculo: "PERCENTUAL",
+              valor: "100.0001",
+              incideInss: true,
+              incideIrrf: true,
+            },
+          ],
+        },
+        REGRA_FISCAL_2026,
+      ),
+    /entre 0% e 100%/,
+  );
+});
+
+test("bloqueia Pessoa Física sem categoria previdenciária homologada", () => {
+  assert.throws(
+    () =>
+      processarVinculoFolha(
+        {
+          vinculoId: "00000000-0000-4000-8000-000000000007",
+          tipoPessoa: "FISICA",
+          categoriaContribuinte: null,
+          valorRetribuicao: "1000.00",
+          descontaInss: true,
+          descontaIrrf: true,
+          isentoInss: false,
+          baseOutrasFontes: "0",
+          outrasFontes: [],
+          enquadramentoPrevidenciario: ENQUADRAMENTO_GERAL,
+          dependentesIrrf: 0,
+          eventos: [],
+        },
+        REGRA_FISCAL_2026,
+      ),
+    /categoria previdenciária\/eSocial é obrigatória/,
+  );
+});
+
+test("limita a retenção pela base comprovada em outras fontes", () => {
+  const resultado = processarVinculoFolha(
+    {
+      vinculoId: "00000000-0000-4000-8000-000000000008",
+      tipoPessoa: "FISICA",
+      categoriaContribuinte: "701",
+      valorRetribuicao: "6000.00",
+      descontaInss: true,
+      descontaIrrf: false,
+      isentoInss: false,
+      baseOutrasFontes: "4000.00",
+      outrasFontes: [
+        {
+          fontePagadora: "Outra contratante",
+          documentoFonte: "12345678000199",
+          baseContribuicao: "4000.00",
+          valorContribuicao: "440.00",
+          documentoReferencia: "REC-2026-07",
+        },
+      ],
+      enquadramentoPrevidenciario: ENQUADRAMENTO_GERAL,
+      dependentesIrrf: 0,
+      eventos: [],
+    },
+    REGRA_FISCAL_2026,
+  );
+
+  assert.equal(resultado.baseInssCentavos, 447_555);
+  assert.equal(resultado.valorInssCentavos, 49_231);
+  assert.deepEqual(resultado.memoria.outrasFontes, {
+    baseContribuidaCentavos: 400_000,
+    comprovantes: [
+      {
+        fontePagadora: "Outra contratante",
+        documentoFonte: "12345678000199",
+        baseContribuicao: "4000.00",
+        valorContribuicao: "440.00",
+        documentoReferencia: "REC-2026-07",
+      },
+    ],
+  });
+});
+
+test("aplica 20% ao segurado quando a beneficente está imune da patronal", () => {
+  const resultado = processarVinculoFolha(
+    {
+      vinculoId: "00000000-0000-4000-8000-000000000009",
+      tipoPessoa: "FISICA",
+      categoriaContribuinte: "701",
+      valorRetribuicao: "3000.00",
+      descontaInss: true,
+      descontaIrrf: false,
+      isentoInss: false,
+      baseOutrasFontes: "0",
+      outrasFontes: [],
+      enquadramentoPrevidenciario: {
+        ...ENQUADRAMENTO_GERAL,
+        regime: "BENEFICENTE_IMUNE",
+        aliquotaSeguradoNumerador: 20,
+        aliquotaPatronalNumerador: 0,
+      },
+      dependentesIrrf: 0,
+      eventos: [],
+    },
+    REGRA_FISCAL_2026,
+  );
+
+  assert.equal(resultado.baseInssCentavos, 300_000);
+  assert.equal(resultado.valorInssCentavos, 60_000);
+  assert.equal(resultado.memoria.inss.aliquotaNumerador, 20);
+  assert.equal(resultado.memoria.previdencia.aliquotaPatronalNumerador, 0);
+});
+
+test("usa a medição mensal conferida como retribuição da competência", () => {
+  const resultado = processarVinculoFolha(
+    {
+      vinculoId: "00000000-0000-4000-8000-000000000010",
+      tipoPessoa: "FISICA",
+      categoriaContribuinte: "701",
+      valorRetribuicao: "2000.00",
+      medicao: {
+        id: "00000000-0000-4000-8000-000000000011",
+        tipo: "PERCENTUAL",
+        valorContratual: "4000.00",
+        percentual: "50.0000",
+        quantidade: null,
+        valorUnitario: null,
+        valorApurado: "2000.00",
+        evidenciaReferencia: "Relatório mensal 07/2026",
+        evidenciaHash: "a".repeat(64),
+        conferente: "Gerente de RH",
+        conferidaEm: "2026-07-27T12:00:00.000Z",
+      },
+      descontaInss: true,
+      descontaIrrf: false,
+      isentoInss: false,
+      baseOutrasFontes: "0",
+      outrasFontes: [],
+      enquadramentoPrevidenciario: ENQUADRAMENTO_GERAL,
+      dependentesIrrf: 0,
+      eventos: [],
+    },
+    REGRA_FISCAL_2026,
+  );
+
+  assert.equal(resultado.totalProventosCentavos, 200_000);
+  assert.equal(resultado.valorInssCentavos, 22_000);
+  assert.equal(resultado.linhas[0].descricao, "Retribuição apurada pela medição mensal");
+  assert.equal(resultado.memoria.retribuicao.origem, "MEDICAO_MENSAL");
+});

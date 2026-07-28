@@ -43,9 +43,9 @@ docker compose run --rm worker npm run worker:validar-regra -- 2026-06
 docker compose logs --since 5m worker
 ```
 
-A tarefa deve terminar como `CONCLUIDA`. O único handler habilitado neste estágio valida
-a regra fiscal da competência; o processamento integral da Folha será adicionado como
-um tipo separado depois da materialização transacional.
+A tarefa deve terminar como `CONCLUIDA`. O worker também registra
+`PROCESSAR_FOLHA`; esse handler valida empresa e revisão antes de materializar a memória
+em uma única transação.
 
 ## Migrações
 
@@ -59,8 +59,30 @@ docker compose run --rm migrate
 docker compose run --rm migrate npm run db:bootstrap:regras
 ```
 
+Após aplicar as migrações `0015_payroll-processing`,
+`0016_other-source-contributions`, `0017_social-security-assessment`,
+`0018_social-security-profile`, `0019_dctfweb-reconciliation` e
+`0020_payroll-hr-review` e `0021_monthly-measurements`, confirme no log
+do worker que
+`PROCESSAR_FOLHA` aparece entre os tipos registrados. Antes da primeira Folha real,
+crie um lote de homologação, aguarde “Em conferência”, exporte a memória, registre uma
+aprovação sintética do RH e teste o fechamento. Se o Vínculo exigir medição, registre-a
+em `/medicoes` antes de criar a Folha. As fórmulas de produtividade e
+proporcionalização ainda exigem homologação contratual.
+
 Em uma instalação sem Docker, a alternativa é `npm ci` seguido de
 `npm run db:migrate` com `DATABASE_URL` configurada.
+
+Depois das migrações, publique o enquadramento real em `/parametros`. O bootstrap
+abaixo é adequado somente quando o contador confirmou expressamente o regime geral:
+
+```bash
+npm run db:bootstrap:enquadramento -- \
+  --regime EMPRESA_GERAL \
+  --evidencia "Documento, data e responsável pela conferência"
+```
+
+Não use `BENEFICENTE_IMUNE` sem CEBAS válido cobrindo toda a vigência.
 
 Em produção madura, a migração deve ser uma etapa única e controlada do pipeline, não executada simultaneamente por várias réplicas.
 
@@ -103,7 +125,7 @@ gerenciador de tarefas da VPS.
 
 ```bash
 git pull --ff-only
-docker compose build migrate web
+docker compose build migrate web worker
 docker compose run --rm migrate
 docker compose run --rm migrate npm run db:bootstrap:regras
 docker compose up -d --build

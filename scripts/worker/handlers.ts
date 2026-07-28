@@ -1,5 +1,6 @@
 import type { TarefaProcessamento } from "../../db/tarefas";
 import { carregarRegraFiscalPorCompetencia } from "../../db/regras";
+import { processarFolha } from "../../db/folhas";
 
 export type HandlerTarefa = (
   tarefa: TarefaProcessamento,
@@ -30,8 +31,26 @@ const validarRegraFiscal: HandlerTarefa = async (tarefa) => {
   };
 };
 
+const processarFolhaHandler: HandlerTarefa = async (tarefa) => {
+  const payload = payloadObjeto(tarefa);
+  if (typeof payload.folhaId !== "string") {
+    throw new Error("A tarefa exige payload.folhaId.");
+  }
+  if (!Number.isSafeInteger(payload.revisao) || Number(payload.revisao) <= 0) {
+    throw new Error("A tarefa exige payload.revisao como inteiro positivo.");
+  }
+  const resultado = await processarFolha(
+    payload.folhaId,
+    `WORKER:${tarefa.bloqueadaPor ?? "FOLHA"}`,
+    tarefa.empresaId,
+    Number(payload.revisao),
+  );
+  return resultado;
+};
+
 export const handlers: Record<string, HandlerTarefa> = {
   VALIDAR_REGRA_FISCAL: validarRegraFiscal,
+  PROCESSAR_FOLHA: processarFolhaHandler,
 };
 
 export const tiposRegistrados = Object.freeze(Object.keys(handlers));

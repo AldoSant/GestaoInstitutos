@@ -164,6 +164,7 @@ export default async function VinculosPage({
           <label><span>Término</span><input name="fim" type="date" defaultValue={editado?.fim ?? ""} /></label>
           <label><span>Retribuição</span><input name="valorRetribuicao" inputMode="decimal" required placeholder="0,00" defaultValue={editado?.valorRetribuicao ?? ""} /></label>
           <label><span>Carga horária</span><input name="cargaHoraria" inputMode="decimal" placeholder="Ex.: 200" defaultValue={editado?.cargaHoraria ?? ""} /></label>
+          <label className="checkbox-field"><input name="exigeMedicaoMensal" type="checkbox" defaultChecked={editado?.exigeMedicaoMensal ?? false} /><span>Exige medição mensal</span></label>
           <label className="checkbox-field"><input name="descontaInss" type="checkbox" defaultChecked={editado?.descontaInss ?? true} /><span>Desconta INSS</span></label>
           <label className="checkbox-field"><input name="descontaIrrf" type="checkbox" defaultChecked={editado?.descontaIrrf ?? true} /><span>Desconta IRRF</span></label>
           <button className="button primary" type="submit" disabled={!podeCadastrar}>{editado ? "Salvar vínculo" : "Cadastrar vínculo"}</button>
@@ -180,7 +181,7 @@ export default async function VinculosPage({
                   <td><strong>Termo {item.termoNumero}</strong><small>{item.metaCodigo} · {item.metaDescricao}</small></td>
                   <td>{item.atividadeDescricao ?? "Atividade não localizada"}<small>{item.lotacaoDescricao ?? "Lotação não localizada"}</small></td>
                   <td>{data(item.inicio)}<small>até {data(item.fim)}</small></td>
-                  <td><strong>{moeda(item.valorRetribuicao)}</strong><small>{item.cargaHoraria ? `${item.cargaHoraria} h` : "carga não informada"}</small></td>
+                  <td><strong>{moeda(item.valorRetribuicao)}</strong><small>{item.exigeMedicaoMensal ? "medição mensal obrigatória" : item.cargaHoraria ? `${item.cargaHoraria} h` : "carga não informada"}</small></td>
                   <td><StatusBadge tone={item.descontaInss ? "info" : "neutral"}>{item.descontaInss ? "INSS" : "Sem INSS"}</StatusBadge><small>{item.descontaIrrf ? "Com IRRF" : "Sem IRRF"}</small></td>
                   <td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativo" : "Inativo"}</StatusBadge></td>
                   <td><div className="row-actions"><Link className="row-text-action" href={`/vinculos?editar=${item.id}`}><Pencil size={13} /> Editar</Link><AcaoSituacao id={item.id} ativo={item.ativo} /></div></td>
@@ -190,7 +191,7 @@ export default async function VinculosPage({
             </tbody>
           </table>
         </div>
-        <div className="summary-strip"><span><BadgeDollarSign size={13} /> Retribuição é a base contratual; lançamentos da folha serão versionados à parte.</span><span>Até 300 resultados por consulta.</span></div>
+        <div className="summary-strip"><span><BadgeDollarSign size={13} /> Retribuição é a base contratual congelada em cada revisão da Folha.</span><span>Até 300 resultados por consulta.</span></div>
       </section>
     </AppShell>
   );

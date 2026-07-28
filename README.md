@@ -16,7 +16,7 @@ Este primeiro incremento contém:
 - parâmetros fiscais de 2026 conferidos em fontes oficiais e documentados;
 - memória individual anonimizada;
 - bloqueio da divergência previdenciária identificada no legado;
-- modelo PostgreSQL inicial com 24 tabelas, incluindo trilha de importação;
+- modelo PostgreSQL com 33 tabelas, integridade relacional e trilha de importação;
 - coletores e importadores idempotentes de Pessoas completas, Atividades, Lotações,
   Termos, Metas e Vínculos do GIW;
 - migração da ficha civil/profissional, contatos, endereço, conta bancária e dependentes
@@ -24,19 +24,29 @@ Este primeiro incremento contém:
 - cadastro persistente de Pessoas, Atividades e Lotações, com busca, edição e
   inativação sem exclusão física;
 - cadastro persistente de Prestadores ligado obrigatoriamente a Pessoas;
+- contribuições em outras fontes por competência, com comprovante verificável e
+  abatimento controlado do teto previdenciário;
+- apuração persistente e rastreável das retenções previdenciárias dos segurados a
+  partir de Folhas fechadas, com emissão bloqueada até a conciliação completa;
+- enquadramento versionado da cota patronal e da alíquota do segurado, sem presumir
+  imunidade pelo nome ou pela natureza sem fins lucrativos;
+- conciliação documental de totalizador, recibo e DARF da DCTFWeb;
 - cadastro persistente de Termos e Metas, com vigência, valores e proteção de
   dependências ativas;
 - cadastro persistente de Vínculos, com contrato, vigência, retribuição, carga horária
   e incidências de INSS/IRRF;
+- medições mensais por percentual, quantidade × valor unitário ou valor explícito,
+  com evidência, conferência e bloqueio quando obrigatórias;
 - cadastro persistente de Eventos/Rubricas e lançamentos recorrentes por Vínculo e
   competência, com validação de natureza, incidências, vigência e sobreposição;
-- primeira migração Drizzle;
+- migrações Drizzle versionadas até `0021_monthly-measurements`;
 - Dockerfile e Compose para implantação própria;
 - testes automatizados e pipeline de integração contínua.
 
-Os módulos `/cadastros`, `/prestadores`, `/instrumentos`, `/vinculos` e `/eventos` já gravam no
-PostgreSQL. As demais telas de escrita e o login ainda são demonstrativos. Nenhuma obrigação é
-transmitida. Consulte o [andamento ponderado do MVP](docs/ANDAMENTO.md).
+Os módulos `/cadastros`, `/prestadores`, `/instrumentos`, `/vinculos`, `/medicoes`,
+`/eventos`, `/folhas`, `/obrigacoes` e `/parametros` usam PostgreSQL. O login ainda é
+demonstrativo e nenhuma obrigação é transmitida. Consulte o
+[andamento ponderado do MVP](docs/ANDAMENTO.md).
 
 ## Começando
 
@@ -88,6 +98,8 @@ Antes de usar em servidor, defina valores fortes para `POSTGRES_PASSWORD` e `AUT
 - [Engenharia reversa e critérios de evidência](docs/ENGENHARIA_REVERSA.md)
 - [Importação automatizada do GIW](docs/IMPORTACAO_GIW.md)
 - [Regras fiscais confirmadas para 2026](docs/REGRAS_FISCAIS_2026.md)
+- [Biblioteca contábil e fiscal](docs/BIBLIOTECA_CONTABIL_FISCAL.md)
+- [Medições e homologação do RH](docs/MEDICOES_E_HOMOLOGACAO.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Andamento do MVP](docs/ANDAMENTO.md)
 - [Implantação em VPS](docs/DEPLOY_VPS.md)

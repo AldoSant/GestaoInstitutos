@@ -7,6 +7,8 @@
 | [Engenharia reversa](ENGENHARIA_REVERSA.md) | Evidências, confiança e como transformar observação em regra. |
 | [Importação do GIW](IMPORTACAO_GIW.md) | Coleta, dry-run, aplicação, conciliação e expansão por etapas. |
 | [Regras fiscais de 2026](REGRAS_FISCAIS_2026.md) | Fontes oficiais, vigência, parâmetros implementados e limites atuais. |
+| [Biblioteca contábil e fiscal](BIBLIOTECA_CONTABIL_FISCAL.md) | Matriz de enquadramentos, normas contábeis, obrigações e controle de mudança. |
+| [Medições e homologação](MEDICOES_E_HOMOLOGACAO.md) | Produtividade, proporcionalização, evidências e roteiro de conferência do RH. |
 | [Roadmap](ROADMAP.md) | Incrementos, critérios de aceite e ordem recomendada. |
 | [Andamento do MVP](ANDAMENTO.md) | Percentual ponderado, entregas utilizáveis e caminho crítico restante. |
 | [Deploy em VPS](DEPLOY_VPS.md) | Preparação, segredos, proxy, banco, backup e atualização. |

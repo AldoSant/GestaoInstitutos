@@ -71,6 +71,12 @@ jobs:
       - name: Bootstrap fiscal rules
         run: npm run db:bootstrap:regras
 
+      - name: Bootstrap synthetic social security profile
+        run: >-
+          npm run db:bootstrap:enquadramento --
+          --regime EMPRESA_GERAL
+          --evidencia "Regime geral sintético exclusivo da integração contínua"
+
       - name: Worker queue smoke test
         shell: bash
         run: |
@@ -96,6 +102,9 @@ jobs:
           for snapshot in tests/fixtures/giw/*.json; do
             npm run giw:importar -- --arquivo "$snapshot" --aplicar
           done
+
+      - name: Payroll processing and closing
+        run: npm run db:smoke:folha
 
       - name: Lint
         run: npm run lint
@@ -123,6 +132,7 @@ jobs:
               curl --fail --silent http://localhost:3000/instrumentos > /dev/null
               curl --fail --silent http://localhost:3000/vinculos > /dev/null
               curl --fail --silent http://localhost:3000/eventos > /dev/null
+              curl --fail --silent http://localhost:3000/obrigacoes > /dev/null
               exit 0
             fi
             sleep 1

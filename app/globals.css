@@ -311,3 +311,23 @@ td small { margin-top: 3px; color: #89979b; font-size: 9px; }
   .alert-box { grid-template-columns: auto 1fr; }
   .alert-box .status-badge { grid-column: 1 / -1; }
 }
+
+.memory-detail {
+  min-width: 280px;
+  max-width: 420px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.memory-detail p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.memory-detail p:last-child { border-bottom: 0; }
+.memory-detail small { color: var(--muted); }

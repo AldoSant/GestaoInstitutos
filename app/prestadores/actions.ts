@@ -1,12 +1,13 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { pessoas, prestadores } from "@/db/schema";
 import { idCadastroValido } from "@/lib/cadastros";
+import { validarOutraFonte } from "@/lib/outras-fontes";
 import { validarPrestadorCadastro } from "@/lib/prestadores";
 
 function destino(mensagem: string, erro = false) {
@@ -16,6 +17,12 @@ function destino(mensagem: string, erro = false) {
 
 function mensagemBanco(error: unknown) {
   if (typeof error === "object" && error !== null && "code" in error) {
+    if (
+      "constraint" in error &&
+      error.constraint === "uq_outra_fonte_comprovante"
+    ) {
+      return "Este comprovante já foi registrado para a mesma competência e fonte.";
+    }
     if (error.code === "23505") {
       return "A pessoa ou a matrícula já está associada a outro prestador.";
     }
@@ -104,4 +111,92 @@ export async function alternarPrestador(formData: FormData) {
   if (erro) redirect(destino(erro, true));
   revalidatePath("/prestadores");
   redirect(destino(ativo ? "Prestador ativado." : "Prestador inativado."));
+}
+
+function destinoFonte(prestadorId: string, mensagem: string, erro = false) {
+  const params = new URLSearchParams({
+    fontes: prestadorId,
+    [erro ? "erro" : "sucesso"]: mensagem,
+  });
+  return `/prestadores?${params.toString()}`;
+}
+
+export async function salvarOutraFonte(formData: FormData) {
+  const validacao = validarOutraFonte({
+    prestadorId: formData.get("prestadorId"),
+    competencia: formData.get("competencia"),
+    fontePagadora: formData.get("fontePagadora"),
+    documentoFonte: formData.get("documentoFonte"),
+    remuneracao: formData.get("remuneracao"),
+    baseContribuicao: formData.get("baseContribuicao"),
+    valorContribuicao: formData.get("valorContribuicao"),
+    documentoReferencia: formData.get("documentoReferencia"),
+    comprovanteVerificado: formData.get("comprovanteVerificado"),
+    observacao: formData.get("observacao"),
+  });
+  const prestadorId = String(formData.get("prestadorId") ?? "");
+  if (!validacao.dados) {
+    redirect(destinoFonte(prestadorId, validacao.erros.join(" "), true));
+  }
+
+  let erro: string | null = null;
+  try {
+    const db = getDb();
+    const empresa = await resolverEmpresaAtiva();
+    const dados = validacao.dados;
+    const pertence = await db
+      .select({ id: prestadores.id })
+      .from(prestadores)
+      .where(
+        and(
+          eq(prestadores.id, dados.prestadorId),
+          eq(prestadores.empresaId, empresa.id),
+        ),
+      )
+      .limit(1);
+    if (pertence.length !== 1) throw new Error("Prestador não encontrado.");
+    await db.execute(sql`
+      insert into contribuicao_outra_fonte
+        (empresa_id, prestador_id, competencia, fonte_pagadora,
+         documento_fonte, remuneracao, base_contribuicao,
+         valor_contribuicao, documento_referencia,
+         comprovante_verificado, observacao)
+      values
+        (${empresa.id}, ${dados.prestadorId}, ${`${dados.competencia}-01`}::date,
+         ${dados.fontePagadora}, ${dados.documentoFonte}, ${dados.remuneracao},
+         ${dados.baseContribuicao}, ${dados.valorContribuicao},
+         ${dados.documentoReferencia}, ${dados.comprovanteVerificado},
+         ${dados.observacao})
+    `);
+  } catch (error) {
+    erro = mensagemBanco(error);
+  }
+  if (erro) redirect(destinoFonte(prestadorId, erro, true));
+  revalidatePath("/prestadores");
+  redirect(destinoFonte(prestadorId, "Contribuição de outra fonte registrada."));
+}
+
+export async function excluirOutraFonte(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const prestadorId = String(formData.get("prestadorId") ?? "");
+  if (!idCadastroValido(id) || !idCadastroValido(prestadorId)) {
+    redirect(destinoFonte(prestadorId, "Identificador inválido.", true));
+  }
+  let erro: string | null = null;
+  try {
+    const db = getDb();
+    const empresa = await resolverEmpresaAtiva();
+    const removido = await db.execute(sql`
+      delete from contribuicao_outra_fonte
+       where id = ${id} and prestador_id = ${prestadorId}
+         and empresa_id = ${empresa.id}
+       returning id
+    `);
+    if (removido.rowCount !== 1) throw new Error("Contribuição não encontrada.");
+  } catch (error) {
+    erro = mensagemBanco(error);
+  }
+  if (erro) redirect(destinoFonte(prestadorId, erro, true));
+  revalidatePath("/prestadores");
+  redirect(destinoFonte(prestadorId, "Contribuição removida."));
 }

@@ -3,18 +3,27 @@ import Link from "next/link";
 import {
   BadgeCheck,
   Database,
+  FileCheck2,
   Link2Off,
   Pencil,
   Power,
   Search,
   ShieldOff,
+  Trash2,
   UsersRound,
+  WalletCards,
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/ui";
+import { carregarOutrasFontes } from "@/db/outras-fontes";
 import { carregarPrestadores } from "@/db/prestadores";
-import { alternarPrestador, salvarPrestador } from "./actions";
+import {
+  alternarPrestador,
+  excluirOutraFonte,
+  salvarOutraFonte,
+  salvarPrestador,
+} from "./actions";
 
 export const metadata: Metadata = { title: "Prestadores" };
 export const dynamic = "force-dynamic";
@@ -22,6 +31,7 @@ export const dynamic = "force-dynamic";
 type SearchParams = Promise<{
   busca?: string | string[];
   editar?: string | string[];
+  fontes?: string | string[];
   erro?: string | string[];
   sucesso?: string | string[];
 }>;
@@ -69,6 +79,7 @@ export default async function PrestadoresPage({
   const params = await searchParams;
   const busca = primeiro(params.busca).trim();
   const editarId = primeiro(params.editar);
+  const fontesId = primeiro(params.fontes);
   const erro = primeiro(params.erro);
   const sucesso = primeiro(params.sucesso);
 
@@ -98,6 +109,14 @@ export default async function PrestadoresPage({
   }
 
   const prestadorEditado = dados.prestadores.find((item) => item.id === editarId);
+  let outrasFontes: Awaited<ReturnType<typeof carregarOutrasFontes>> | null = null;
+  if (fontesId) {
+    try {
+      outrasFontes = await carregarOutrasFontes(dados.empresa.id, fontesId);
+    } catch {
+      outrasFontes = null;
+    }
+  }
   const pessoasDisponiveis = dados.pessoas.filter(
     (item) =>
       (!item.prestadorId || item.prestadorId === prestadorEditado?.id) &&
@@ -166,7 +185,7 @@ export default async function PrestadoresPage({
           <label className="field-wide"><span>Pessoa</span><select name="pessoaId" required defaultValue={prestadorEditado?.pessoaId ?? ""}><option value="" disabled>Selecione uma pessoa</option>{pessoasDisponiveis.map((item) => <option key={item.id} value={item.id}>{item.nome} · {item.tipo === "FISICA" ? "PF" : "PJ"}{item.ativo ? "" : " · inativa"}</option>)}</select></label>
           <label><span>Matrícula</span><input name="matricula" required maxLength={40} defaultValue={prestadorEditado?.matricula ?? ""} /></label>
           <label><span>NIT / PIS / PASEP</span><input name="nitPisPasep" inputMode="numeric" maxLength={20} defaultValue={prestadorEditado?.nitPisPasep ?? ""} /></label>
-          <label><span>Categoria</span><input name="categoriaContribuinte" maxLength={30} placeholder="Ex.: 701" defaultValue={prestadorEditado?.categoriaContribuinte ?? ""} /></label>
+          <label><span>Categoria eSocial (obrigatória na Folha)</span><input name="categoriaContribuinte" maxLength={30} placeholder="Ex.: 701" defaultValue={prestadorEditado?.categoriaContribuinte ?? ""} /></label>
           <label className="checkbox-field"><input name="isentoInss" type="checkbox" defaultChecked={prestadorEditado?.isentoInss ?? false} /><span>Isento de retenção de INSS</span></label>
           <button className="button primary" type="submit" disabled={pessoasDisponiveis.length === 0}>{prestadorEditado ? "Salvar prestador" : "Cadastrar prestador"}</button>
           {prestadorEditado && <Link className="button secondary" href="/prestadores">Cancelar</Link>}
@@ -185,7 +204,7 @@ export default async function PrestadoresPage({
                   <td>{item.atividadeAtual ?? "Sem vínculo ativo"}<small>{item.totalVinculos} vínculo(s) no histórico</small></td>
                   <td>{moeda(item.retribuicaoAtual)}</td>
                   <td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativo" : "Inativo"}</StatusBadge></td>
-                  <td><div className="row-actions"><Link className="row-text-action" href={`/prestadores?editar=${item.id}`}><Pencil size={13} /> Editar</Link><AcaoSituacao id={item.id} ativo={item.ativo} /></div></td>
+                  <td><div className="row-actions"><Link className="row-text-action" href={`/prestadores?fontes=${item.id}`}><WalletCards size={13} /> Outras fontes</Link><Link className="row-text-action" href={`/prestadores?editar=${item.id}`}><Pencil size={13} /> Editar</Link><AcaoSituacao id={item.id} ativo={item.ativo} /></div></td>
                 </tr>
               ))}
               {dados.prestadores.length === 0 && <tr><td colSpan={8} className="empty-cell">Nenhum prestador encontrado.</td></tr>}
@@ -194,6 +213,62 @@ export default async function PrestadoresPage({
         </div>
         <div className="summary-strip"><span><BadgeCheck size={13} /> Pessoas já associadas não aparecem novamente na seleção.</span><span>Até 200 resultados por consulta.</span></div>
       </section>
+
+      {outrasFontes && (
+        <section className="panel cadastro-section">
+          <div className="panel-header">
+            <div>
+              <span className="section-kicker">Teto previdenciário mensal</span>
+              <h2>Outras fontes de {outrasFontes.prestador.nome}</h2>
+              <p>
+                Somente comprovantes verificados reduzem a base residual de INSS
+                durante o processamento da Folha.
+              </p>
+            </div>
+            <Link className="button secondary" href="/prestadores">Fechar</Link>
+          </div>
+          <form action={salvarOutraFonte} className="crud-form">
+            <input type="hidden" name="prestadorId" value={outrasFontes.prestador.id} />
+            <label><span>Competência</span><input name="competencia" type="month" required /></label>
+            <label className="field-wide"><span>Fonte pagadora</span><input name="fontePagadora" required maxLength={180} /></label>
+            <label><span>CPF/CNPJ da fonte</span><input name="documentoFonte" inputMode="numeric" required maxLength={18} /></label>
+            <label><span>Remuneração</span><input name="remuneracao" inputMode="decimal" required placeholder="0,00" /></label>
+            <label><span>Base de contribuição</span><input name="baseContribuicao" inputMode="decimal" required placeholder="0,00" /></label>
+            <label><span>Contribuição retida</span><input name="valorContribuicao" inputMode="decimal" required placeholder="0,00" /></label>
+            <label className="field-wide"><span>Referência do comprovante</span><input name="documentoReferencia" required maxLength={160} placeholder="Recibo, demonstrativo ou protocolo" /></label>
+            <label className="field-wide"><span>Observação</span><textarea name="observacao" maxLength={2000} rows={3} /></label>
+            <label className="checkbox-field"><input name="comprovanteVerificado" type="checkbox" /><span>Comprovante conferido</span></label>
+            <button className="button primary" type="submit"><FileCheck2 size={16} /> Registrar contribuição</button>
+          </form>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Competência</th><th>Fonte</th><th>Remuneração</th><th>Base</th><th>Retido</th><th>Comprovante</th><th>Ação</th></tr></thead>
+              <tbody>
+                {outrasFontes.fontes.map((item) => (
+                  <tr key={item.id}>
+                    <td>{item.competencia.slice(0, 7).split("-").reverse().join("/")}</td>
+                    <td><strong>{item.fonte_pagadora}</strong><small>{documento(item.documento_fonte.length === 11 ? item.documento_fonte : null, item.documento_fonte.length === 14 ? item.documento_fonte : null)}</small></td>
+                    <td>{moeda(item.remuneracao)}</td>
+                    <td>{moeda(item.base_contribuicao)}</td>
+                    <td>{moeda(item.valor_contribuicao)}</td>
+                    <td><StatusBadge tone={item.comprovante_verificado ? "success" : "warning"}>{item.comprovante_verificado ? "Verificado" : "Pendente"}</StatusBadge><small>{item.documento_referencia}</small></td>
+                    <td>
+                      <form action={excluirOutraFonte}>
+                        <input type="hidden" name="id" value={item.id} />
+                        <input type="hidden" name="prestadorId" value={outrasFontes.prestador.id} />
+                        <button className="row-text-action danger" type="submit"><Trash2 size={13} /> Remover</button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+                {outrasFontes.fontes.length === 0 && (
+                  <tr><td colSpan={7} className="empty-cell">Nenhuma contribuição de outra fonte registrada.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </AppShell>
   );
 }

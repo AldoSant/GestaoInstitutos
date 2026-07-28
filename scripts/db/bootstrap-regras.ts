@@ -7,7 +7,7 @@ import {
 } from "../../lib/regras-fiscais";
 
 const fonteNormativa =
-  "Lei 15.270/2025; IN RFB 2.110/2022; tabelas oficiais da Receita Federal e do INSS para 2026.";
+  "Lei 15.270/2025; IN RFB 2.110/2022; Portaria Interministerial MPS/MF 13/2026; eSocial S-1.3 (NT 06/2026). Fontes oficiais consultadas em 27/07/2026.";
 const hashConteudo = hashJson(REGRA_FISCAL_2026);
 const pool = getPool();
 

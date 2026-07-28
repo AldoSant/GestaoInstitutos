@@ -46,6 +46,7 @@ export async function carregarVinculos(busca = "") {
           fim: vinculos.fim,
           valorRetribuicao: vinculos.valorRetribuicao,
           cargaHoraria: vinculos.cargaHoraria,
+          exigeMedicaoMensal: vinculos.exigeMedicaoMensal,
           descontaInss: vinculos.descontaInss,
           descontaIrrf: vinculos.descontaIrrf,
           ativo: vinculos.ativo,
@@ -132,12 +133,14 @@ export async function carregarVinculos(busca = "") {
         total: number;
         ativos: number;
         sem_inss: number;
+        com_medicao: number;
         encerrando: number;
       }>(sql`
         select
           count(*)::int total,
           (count(*) filter (where ativo))::int ativos,
           (count(*) filter (where ativo and not desconta_inss))::int sem_inss,
+          (count(*) filter (where ativo and exige_medicao_mensal))::int com_medicao,
           (count(*) filter (
             where ativo and fim is not null and fim between current_date and current_date + 30
           ))::int encerrando

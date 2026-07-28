@@ -42,10 +42,10 @@ O coletor de Pessoas abre cada ficha do GIW e transporta identificação civil e
 profissional, contatos, endereço, conta bancária e dependentes. Snapshots resumidos
 anteriores continuam aceitos sem apagar detalhes já migrados.
 
-Eventos/Rubricas e lançamentos recorrentes por Vínculo já possuem persistência, busca,
-edição e inativação, com validações no servidor e no banco. O próximo recorte é reconciliar
-a coleta contratual real e implementar produtividade, composição de Eventos e parâmetros
-fiscais por vigência sobre toda a cadeia cadastral já persistente.
+Eventos/Rubricas, lançamentos recorrentes e medições mensais por Vínculo já possuem
+persistência e validações no servidor e no banco. O próximo recorte é reconciliar a
+coleta contratual real e homologar composição de Eventos e fórmulas de produtividade
+sobre a cadeia já persistente.
 
 Critério de aceite: cadastros sobrevivem a reinicializações, dados do GIW são conciliados
 sem duplicação e toda linha importada tem origem rastreável.
@@ -60,12 +60,21 @@ sem duplicação e toda linha importada tem origem rastreável.
 - memória de cálculo e snapshots;
 - fechamento e reabertura auditados.
 
-Progresso de infraestrutura: fila persistente e idempotente, reserva concorrente de
-tarefas, auditoria automática e proteção de Folha fechada já estão implementadas no
-PostgreSQL. A regra fiscal de 2026 agora é persistida com vigência, fonte, hash e conteúdo
-completo; o motor recebe a versão selecionada e a tela de Parâmetros consulta o banco.
-Ainda faltam o handler do worker e o caso de uso transacional que materializa Pessoa,
-Vínculos, Lançamentos e Memórias de uma competência.
+Progresso: o caso de uso transacional cria e processa a Folha por Termo, Meta e
+competência. O worker materializa Vínculos, retribuição, Eventos recorrentes, retenções,
+snapshots e memória individual, usando a regra fiscal publicada e conferida por hash.
+Cada revisão possui hash reproduzível; o fechamento reconfere esse conteúdo e o banco
+torna Folha, itens e linhas imutáveis. Reabertura exige motivo e deixa trilha. As páginas
+de Folhas já consultam o PostgreSQL, exportam a memória em JSON e geram um CSV
+determinístico de conferência para o RH, com hashes da Folha e da regra fiscal. A
+decisão do RH é registrada de forma imutável, inclui checklist e vale apenas para o
+hash analisado; sem aprovação vigente, o fechamento é bloqueado.
+
+Outras fontes pagadoras e medições mensais possuem cadastro por competência, evidência
+de conferência e snapshot. A criação da Folha executa pré-validação cadastral, fiscal e
+de medições antes de enfileirar. Percentual, quantidade × valor unitário e valor
+explícito são suportados sem pressupor fórmulas contratuais. Ainda falta homologação
+centavo a centavo com as três competências reais antes de liberar o uso financeiro.
 
 Critério de aceite: as três competências anonimizadas fecham centavo a centavo ou possuem diferença formalmente explicada.
 
@@ -76,6 +85,14 @@ Critério de aceite: as três competências anonimizadas fecham centavo a centav
 - exportação para eSocial/EFD-Reinf, quando aplicável;
 - recibos DCTFWeb e DARF;
 - GPS somente em hipótese validada.
+
+Progresso: `SEGURADO` e `PATRONAL` são recompostos de forma idempotente a partir de
+itens de Folhas fechadas, preservando Folha, revisão, hash, base, alíquota, valor,
+prestador, outras fontes e enquadramento. Regime geral e imunidade beneficente não
+compartilham alíquotas: a segunda exige CEBAS válido e evidência. Totalizador, recibo
+e DARF da DCTFWeb podem ser registrados com hash; a máquina de estados só considera
+emitida a obrigação com totalizador idêntico, recibo verificado e DARF do mesmo valor.
+Ainda faltam integração/exportação oficial e homologação com documentos reais.
 
 Critério de aceite: nenhuma obrigação é emitida com item sem origem ou com diferença não aprovada.
 
@@ -97,7 +114,6 @@ Critério de aceite: nenhuma obrigação é emitida com item sem origem ou com d
 
 ## Expansões posteriores
 
-- produtividade;
 - empenho e execução orçamentária;
 - pagamentos e arquivos bancários;
 - prestação de contas;

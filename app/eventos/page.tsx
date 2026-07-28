@@ -127,7 +127,7 @@ export default async function EventosPage({
       organization={dados.empresa.nomeFantasia ?? dados.empresa.razaoSocial}
       notice={{
         label: "Operacional",
-        text: "Eventos e lançamentos recorrentes são persistidos; o processamento mensal ainda será implementado.",
+        text: "Eventos e lançamentos recorrentes ativos são congelados na memória de cada revisão da Folha.",
       }}
     >
       {(erro || sucesso) && (

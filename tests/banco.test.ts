@@ -34,7 +34,7 @@ test(
           where table_schema = 'public'
             and table_type = 'BASE TABLE'`,
       );
-      assert.equal(Number(tabelas.rows[0].total), 26);
+      assert.equal(Number(tabelas.rows[0].total), 33);
 
       const restricoes = await client.query<{ conname: string }>(
         `select conname
@@ -68,10 +68,51 @@ test(
             'fk_folha_empresa_termo',
             'uq_regra_empresa_codigo_versao',
             'ck_regra_hash',
-            'ex_regra_publicada_sem_sobreposicao'
+            'ex_regra_publicada_sem_sobreposicao',
+            'ck_folha_revisao',
+            'fk_folha_item_empresa_folha',
+            'fk_folha_item_empresa_vinculo',
+            'fk_folha_item_evento_empresa_item',
+            'ck_folha_item_evento_natureza',
+            'ck_folha_item_evento_origem',
+            'ck_folha_item_evento_tipo_calculo',
+            'ck_folha_item_evento_valores',
+            'fk_outra_fonte_empresa_prestador',
+            'ck_outra_fonte_competencia_mes',
+            'ck_outra_fonte_documento',
+            'ck_outra_fonte_valores',
+            'fk_obrigacao_item_empresa_obrigacao',
+            'fk_obrigacao_item_empresa_folha_item',
+            'ck_obrigacao_item_natureza',
+            'ck_obrigacao_item_origem',
+            'ck_obrigacao_item_valores',
+            'ck_enquadramento_regime',
+            'ck_enquadramento_vigencia',
+            'ck_enquadramento_aliquotas',
+            'ck_enquadramento_cenario',
+            'ex_enquadramento_publicado_sem_sobreposicao',
+            'fk_folha_empresa_enquadramento',
+            'ck_obrigacao_valor_declarado',
+            'fk_obrigacao_documento_empresa_obrigacao',
+            'ck_obrigacao_documento_tipo',
+            'ck_obrigacao_documento_valor',
+            'ck_obrigacao_documento_hash',
+            'fk_folha_conferencia_empresa_folha',
+            'ck_folha_conferencia_revisao',
+            'ck_folha_conferencia_resultado',
+            'ck_folha_conferencia_hash',
+            'ck_folha_conferencia_aprovacao',
+            'ck_folha_conferencia_rejeicao',
+            'fk_medicao_empresa_vinculo',
+            'ck_medicao_competencia_mes',
+            'ck_medicao_tipo',
+            'ck_medicao_valores_nao_negativos',
+            'ck_medicao_campos_tipo',
+            'ck_medicao_evidencia',
+            'fk_folha_item_empresa_medicao'
           )`,
       );
-      assert.equal(restricoes.rowCount, 29);
+      assert.equal(restricoes.rowCount, 70);
 
       const gatilhos = await client.query<{ tgname: string }>(
         `select tgname
@@ -83,10 +124,24 @@ test(
               'tr_auditar_evento_recorrente',
               'tr_auditar_folha',
               'tr_auditar_obrigacao',
-              'tr_proteger_folha_fechada'
+              'tr_proteger_folha_fechada',
+              'tr_proteger_folha_item_fechado',
+              'tr_proteger_folha_evento_fechado',
+              'tr_proteger_regra_calculo_utilizada',
+              'tr_auditar_folha_item',
+              'tr_auditar_folha_item_evento',
+              'tr_auditar_contribuicao_outra_fonte',
+              'tr_auditar_obrigacao_item',
+              'tr_proteger_enquadramento_utilizado',
+              'tr_auditar_enquadramento_previdenciario',
+              'tr_auditar_obrigacao_documento',
+              'tr_proteger_conferencia_folha',
+              'tr_auditar_conferencia_folha',
+              'tr_proteger_medicao_fechada',
+              'tr_auditar_medicao_mensal'
             )`,
       );
-      assert.equal(gatilhos.rowCount, 6);
+      assert.equal(gatilhos.rowCount, 20);
 
       await client.query("begin");
       const empresaId = randomUUID();
@@ -394,6 +449,23 @@ test(
           error instanceof Error && "code" in error && error.code === "55000",
       );
       await client.query("rollback to savepoint folha_fechada_imutavel");
+
+      await client.query("savepoint item_folha_fechada");
+      await assert.rejects(
+        client.query(
+          `insert into folha_item
+             (empresa_id, folha_id, vinculo_id, total_proventos,
+              total_descontos, base_inss, valor_inss, base_irrf,
+              irrf_bruto, irrf_reducao, valor_irrf, total_liquido,
+              snapshots, memoria)
+           values ($1, $2, $3, 1000, 0, 1000, 0, 1000, 0, 0, 0, 1000,
+                   '{}'::jsonb, '{}'::jsonb)`,
+          [empresaId, folhaId, vinculoId],
+        ),
+        (error: unknown) =>
+          error instanceof Error && "code" in error && error.code === "55000",
+      );
+      await client.query("rollback to savepoint item_folha_fechada");
 
       await client.query(
         `select set_config('app.permitir_reabertura', 'true', true),

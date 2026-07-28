@@ -30,6 +30,23 @@ Pessoa física/jurídica, prestador, termo, meta e vínculo. Dados contratuais u
 
 Regras por vigência, eventos, consolidação mensal por pessoa, folha, item, memória e histórico de estados. Uma folha fechada não deve ser editada silenciosamente.
 
+### Medições mensais
+
+O Vínculo define se a medição é obrigatória. Cada competência pode registrar percentual,
+quantidade × valor unitário ou valor apurado, sempre com responsável e evidência. A
+Folha referencia a medição e congela seus parâmetros no snapshot. Alteração posterior
+invalida o fechamento até novo processamento; Folha fechada protege a medição utilizada.
+
+### Apuração previdenciária
+
+A obrigação consome exclusivamente Folhas fechadas. Cada item identifica natureza,
+origem, base, alíquota, valor, item de Folha e snapshot. A primeira etapa materializa
+`SEGURADO` e `PATRONAL` conforme o enquadramento previdenciário congelado na Folha.
+A obrigação nasce bloqueada. Um totalizador DCTFWeb verificado e idêntico muda o
+estado para apurada; somente recibo verificado e DARF do mesmo valor permitem o estado
+emitida. Repetir a apuração recompõe a mesma chave empresa–competência–tipo sem
+duplicação e invalida a conciliação anterior.
+
 ### Obrigações
 
 Débitos discriminados por tipo e origem. O domínio usa “obrigação fiscal”, permitindo DCTFWeb/DARF e GPS apenas quando juridicamente aplicável.
@@ -68,9 +85,9 @@ Toda ação financeira relevante registra usuário, instante, estado anterior, e
 - scripts de backup, checksum e restauração de teste estão versionados.
 
 O serviço worker já reserva tarefas com exclusão concorrente e possui um handler
-operacional de validação da regra fiscal por competência. Cada novo tipo de processamento,
-inclusive `PROCESSAR_FOLHA`, deverá possuir um handler de domínio testado antes de entrar
-no registro aceito pelo worker.
+operacional de validação da regra fiscal por competência e o handler `PROCESSAR_FOLHA`.
+Esse handler bloqueia a Folha, valida empresa e revisão da tarefa, carrega a regra
+congelada, calcula em centavos e substitui os itens dentro de uma única transação.
 
 ## Estrutura do repositório
 
@@ -98,8 +115,18 @@ para o mesmo prestador, termo e meta. Todas as operações são filtradas pela
 empresa ativa, alterações são validadas no servidor e a exclusão física foi substituída
 por inativação. Eventos controlam natureza, modo de cálculo e incidências; lançamentos
 recorrentes os ligam ao Vínculo por intervalo de competências e não podem se sobrepor.
-As páginas de folha e obrigações ainda usam dados demonstrativos. A página de Parâmetros
-já consulta e valida as regras fiscais publicadas no PostgreSQL.
+As páginas de Folhas já usam dados persistentes: criam o lote, acompanham o worker,
+exibem itens e linhas, solicitam revisão, fecham, reabrem com justificativa e exportam a
+memória. A página de Obrigações ainda usa dados demonstrativos. A página de Parâmetros
+consulta e valida as regras fiscais publicadas no PostgreSQL.
+
+O processamento usa a medição conferida da competência quando existente; sem medição,
+considera a retribuição contratual integral. Vínculos marcados como dependentes de
+medição bloqueiam a Folha quando ela estiver ausente. Contribuições de outras fontes são registradas por
+Prestador e competência, exigem comprovante marcado como verificado e ficam congeladas
+na memória da revisão. A pré-validação impede enfileirar Folha com categoria fiscal,
+NIT, comprovante ou medição obrigatória pendente. As fórmulas disponíveis permanecem
+explícitas e precisam ser homologadas contra os contratos e relatórios reais.
 
 Na substituição progressiva dessas páginas por repositórios PostgreSQL, os contratos de
 cálculo em `lib/calculos.ts` devem ser preservados, separando:

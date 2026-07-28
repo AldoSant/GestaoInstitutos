@@ -56,6 +56,10 @@ export function calcularInssPrestador(
   baseTributavel: number,
   baseContribuidaEmOutrasFontes = 0,
   regra: RegraFiscalParametros = REGRA_FISCAL_2026,
+  aliquota = {
+    numerador: regra.inss.aliquotaNumerador,
+    denominador: regra.inss.aliquotaDenominador,
+  },
 ): ResultadoInss {
   exigirNumeroNaoNegativo(baseTributavel, "baseTributavel");
   exigirNumeroNaoNegativo(
@@ -66,8 +70,21 @@ export function calcularInssPrestador(
   const baseOutrasFontesCentavos = paraCentavos(
     baseContribuidaEmOutrasFontes,
   );
+  if (
+    !Number.isSafeInteger(aliquota.numerador) ||
+    !Number.isSafeInteger(aliquota.denominador) ||
+    aliquota.numerador < 0 ||
+    aliquota.denominador <= 0 ||
+    aliquota.numerador > aliquota.denominador
+  ) {
+    throw new RangeError("Alíquota previdenciária inválida.");
+  }
   const tetoBaseCentavos = regra.inss.tetoBaseCentavos;
-  const tetoContribuicaoCentavos = regra.inss.tetoContribuicaoCentavos;
+  const tetoContribuicaoCentavos = aplicarProporcao(
+    tetoBaseCentavos,
+    aliquota.numerador,
+    aliquota.denominador,
+  );
   const baseResidualCentavos = Math.max(
     0,
     tetoBaseCentavos - baseOutrasFontesCentavos,
@@ -79,8 +96,8 @@ export function calcularInssPrestador(
   const valorCentavos = Math.min(
     aplicarProporcao(
       baseCentavos,
-      regra.inss.aliquotaNumerador,
-      regra.inss.aliquotaDenominador,
+      aliquota.numerador,
+      aliquota.denominador,
     ),
     tetoContribuicaoCentavos,
   );
@@ -89,8 +106,7 @@ export function calcularInssPrestador(
 
   return {
     base,
-    aliquota:
-      regra.inss.aliquotaNumerador / regra.inss.aliquotaDenominador,
+    aliquota: aliquota.numerador / aliquota.denominador,
     valor,
     tetoAtingido:
       baseResidualCentavos === 0 || baseCentavos === baseResidualCentavos,

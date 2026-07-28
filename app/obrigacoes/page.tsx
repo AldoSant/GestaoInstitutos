@@ -1,42 +1,210 @@
-import { AlertTriangle, CheckCircle2, FileWarning, ShieldAlert } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Database,
+  FileCheck2,
+  FileText,
+  ShieldAlert,
+} from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/ui";
-import { analisarConciliacaoPrevidenciaria } from "@/lib/calculos";
-import { competencias, moeda } from "@/lib/dados-demo";
+import { resolverEmpresaAtiva } from "@/db/cadastros";
+import { listarObrigacoes } from "@/db/obrigacoes";
+import { apurarObrigacao, registrarDocumento } from "./actions";
 
-export default function ObrigacoesPage() {
-  const atual = competencias[0];
-  const analise = analisarConciliacaoPrevidenciaria(atual.inss, atual.obrigacao);
+export const dynamic = "force-dynamic";
+
+type SearchParams = Promise<{
+  erro?: string | string[];
+  sucesso?: string | string[];
+}>;
+
+function primeiro(valor: string | string[] | undefined) {
+  return Array.isArray(valor) ? valor[0] ?? "" : valor ?? "";
+}
+
+function moeda(valor: string) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(Number(valor));
+}
+
+function competencia(valor: string) {
+  return valor.slice(0, 7).split("-").reverse().join("/");
+}
+
+export default async function ObrigacoesPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const params = await searchParams;
+  const erro = primeiro(params.erro);
+  const sucesso = primeiro(params.sucesso);
+  let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
+  let obrigacoes: Awaited<ReturnType<typeof listarObrigacoes>>;
+  try {
+    empresa = await resolverEmpresaAtiva();
+    obrigacoes = await listarObrigacoes(empresa.id);
+  } catch (error) {
+    return (
+      <AppShell title="Obrigações" eyebrow="PostgreSQL" organization="Não configurada">
+        <section className="alert-box danger">
+          <Database size={22} />
+          <div><strong>Apuração indisponível</strong><p>{error instanceof Error ? error.message : "Falha ao consultar o banco."}</p></div>
+        </section>
+      </AppShell>
+    );
+  }
+
   return (
-    <AppShell title="Obrigações" eyebrow="Apuração previdenciária">
-      <section className="alert-box danger">
-        <ShieldAlert size={25} />
-        <div><strong>Emissão bloqueada por divergência</strong><p>O protótipo impede a emissão enquanto as parcelas não tiverem tipo e origem comprovados.</p></div>
-        <StatusBadge tone="danger">Diferença {moeda(analise.diferenca)}</StatusBadge>
+    <AppShell
+      title="Obrigações"
+      eyebrow="Apuração previdenciária"
+      organization={empresa.nomeFantasia ?? empresa.razaoSocial}
+      notice={{
+        label: "Emissão controlada",
+        text: "Segurado e patronal são apurados da Folha fechada conforme o enquadramento; nenhuma guia é liberada sem conciliação com a DCTFWeb.",
+      }}
+    >
+      {(erro || sucesso) && (
+        <section className={`feedback-banner ${erro ? "error" : "success"}`} role="status">
+          <strong>{erro ? "Apuração não concluída" : "Apuração concluída"}</strong>
+          <span>{erro || sucesso}</span>
+        </section>
+      )}
+
+      <section className="panel cadastro-section">
+        <div className="panel-header">
+          <div>
+            <span className="section-kicker">Folhas fechadas</span>
+            <h2>Apurar retenções dos segurados</h2>
+            <p>O processo recompõe segurado e patronal com origem, enquadramento e snapshot da memória.</p>
+          </div>
+          <StatusBadge tone="warning"><ShieldAlert size={14} /> Guia ainda bloqueada</StatusBadge>
+        </div>
+        <form action={apurarObrigacao} className="crud-form">
+          <label><span>Competência</span><input name="competencia" type="month" required /></label>
+          <button className="button primary" type="submit"><FileCheck2 size={16} /> Apurar competência</button>
+        </form>
       </section>
-      <section className="obligation-grid">
-        <article className="panel">
-          <div className="panel-header"><div><span className="section-kicker">Conciliação</span><h2>Junho de 2026</h2></div><StatusBadge tone="warning"><AlertTriangle size={14} /> Requer validação</StatusBadge></div>
+
+      {obrigacoes.map((item) => (
+        <section className="panel" key={item.id}>
+          <div className="panel-header">
+            <div>
+              <span className="section-kicker">{competencia(item.competencia)} · {item.tipo}</span>
+              <h2>{moeda(item.total)}</h2>
+              <p>{item.folhas} Folha(s) · {item.itens} item(ns) rastreáveis</p>
+            </div>
+            <StatusBadge tone={item.status === "BLOQUEADA" ? "danger" : item.status === "EMITIDA" ? "success" : "info"}>
+              {item.status === "BLOQUEADA" ? <AlertTriangle size={14} /> : <FileCheck2 size={14} />}
+              {item.status}
+            </StatusBadge>
+          </div>
           <dl className="large-reconciliation">
-            <div><dt>INSS dos segurados na folha</dt><dd>{moeda(atual.inss)}</dd><small>26 registros tributados</small></div>
-            <div><dt>Total recuperado do legado</dt><dd>{moeda(atual.obrigacao)}</dd><small>52 linhas sem tipo explícito</small></div>
-            <div className="danger"><dt>Diferença não explicada</dt><dd>{moeda(analise.diferenca)}</dd><small>Razão encontrada: {analise.razao}×</small></div>
+            <div><dt>Retenção dos segurados</dt><dd>{moeda(item.segurado)}</dd><small>Alíquota conforme o regime congelado</small></div>
+            <div><dt>Contribuição patronal</dt><dd>{moeda(item.patronal)}</dd><small>20% no regime geral ou zero na imunidade validada</small></div>
+            <div className={item.status === "EMITIDA" ? "" : "danger"}>
+              <dt>Conciliação DCTFWeb</dt>
+              <dd>
+                {item.status === "EMITIDA"
+                  ? "DARF registrado"
+                  : item.diferenca === "0.00"
+                    ? "Totalizador conciliado"
+                    : item.diferenca
+                      ? `Diferença ${moeda(item.diferenca)}`
+                      : "Pendente"}
+              </dd>
+              <small>{item.bloqueio_motivo ?? "Documento verificado e conciliado."}</small>
+            </div>
           </dl>
-        </article>
-        <article className="panel evidence-card">
-          <span className="section-kicker">Evidências pendentes</span><h3>O que destrava a apuração</h3>
-          <ul className="check-list">
-            <li><FileWarning /><span><strong>DARF/GPS efetivamente emitida</strong><small>Documento e código de receita</small></span></li>
-            <li><FileWarning /><span><strong>Totalizador da DCTFWeb</strong><small>Débitos por origem e recibo</small></span></li>
-            <li><FileWarning /><span><strong>Lançamento contábil</strong><small>Retenção e parcela patronal</small></span></li>
-            <li className="done"><CheckCircle2 /><span><strong>Folha e memória individual</strong><small>Já coletadas e reconciliadas</small></span></li>
-          </ul>
-        </article>
-      </section>
-      <section className="panel">
-        <div className="panel-header"><div><span className="section-kicker">Modelo aprimorado</span><h2>Parcelas exigidas</h2><p>Cada débito deverá ter natureza, base, alíquota e fonte.</p></div></div>
-        <div className="type-grid"><div><strong>Segurado</strong><span>Retenção de 11% do contribuinte individual</span></div><div><strong>Patronal</strong><span>Parcela da contratante, quando aplicável</span></div><div><strong>RAT e terceiros</strong><span>Separados por código e enquadramento</span></div><div><strong>Acréscimos e compensações</strong><span>Juros, multa, créditos e ajustes</span></div></div>
-      </section>
+          <div className="panel-header">
+            <div>
+              <span className="section-kicker">Evidência externa</span>
+              <h3>Registrar documento da DCTFWeb</h3>
+              <p>
+                Marcar como verificado altera o estado somente se os valores
+                satisfizerem as travas de conciliação.
+              </p>
+            </div>
+          </div>
+          <form action={registrarDocumento} className="crud-form">
+            <input type="hidden" name="obrigacaoId" value={item.id} />
+            <label>
+              <span>Tipo</span>
+              <select name="tipo" required defaultValue="">
+                <option value="" disabled>Selecione</option>
+                <option value="TOTALIZADOR_DCTFWEB">Totalizador DCTFWeb</option>
+                <option value="RECIBO_DCTFWEB">Recibo DCTFWeb</option>
+                <option value="DARF">DARF</option>
+              </select>
+            </label>
+            <label><span>Referência/protocolo</span><input name="referencia" required maxLength={160} /></label>
+            <label><span>Valor total (recibo pode ficar vazio)</span><input name="valorTotal" inputMode="decimal" placeholder="0,00" /></label>
+            <label><span>Data de emissão</span><input name="emitidoEm" type="date" required /></label>
+            <label className="field-wide"><span>Localizador do documento</span><input name="localizador" required maxLength={2000} placeholder="Caminho interno, ID do arquivo ou protocolo" /></label>
+            <label className="field-wide"><span>Hash SHA-256, se disponível</span><input name="hashSha256" maxLength={64} /></label>
+            <label className="checkbox-field"><input name="verificado" type="checkbox" /><span>Documento conferido contra o portal oficial</span></label>
+            <button className="button secondary" type="submit"><FileCheck2 size={16} /> Registrar documento</button>
+          </form>
+          {item.documentos.length > 0 && (
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Tipo</th><th>Referência</th><th>Emissão</th><th>Valor</th><th>Conferência</th><th>Localizador</th></tr></thead>
+                <tbody>
+                  {item.documentos.map((documento) => (
+                    <tr key={documento.id}>
+                      <td>{documento.tipo}</td>
+                      <td><strong>{documento.referencia}</strong><small>{documento.hashSha256 ? `SHA-256 ${documento.hashSha256.slice(0, 12)}…` : "Sem hash informado"}</small></td>
+                      <td>{new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(`${documento.emitidoEm}T00:00:00Z`))}</td>
+                      <td>{moeda(documento.valorTotal)}</td>
+                      <td><StatusBadge tone={documento.verificado ? "success" : "warning"}>{documento.verificado ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}{documento.verificado ? "Verificado" : "Pendente"}</StatusBadge></td>
+                      <td>{documento.localizador}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <details>
+            <summary className="button secondary"><FileText size={16} /> Conferir itens</summary>
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Prestador</th><th>Natureza</th><th>Base</th><th>Alíquota</th><th>Valor</th><th>Folha</th></tr></thead>
+                <tbody>
+                  {item.itens_detalhe.map((linha) => {
+                    const snapshot = linha.snapshot as {
+                      pessoa?: { nome?: string };
+                      prestador?: { matricula?: string };
+                      folhaNumero?: number;
+                      folhaRevisao?: number;
+                    };
+                    return (
+                      <tr key={linha.id}>
+                        <td><strong>{snapshot.pessoa?.nome ?? "Prestador"}</strong><small>Matrícula {snapshot.prestador?.matricula ?? "—"}</small></td>
+                        <td>{linha.natureza}<small>{linha.descricao}</small></td>
+                        <td>{moeda(linha.baseCalculo)}</td>
+                        <td>{linha.aliquota ? `${Number(linha.aliquota).toLocaleString("pt-BR")}%` : "—"}</td>
+                        <td><strong>{moeda(linha.valor)}</strong></td>
+                        <td>Lote {snapshot.folhaNumero ?? "—"}<small>Revisão {snapshot.folhaRevisao ?? "—"}</small></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </section>
+      ))}
+
+      {obrigacoes.length === 0 && (
+        <section className="alert-box">
+          <ShieldAlert size={22} />
+          <div><strong>Nenhuma competência apurada</strong><p>Feche uma Folha e execute a apuração acima.</p></div>
+        </section>
+      )}
     </AppShell>
   );
 }

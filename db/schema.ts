@@ -303,6 +303,72 @@ export const prestadores = pgTable(
   ],
 );
 
+export const contribuicoesOutrasFontes = pgTable(
+  "contribuicao_outra_fonte",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    prestadorId: uuid("prestador_id")
+      .notNull()
+      .references(() => prestadores.id),
+    competencia: date("competencia").notNull(),
+    fontePagadora: varchar("fonte_pagadora", { length: 180 }).notNull(),
+    documentoFonte: varchar("documento_fonte", { length: 14 }).notNull(),
+    remuneracao: numeric("remuneracao", { precision: 18, scale: 2 }).notNull(),
+    baseContribuicao: numeric("base_contribuicao", {
+      precision: 18,
+      scale: 2,
+    }).notNull(),
+    valorContribuicao: numeric("valor_contribuicao", {
+      precision: 18,
+      scale: 2,
+    }).notNull(),
+    documentoReferencia: varchar("documento_referencia", {
+      length: 160,
+    }).notNull(),
+    comprovanteVerificado: boolean("comprovante_verificado")
+      .notNull()
+      .default(false),
+    observacao: text("observacao"),
+    ...auditoriaBasica,
+  },
+  (table) => [
+    uniqueIndex("uq_outra_fonte_empresa_id").on(table.empresaId, table.id),
+    uniqueIndex("uq_outra_fonte_comprovante").on(
+      table.prestadorId,
+      table.competencia,
+      table.documentoFonte,
+      table.documentoReferencia,
+    ),
+    index("ix_outra_fonte_empresa_competencia").on(
+      table.empresaId,
+      table.competencia,
+    ),
+    foreignKey({
+      columns: [table.empresaId, table.prestadorId],
+      foreignColumns: [prestadores.empresaId, prestadores.id],
+      name: "fk_outra_fonte_empresa_prestador",
+    }),
+    check(
+      "ck_outra_fonte_competencia_mes",
+      sql`${table.competencia} = date_trunc('month', ${table.competencia})::date`,
+    ),
+    check(
+      "ck_outra_fonte_documento",
+      sql`${table.documentoFonte} ~ '^([0-9]{11}|[0-9]{14})$'`,
+    ),
+    check(
+      "ck_outra_fonte_valores",
+      sql`${table.remuneracao} >= 0
+          and ${table.baseContribuicao} >= 0
+          and ${table.valorContribuicao} >= 0
+          and ${table.valorContribuicao} <= ${table.baseContribuicao}`,
+    ),
+  ],
+);
+
 export const atividades = pgTable(
   "atividade",
   {
@@ -424,6 +490,7 @@ export const vinculos = pgTable(
     valorRetribuicao: numeric("valor_retribuicao", { precision: 18, scale: 2 })
       .notNull(),
     cargaHoraria: numeric("carga_horaria", { precision: 10, scale: 2 }),
+    exigeMedicaoMensal: boolean("exige_medicao_mensal").notNull().default(false),
     descontaInss: boolean("desconta_inss").notNull().default(true),
     descontaIrrf: boolean("desconta_irrf").notNull().default(true),
     ativo: boolean("ativo").notNull().default(true),
@@ -465,6 +532,93 @@ export const vinculos = pgTable(
     check(
       "ck_vinculo_carga_horaria",
       sql`${table.cargaHoraria} is null or ${table.cargaHoraria} >= 0`,
+    ),
+  ],
+);
+
+export const medicoesMensais = pgTable(
+  "medicao_mensal",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
+    vinculoId: uuid("vinculo_id").notNull(),
+    competencia: date("competencia").notNull(),
+    tipo: varchar("tipo", { length: 20 }).notNull(),
+    valorContratual: numeric("valor_contratual", {
+      precision: 18,
+      scale: 2,
+    }).notNull(),
+    percentual: numeric("percentual", { precision: 9, scale: 4 }),
+    quantidade: numeric("quantidade", { precision: 18, scale: 4 }),
+    valorUnitario: numeric("valor_unitario", { precision: 18, scale: 4 }),
+    valorApurado: numeric("valor_apurado", { precision: 18, scale: 2 }).notNull(),
+    evidenciaReferencia: varchar("evidencia_referencia", { length: 200 }).notNull(),
+    evidenciaHash: varchar("evidencia_hash", { length: 64 }),
+    conferente: varchar("conferente", { length: 160 }).notNull(),
+    conferidaEm: timestamp("conferida_em", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    observacao: text("observacao").notNull().default(""),
+    ...auditoriaBasica,
+  },
+  (table) => [
+    uniqueIndex("uq_medicao_empresa_id").on(table.empresaId, table.id),
+    uniqueIndex("uq_medicao_vinculo_competencia").on(
+      table.vinculoId,
+      table.competencia,
+    ),
+    index("ix_medicao_empresa_competencia").on(
+      table.empresaId,
+      table.competencia,
+    ),
+    foreignKey({
+      columns: [table.empresaId],
+      foreignColumns: [empresas.id],
+      name: "fk_medicao_empresa",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.vinculoId],
+      foreignColumns: [vinculos.empresaId, vinculos.id],
+      name: "fk_medicao_empresa_vinculo",
+    }).onDelete("cascade"),
+    check(
+      "ck_medicao_competencia_mes",
+      sql`${table.competencia} = date_trunc('month', ${table.competencia})::date`,
+    ),
+    check(
+      "ck_medicao_tipo",
+      sql`${table.tipo} in ('PERCENTUAL', 'QUANTIDADE', 'VALOR')`,
+    ),
+    check(
+      "ck_medicao_valores_nao_negativos",
+      sql`${table.valorContratual} >= 0 and ${table.valorApurado} >= 0
+          and (${table.percentual} is null or ${table.percentual} >= 0)
+          and (${table.quantidade} is null or ${table.quantidade} >= 0)
+          and (${table.valorUnitario} is null or ${table.valorUnitario} >= 0)`,
+    ),
+    check(
+      "ck_medicao_campos_tipo",
+      sql`(
+        ${table.tipo} = 'PERCENTUAL'
+        and ${table.percentual} between 0 and 100
+        and ${table.quantidade} is null and ${table.valorUnitario} is null
+        and ${table.valorApurado} = round(${table.valorContratual} * ${table.percentual} / 100, 2)
+      ) or (
+        ${table.tipo} = 'QUANTIDADE'
+        and ${table.percentual} is null
+        and ${table.quantidade} is not null and ${table.valorUnitario} is not null
+        and ${table.valorApurado} = round(${table.quantidade} * ${table.valorUnitario}, 2)
+      ) or (
+        ${table.tipo} = 'VALOR'
+        and ${table.percentual} is null
+        and ${table.quantidade} is null and ${table.valorUnitario} is null
+      )`,
+    ),
+    check(
+      "ck_medicao_evidencia",
+      sql`length(btrim(${table.evidenciaReferencia})) between 3 and 200
+          and length(btrim(${table.conferente})) between 3 and 160
+          and (${table.evidenciaHash} is null or ${table.evidenciaHash} ~ '^[0-9a-f]{64}$')`,
     ),
   ],
 );
@@ -587,6 +741,76 @@ export const regrasCalculo = pgTable(
   ],
 );
 
+export const enquadramentosPrevidenciarios = pgTable(
+  "enquadramento_previdenciario",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    regime: varchar("regime", { length: 40 }).notNull(),
+    inicioVigencia: date("inicio_vigencia").notNull(),
+    fimVigencia: date("fim_vigencia").notNull(),
+    aliquotaSeguradoNumerador: integer("aliquota_segurado_numerador").notNull(),
+    aliquotaSeguradoDenominador: integer("aliquota_segurado_denominador").notNull(),
+    aliquotaPatronalNumerador: integer("aliquota_patronal_numerador").notNull(),
+    aliquotaPatronalDenominador: integer("aliquota_patronal_denominador").notNull(),
+    cebasNumero: varchar("cebas_numero", { length: 100 }),
+    cebasInicio: date("cebas_inicio"),
+    cebasFim: date("cebas_fim"),
+    evidencia: text("evidencia").notNull(),
+    fonteNormativa: text("fonte_normativa").notNull(),
+    publicado: boolean("publicado").notNull().default(true),
+    criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("uq_enquadramento_empresa_id").on(table.empresaId, table.id),
+    index("ix_enquadramento_empresa_vigencia").on(
+      table.empresaId,
+      table.inicioVigencia,
+      table.fimVigencia,
+    ),
+    check(
+      "ck_enquadramento_regime",
+      sql`${table.regime} in ('EMPRESA_GERAL', 'BENEFICENTE_IMUNE')`,
+    ),
+    check(
+      "ck_enquadramento_vigencia",
+      sql`${table.fimVigencia} >= ${table.inicioVigencia}`,
+    ),
+    check(
+      "ck_enquadramento_aliquotas",
+      sql`${table.aliquotaSeguradoNumerador} >= 0
+          and ${table.aliquotaSeguradoDenominador} > 0
+          and ${table.aliquotaSeguradoNumerador} <= ${table.aliquotaSeguradoDenominador}
+          and ${table.aliquotaPatronalNumerador} >= 0
+          and ${table.aliquotaPatronalDenominador} > 0
+          and ${table.aliquotaPatronalNumerador} <= ${table.aliquotaPatronalDenominador}`,
+    ),
+    check(
+      "ck_enquadramento_cenario",
+      sql`(
+        ${table.regime} = 'EMPRESA_GERAL'
+        and ${table.aliquotaSeguradoNumerador} = 11
+        and ${table.aliquotaSeguradoDenominador} = 100
+        and ${table.aliquotaPatronalNumerador} = 20
+        and ${table.aliquotaPatronalDenominador} = 100
+      ) or (
+        ${table.regime} = 'BENEFICENTE_IMUNE'
+        and ${table.aliquotaSeguradoNumerador} = 20
+        and ${table.aliquotaSeguradoDenominador} = 100
+        and ${table.aliquotaPatronalNumerador} = 0
+        and ${table.aliquotaPatronalDenominador} = 100
+        and ${table.cebasNumero} is not null
+        and ${table.cebasInicio} is not null
+        and ${table.cebasFim} is not null
+        and ${table.cebasInicio} <= ${table.inicioVigencia}
+        and ${table.cebasFim} >= ${table.fimVigencia}
+      )`,
+    ),
+  ],
+);
+
 export const folhas = pgTable(
   "folha",
   {
@@ -601,8 +825,10 @@ export const folhas = pgTable(
       .notNull()
       .references(() => metas.id),
     regraCalculoId: uuid("regra_calculo_id").references(() => regrasCalculo.id),
+    enquadramentoPrevidenciarioId: uuid("enquadramento_previdenciario_id"),
     competencia: date("competencia").notNull(),
     numero: integer("numero").notNull(),
+    revisao: integer("revisao").notNull().default(1),
     status: statusFolha("status").notNull().default("RASCUNHO"),
     processadaEm: timestamp("processada_em", { withTimezone: true }),
     fechadaEm: timestamp("fechada_em", { withTimezone: true }),
@@ -610,6 +836,7 @@ export const folhas = pgTable(
     ...auditoriaBasica,
   },
   (table) => [
+    uniqueIndex("uq_folha_empresa_id").on(table.empresaId, table.id),
     uniqueIndex("uq_folha_empresa_competencia_numero").on(
       table.empresaId,
       table.competencia,
@@ -626,7 +853,16 @@ export const folhas = pgTable(
       foreignColumns: [metas.termoId, metas.id],
       name: "fk_folha_termo_meta",
     }),
+    foreignKey({
+      columns: [table.empresaId, table.enquadramentoPrevidenciarioId],
+      foreignColumns: [
+        enquadramentosPrevidenciarios.empresaId,
+        enquadramentosPrevidenciarios.id,
+      ],
+      name: "fk_folha_empresa_enquadramento",
+    }),
     check("ck_folha_numero", sql`${table.numero} > 0`),
+    check("ck_folha_revisao", sql`${table.revisao} > 0`),
     check(
       "ck_folha_competencia_primeiro_dia",
       sql`${table.competencia} = date_trunc('month', ${table.competencia})::date`,
@@ -638,16 +874,83 @@ export const folhas = pgTable(
   ],
 );
 
+export const conferenciasFolha = pgTable(
+  "folha_conferencia",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
+    folhaId: uuid("folha_id").notNull(),
+    revisao: integer("revisao").notNull(),
+    hashResultado: varchar("hash_resultado", { length: 64 }).notNull(),
+    resultado: varchar("resultado", { length: 16 }).notNull(),
+    conferente: varchar("conferente", { length: 160 }).notNull(),
+    confirmouCadastros: boolean("confirmou_cadastros").notNull(),
+    confirmouValores: boolean("confirmou_valores").notNull(),
+    confirmouRubricas: boolean("confirmou_rubricas").notNull(),
+    observacao: text("observacao").notNull().default(""),
+    criadoEm: timestamp("criado_em", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("ix_folha_conferencia_folha_hash").on(
+      table.folhaId,
+      table.hashResultado,
+      table.criadoEm,
+    ),
+    foreignKey({
+      columns: [table.empresaId],
+      foreignColumns: [empresas.id],
+      name: "fk_folha_conferencia_empresa",
+    }),
+    foreignKey({
+      columns: [table.folhaId],
+      foreignColumns: [folhas.id],
+      name: "fk_folha_conferencia_folha",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.empresaId, table.folhaId],
+      foreignColumns: [folhas.empresaId, folhas.id],
+      name: "fk_folha_conferencia_empresa_folha",
+    }).onDelete("cascade"),
+    check(
+      "ck_folha_conferencia_resultado",
+      sql`${table.resultado} in ('APROVADA', 'REJEITADA')`,
+    ),
+    check("ck_folha_conferencia_revisao", sql`${table.revisao} > 0`),
+    check(
+      "ck_folha_conferencia_hash",
+      sql`${table.hashResultado} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "ck_folha_conferencia_conferente",
+      sql`length(btrim(${table.conferente})) between 3 and 160`,
+    ),
+    check(
+      "ck_folha_conferencia_aprovacao",
+      sql`${table.resultado} <> 'APROVADA' or
+          (${table.confirmouCadastros} and ${table.confirmouValores}
+           and ${table.confirmouRubricas})`,
+    ),
+    check(
+      "ck_folha_conferencia_rejeicao",
+      sql`${table.resultado} <> 'REJEITADA' or length(btrim(${table.observacao})) >= 10`,
+    ),
+  ],
+);
+
 export const itensFolha = pgTable(
   "folha_item",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
     folhaId: uuid("folha_id")
       .notNull()
       .references(() => folhas.id, { onDelete: "cascade" }),
     vinculoId: uuid("vinculo_id")
       .notNull()
       .references(() => vinculos.id),
+    medicaoId: uuid("medicao_id").references(() => medicoesMensais.id),
     totalProventos: numeric("total_proventos", { precision: 18, scale: 2 }).notNull(),
     totalDescontos: numeric("total_descontos", { precision: 18, scale: 2 }).notNull(),
     baseInss: numeric("base_inss", { precision: 18, scale: 2 }).notNull(),
@@ -661,7 +964,28 @@ export const itensFolha = pgTable(
     memoria: jsonb("memoria").notNull(),
   },
   (table) => [
+    uniqueIndex("uq_folha_item_empresa_id").on(table.empresaId, table.id),
     uniqueIndex("uq_folha_item_vinculo").on(table.folhaId, table.vinculoId),
+    foreignKey({
+      columns: [table.empresaId],
+      foreignColumns: [empresas.id],
+      name: "fk_folha_item_empresa",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.folhaId],
+      foreignColumns: [folhas.empresaId, folhas.id],
+      name: "fk_folha_item_empresa_folha",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.empresaId, table.vinculoId],
+      foreignColumns: [vinculos.empresaId, vinculos.id],
+      name: "fk_folha_item_empresa_vinculo",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.medicaoId],
+      foreignColumns: [medicoesMensais.empresaId, medicoesMensais.id],
+      name: "fk_folha_item_empresa_medicao",
+    }),
     check(
       "ck_folha_item_valores_nao_negativos",
       sql`${table.totalProventos} >= 0 and ${table.totalDescontos} >= 0
@@ -676,6 +1000,76 @@ export const itensFolha = pgTable(
   ],
 );
 
+export const eventosItensFolha = pgTable(
+  "folha_item_evento",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
+    folhaItemId: uuid("folha_item_id").notNull(),
+    eventoId: uuid("evento_id"),
+    codigo: varchar("codigo", { length: 40 }).notNull(),
+    descricao: varchar("descricao", { length: 180 }).notNull(),
+    natureza: varchar("natureza", { length: 20 }).notNull(),
+    origem: varchar("origem", { length: 20 }).notNull(),
+    tipoCalculo: varchar("tipo_calculo", { length: 20 }).notNull(),
+    referencia: varchar("referencia", { length: 40 }).notNull(),
+    baseCalculo: numeric("base_calculo", { precision: 18, scale: 2 }).notNull(),
+    valor: numeric("valor", { precision: 18, scale: 2 }).notNull(),
+    incideInss: boolean("incide_inss").notNull().default(false),
+    incideIrrf: boolean("incide_irrf").notNull().default(false),
+    ordem: integer("ordem").notNull(),
+    snapshot: jsonb("snapshot").notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_folha_item_evento_ordem").on(
+      table.folhaItemId,
+      table.ordem,
+    ),
+    index("ix_folha_item_evento_item").on(table.folhaItemId, table.ordem),
+    foreignKey({
+      columns: [table.empresaId],
+      foreignColumns: [empresas.id],
+      name: "fk_folha_item_evento_empresa",
+    }),
+    foreignKey({
+      columns: [table.folhaItemId],
+      foreignColumns: [itensFolha.id],
+      name: "fk_folha_item_evento_item",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.eventoId],
+      foreignColumns: [eventos.id],
+      name: "fk_folha_item_evento_evento",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.folhaItemId],
+      foreignColumns: [itensFolha.empresaId, itensFolha.id],
+      name: "fk_folha_item_evento_empresa_item",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.empresaId, table.eventoId],
+      foreignColumns: [eventos.empresaId, eventos.id],
+      name: "fk_folha_item_evento_empresa_evento",
+    }),
+    check(
+      "ck_folha_item_evento_natureza",
+      sql`${table.natureza} in ('PROVENTO', 'DESCONTO', 'INFORMATIVO')`,
+    ),
+    check(
+      "ck_folha_item_evento_origem",
+      sql`${table.origem} in ('CONTRATUAL', 'RECORRENTE', 'SISTEMA')`,
+    ),
+    check(
+      "ck_folha_item_evento_tipo_calculo",
+      sql`${table.tipoCalculo} in ('VALOR', 'PERCENTUAL')`,
+    ),
+    check(
+      "ck_folha_item_evento_valores",
+      sql`${table.baseCalculo} >= 0 and ${table.valor} >= 0 and ${table.ordem} > 0`,
+    ),
+  ],
+);
+
 export const historicoFolha = pgTable(
   "folha_status_historico",
   {
@@ -686,9 +1080,8 @@ export const historicoFolha = pgTable(
     statusAnterior: statusFolha("status_anterior"),
     statusNovo: statusFolha("status_novo").notNull(),
     motivo: text("motivo"),
-    usuarioId: uuid("usuario_id")
-      .notNull()
-      .references(() => usuarios.id),
+    usuarioId: uuid("usuario_id").references(() => usuarios.id),
+    ator: varchar("ator", { length: 160 }).notNull().default("SISTEMA"),
     ocorridoEm: timestamp("ocorrido_em", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("ix_historico_folha_data").on(table.folhaId, table.ocorridoEm)],
@@ -708,10 +1101,19 @@ export const obrigacoes = pgTable(
     juros: numeric("juros", { precision: 18, scale: 2 }).notNull().default("0"),
     multa: numeric("multa", { precision: 18, scale: 2 }).notNull().default("0"),
     total: numeric("total", { precision: 18, scale: 2 }).notNull(),
+    valorDeclarado: numeric("valor_declarado", { precision: 18, scale: 2 }),
+    diferenca: numeric("diferenca", { precision: 18, scale: 2 }),
+    conciliadaEm: timestamp("conciliada_em", { withTimezone: true }),
     bloqueioMotivo: text("bloqueio_motivo"),
     criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    uniqueIndex("uq_obrigacao_empresa_id").on(table.empresaId, table.id),
+    uniqueIndex("uq_obrigacao_empresa_competencia_tipo").on(
+      table.empresaId,
+      table.competencia,
+      table.tipo,
+    ),
     index("ix_obrigacao_empresa_competencia").on(table.empresaId, table.competencia),
     check(
       "ck_obrigacao_valores_nao_negativos",
@@ -723,8 +1125,125 @@ export const obrigacoes = pgTable(
       sql`${table.total} = round(${table.principal} + ${table.juros} + ${table.multa}, 2)`,
     ),
     check(
+      "ck_obrigacao_valor_declarado",
+      sql`${table.valorDeclarado} is null or ${table.valorDeclarado} >= 0`,
+    ),
+    check(
       "ck_obrigacao_bloqueio_motivo",
       sql`${table.status} <> 'BLOQUEADA' or ${table.bloqueioMotivo} is not null`,
+    ),
+  ],
+);
+
+export const itensObrigacao = pgTable(
+  "obrigacao_fiscal_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
+    obrigacaoId: uuid("obrigacao_id")
+      .notNull()
+      .references(() => obrigacoes.id, { onDelete: "cascade" }),
+    folhaItemId: uuid("folha_item_id").references(() => itensFolha.id),
+    natureza: varchar("natureza", { length: 30 }).notNull(),
+    origem: varchar("origem", { length: 20 }).notNull(),
+    descricao: varchar("descricao", { length: 240 }).notNull(),
+    codigoReceita: varchar("codigo_receita", { length: 40 }),
+    baseCalculo: numeric("base_calculo", { precision: 18, scale: 2 }).notNull(),
+    aliquota: numeric("aliquota", { precision: 12, scale: 6 }),
+    valor: numeric("valor", { precision: 18, scale: 2 }).notNull(),
+    snapshot: jsonb("snapshot").notNull(),
+    criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("uq_obrigacao_item_folha_natureza").on(
+      table.obrigacaoId,
+      table.folhaItemId,
+      table.natureza,
+    ),
+    index("ix_obrigacao_item_obrigacao").on(table.obrigacaoId, table.natureza),
+    foreignKey({
+      columns: [table.empresaId],
+      foreignColumns: [empresas.id],
+      name: "fk_obrigacao_item_empresa",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.obrigacaoId],
+      foreignColumns: [obrigacoes.empresaId, obrigacoes.id],
+      name: "fk_obrigacao_item_empresa_obrigacao",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.empresaId, table.folhaItemId],
+      foreignColumns: [itensFolha.empresaId, itensFolha.id],
+      name: "fk_obrigacao_item_empresa_folha_item",
+    }),
+    check(
+      "ck_obrigacao_item_natureza",
+      sql`${table.natureza} in (
+        'SEGURADO', 'PATRONAL', 'RAT', 'TERCEIROS',
+        'JUROS', 'MULTA', 'COMPENSACAO', 'AJUSTE'
+      )`,
+    ),
+    check(
+      "ck_obrigacao_item_origem",
+      sql`${table.origem} in ('FOLHA', 'MANUAL', 'IMPORTACAO', 'DCTFWEB')`,
+    ),
+    check(
+      "ck_obrigacao_item_valores",
+      sql`${table.baseCalculo} >= 0 and ${table.valor} >= 0
+          and (${table.aliquota} is null or ${table.aliquota} >= 0)`,
+    ),
+  ],
+);
+
+export const documentosObrigacao = pgTable(
+  "obrigacao_fiscal_documento",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
+    obrigacaoId: uuid("obrigacao_id")
+      .notNull()
+      .references(() => obrigacoes.id, { onDelete: "cascade" }),
+    tipo: varchar("tipo", { length: 30 }).notNull(),
+    referencia: varchar("referencia", { length: 160 }).notNull(),
+    valorTotal: numeric("valor_total", { precision: 18, scale: 2 }).notNull(),
+    emitidoEm: date("emitido_em").notNull(),
+    localizador: text("localizador").notNull(),
+    hashSha256: varchar("hash_sha256", { length: 64 }),
+    verificado: boolean("verificado").notNull().default(false),
+    conteudo: jsonb("conteudo").notNull().default({}),
+    criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("uq_obrigacao_documento_referencia").on(
+      table.obrigacaoId,
+      table.tipo,
+      table.referencia,
+    ),
+    index("ix_obrigacao_documento_obrigacao").on(
+      table.obrigacaoId,
+      table.tipo,
+    ),
+    foreignKey({
+      columns: [table.empresaId],
+      foreignColumns: [empresas.id],
+      name: "fk_obrigacao_documento_empresa",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.obrigacaoId],
+      foreignColumns: [obrigacoes.empresaId, obrigacoes.id],
+      name: "fk_obrigacao_documento_empresa_obrigacao",
+    }).onDelete("cascade"),
+    check(
+      "ck_obrigacao_documento_tipo",
+      sql`${table.tipo} in ('TOTALIZADOR_DCTFWEB', 'RECIBO_DCTFWEB', 'DARF')`,
+    ),
+    check(
+      "ck_obrigacao_documento_valor",
+      sql`${table.valorTotal} >= 0`,
+    ),
+    check(
+      "ck_obrigacao_documento_hash",
+      sql`${table.hashSha256} is null or ${table.hashSha256} ~ '^[0-9a-f]{64}$'`,
     ),
   ],
 );

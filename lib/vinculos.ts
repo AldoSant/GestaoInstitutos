@@ -13,6 +13,7 @@ export type VinculoCadastro = {
   fim: string | null;
   valorRetribuicao: string;
   cargaHoraria: string | null;
+  exigeMedicaoMensal: boolean;
   descontaInss: boolean;
   descontaIrrf: boolean;
 };
@@ -33,6 +34,7 @@ export function validarVinculoCadastro(input: {
   fim?: unknown;
   valorRetribuicao?: unknown;
   cargaHoraria?: unknown;
+  exigeMedicaoMensal?: unknown;
   descontaInss?: unknown;
   descontaIrrf?: unknown;
 }): { dados: VinculoCadastro | null; erros: string[] } {
@@ -91,6 +93,7 @@ export function validarVinculoCadastro(input: {
       fim,
       valorRetribuicao,
       cargaHoraria,
+      exigeMedicaoMensal: input.exigeMedicaoMensal === true,
       descontaInss: input.descontaInss === true,
       descontaIrrf: input.descontaIrrf === true,
     },

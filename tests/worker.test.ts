@@ -31,8 +31,12 @@ function tarefa(payload: unknown): TarefaProcessamento {
 }
 
 test("registra somente tipos que possuem handler", () => {
-  assert.deepEqual(tiposRegistrados, ["VALIDAR_REGRA_FISCAL"]);
+  assert.deepEqual(tiposRegistrados, [
+    "VALIDAR_REGRA_FISCAL",
+    "PROCESSAR_FOLHA",
+  ]);
   assert.equal(typeof handlers.VALIDAR_REGRA_FISCAL, "function");
+  assert.equal(typeof handlers.PROCESSAR_FOLHA, "function");
 });
 
 test("handler rejeita payload sem competência antes de consultar o banco", async () => {
@@ -43,5 +47,18 @@ test("handler rejeita payload sem competência antes de consultar o banco", asyn
   await assert.rejects(
     handlers.VALIDAR_REGRA_FISCAL(tarefa(null)),
     /payload da tarefa/,
+  );
+});
+
+test("handler de Folha valida id e revisão antes de consultar o banco", async () => {
+  await assert.rejects(
+    handlers.PROCESSAR_FOLHA(tarefa({})),
+    /payload.folhaId/,
+  );
+  await assert.rejects(
+    handlers.PROCESSAR_FOLHA(
+      tarefa({ folhaId: "00000000-0000-4000-8000-000000000001" }),
+    ),
+    /payload.revisao/,
   );
 });
