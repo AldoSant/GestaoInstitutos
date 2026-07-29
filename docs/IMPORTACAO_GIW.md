@@ -246,6 +246,14 @@ execução `APLICAR` concluída e um `DRY_RUN` posterior com 100% dos registros 
 O arquivo contém apenas identificadores técnicos, contagens, totais e pendências; não
 replica os dados pessoais dos snapshots.
 
+Uma referência de Vínculo preenchida, mas inexistente no cadastro, é órfã e reprova a
+auditoria. Já os PDFs de Folha fornecidos pelo GIW não carregam o ID interno do Vínculo:
+nesse caso o campo permanece nulo, conforme o contrato histórico, e a auditoria registra
+`REFERENCIA_NAO_FORNECIDA` como aviso. Pessoa, valores, rubricas e Guia continuam sendo
+reconciliados; não se inventa uma associação contratual que a evidência não permite
+demonstrar. A associação poderá ser completada depois com uma extração histórica que
+contenha o ID real do Vínculo.
+
 O identificador de Evento dentro de uma rubrica histórica é evidência textual e não
 uma chave estrangeira: Eventos já inativos podem não aparecer mais no localizador do
 GIW, e sua incidência não é reconstruída por suposição. Lançamentos operacionais, por

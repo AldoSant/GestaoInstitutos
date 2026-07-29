@@ -313,6 +313,7 @@ async function carregarOrfaos(client: PoolClient, empresaId: string) {
   const resultado = await client.query<{
     itens_sem_pessoa: number;
     itens_sem_vinculo: number;
+    itens_sem_referencia_vinculo: number;
     guias_sem_pessoa: number;
     referencias_folha_ausentes: number;
   }>(
@@ -328,7 +329,12 @@ async function carregarOrfaos(client: PoolClient, empresaId: string) {
          left join legado_chave c
            on c.empresa_id = i.empresa_id and c.origem = 'GIW'
           and c.entidade = 'vinculos' and c.legacy_id = i.vinculo_legacy_id
-        where i.empresa_id = $1 and c.destino_id is null) itens_sem_vinculo,
+        where i.empresa_id = $1 and i.vinculo_legacy_id is not null
+          and c.destino_id is null) itens_sem_vinculo,
+      (select count(*)::int
+         from legado_folha_item i
+        where i.empresa_id = $1
+          and i.vinculo_legacy_id is null) itens_sem_referencia_vinculo,
       (select count(*)::int
          from legado_guia_inss g
          left join legado_chave c
@@ -619,7 +625,19 @@ async function executar() {
       );
 
     const orfaos = await carregarOrfaos(client, empresaId);
-    for (const [campo, quantidade] of Object.entries(orfaos)) {
+    const {
+      itens_sem_referencia_vinculo: itensSemReferenciaVinculo,
+      ...referenciasOrfas
+    } = orfaos;
+    if (itensSemReferenciaVinculo > 0) {
+      avisos.push({
+        codigo: "REFERENCIA_NAO_FORNECIDA",
+        detalhe:
+          `itens_sem_referencia_vinculo: ${itensSemReferenciaVinculo}; ` +
+          "o documento de origem não informa o ID interno do Vínculo.",
+      });
+    }
+    for (const [campo, quantidade] of Object.entries(referenciasOrfas)) {
       if (quantidade > 0) {
         problemas.push({
           codigo: "REFERENCIA_ORFA",
