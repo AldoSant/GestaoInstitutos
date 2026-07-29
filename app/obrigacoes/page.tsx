@@ -7,6 +7,7 @@ import {
   FileCheck2,
   FileText,
   ShieldAlert,
+  RotateCcw,
   XCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -17,6 +18,7 @@ import {
   apurarObrigacao,
   cancelarObrigacaoFiscal,
   registrarDocumento,
+  solicitarRetificacaoFiscal,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -112,6 +114,12 @@ export default async function ObrigacoesPage({
               >
                 <Download size={16} /> Espelho CSV
               </Link>
+              <Link
+                className="button secondary"
+                href={`/obrigacoes/${item.id}/relatorio`}
+              >
+                <FileText size={16} /> Dossiê imprimível
+              </Link>
               <StatusBadge tone={item.status === "BLOQUEADA" ? "danger" : item.status === "EMITIDA" ? "success" : item.status === "CANCELADA" ? "warning" : "info"}>
                 {item.status === "BLOQUEADA" ? <AlertTriangle size={14} /> : <FileCheck2 size={14} />}
                 {item.status}
@@ -183,6 +191,93 @@ export default async function ObrigacoesPage({
                       <td>{moeda(documento.valorTotal)}</td>
                       <td><StatusBadge tone={documento.verificado ? "success" : "warning"}>{documento.verificado ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}{documento.verificado ? "Verificado" : "Pendente"}</StatusBadge></td>
                       <td>{documento.localizador}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {item.status === "EMITIDA" &&
+            !item.retificacoes.some((retificacao) =>
+              ["SOLICITADA", "EM_ANDAMENTO"].includes(retificacao.status),
+            ) && (
+              <details>
+                <summary className="button secondary">
+                  <RotateCcw size={16} /> Iniciar retificação formal
+                </summary>
+                <form action={solicitarRetificacaoFiscal} className="crud-form">
+                  <input type="hidden" name="obrigacaoId" value={item.id} />
+                  <label>
+                    <span>Responsável</span>
+                    <input
+                      name="responsavel"
+                      required
+                      minLength={3}
+                      maxLength={160}
+                    />
+                  </label>
+                  <label className="field-wide">
+                    <span>Motivo e referência administrativa</span>
+                    <textarea
+                      name="motivo"
+                      required
+                      minLength={20}
+                      maxLength={3000}
+                      placeholder="Descreva o erro, a origem, o documento que autorizou a correção e o resultado esperado"
+                    />
+                  </label>
+                  <button className="button secondary" type="submit">
+                    <RotateCcw size={16} /> Congelar original e abrir retificação
+                  </button>
+                </form>
+              </details>
+            )}
+          {item.retificacoes.length > 0 && (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Retificação</th>
+                    <th>Estado</th>
+                    <th>Responsável</th>
+                    <th>Motivo</th>
+                    <th>Snapshot anterior</th>
+                    <th>Protocolo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {item.retificacoes.map((retificacao) => (
+                    <tr key={retificacao.id}>
+                      <td>
+                        <strong>v{retificacao.versao}</strong>
+                        <small>
+                          {new Intl.DateTimeFormat("pt-BR", {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                            timeZone: "America/Bahia",
+                          }).format(new Date(retificacao.solicitadaEm))}
+                        </small>
+                      </td>
+                      <td>
+                        <StatusBadge
+                          tone={
+                            retificacao.status === "CONCLUIDA"
+                              ? "success"
+                              : retificacao.status === "CANCELADA"
+                                ? "neutral"
+                                : "warning"
+                          }
+                        >
+                          {retificacao.status.replaceAll("_", " ")}
+                        </StatusBadge>
+                      </td>
+                      <td>{retificacao.responsavel}</td>
+                      <td>{retificacao.motivo}</td>
+                      <td>
+                        SHA-256
+                        <small>{retificacao.hashSnapshotAnterior}</small>
+                      </td>
+                      <td>{retificacao.protocolo ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>

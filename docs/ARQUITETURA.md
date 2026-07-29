@@ -30,10 +30,12 @@ Pessoa física/jurídica, prestador, termo, meta e vínculo. Dados contratuais u
 
 Regras por vigência, eventos, consolidação mensal por pessoa, folha, item, memória e histórico de estados. Uma folha fechada não deve ser editada silenciosamente.
 
-O agregado multi-lote por pessoa está implementado em modo de simulação controlada.
-Enquanto sua hipótese não for homologada com competências reais, a Folha continua
-bloqueando a mesma pessoa em mais de um lote da competência. A verificação ocorre na
-criação e no worker, sob trava transacional por organização e mês.
+O agregado multi-lote por pessoa possui simulação controlada e caminho produtivo
+delimitado. Por padrão, a Folha continua bloqueando a mesma pessoa em mais de um lote
+da competência. A organização só pode remover essa trava com ativação explícita por
+empresa e competência inicial, e apenas uma simulação `HOMOLOGADA` ainda atual pode
+alimentar cada item. A verificação ocorre na criação, no worker e no fechamento, sob
+trava transacional por organização e mês.
 O modelo-alvo está em [Consolidação mensal por pessoa](CONSOLIDACAO_MENSAL.md).
 A aplicação consulta Vínculos, Termos, Metas, medições, Folhas e outras fontes sem
 executar rateio fiscal. O diagnóstico pode ser materializado em
@@ -44,7 +46,11 @@ homologação operacional e cálculo fiscal permanecem responsabilidades separad
 Casos resolvidos alimentam `consolidacao_fiscal_simulacao`; o motor agrega INSS/IRRF
 por Pessoa, rateia por maior resto e congela cada entrada em
 `consolidacao_fiscal_simulacao_fonte`. Quatro hashes protegem fontes, regra,
-enquadramento e resultado. Homologação ainda não cria caminho para alterar a Folha.
+enquadramento e resultado. No modo produtivo habilitado, somente as linhas sistêmicas
+de INSS e IRRF são substituídas pelo rateio homologado; proventos e descontos
+contratuais precisam continuar idênticos. A memória da Folha registra a simulação e
+seu hash, e o fechamento recusa cobertura incompleta, versão obsoleta ou item sem a
+mesma evidência.
 
 ### Medições mensais
 
@@ -64,7 +70,7 @@ comparação, preservando a evidência anterior.
 ### Homologação da competência
 
 O fechamento mensal é um agregado de evidências, não um segundo motor de cálculo. Ele
-consulta sete controles operacionais, calcula hashes por item e um hash global, e
+consulta oito controles operacionais, calcula hashes por item e um hash global, e
 materializa uma versão imutável. A aprovação reexecuta o diagnóstico dentro da
 transação e somente aceita o mesmo hash sem bloqueios. Fontes alteradas invalidam a
 versão, preservando a decisão anterior. A campanha apresenta três competências
@@ -122,7 +128,8 @@ Toda ação financeira relevante registra usuário, instante, estado anterior, e
   imutáveis no banco e vinculados à organização por chaves compostas.
 - criação e processamento de Folhas da mesma competência são serializados por
   organização; conflitos da mesma pessoa entre lotes são recusados até existir
-  consolidação fiscal determinística.
+  consolidação fiscal determinística e homologada. A ativação produtiva é limitada por
+  empresa e competência e não aceita uma composição de Vínculos diferente da simulação.
 - casos de consolidação são serializados por organização e competência, materializados
   de forma idempotente, versionados pelo conteúdo e auditados no PostgreSQL; fontes
   congeladas não aceitam edição ou exclusão.

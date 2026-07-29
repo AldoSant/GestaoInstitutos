@@ -24,6 +24,9 @@ Defina no `.env`:
 - `AUTH_SECRET`: pelo menos 32 bytes aleatórios;
 - demais variáveis conforme o ambiente.
 
+Mantenha `FOLHA_CONSOLIDADA_PRODUTIVA=false` até a homologação real do rateio
+multi-vínculo. A configuração é compartilhada pelos serviços web e worker.
+
 O `.env` nunca deve ser versionado.
 
 ## Subida
@@ -46,6 +49,38 @@ docker compose logs --since 5m worker
 A tarefa deve terminar como `CONCLUIDA`. O worker também registra
 `PROCESSAR_FOLHA`; esse handler valida empresa e revisão antes de materializar a memória
 em uma única transação.
+
+### Ativação controlada do rateio multi-vínculo
+
+Depois da aprovação formal da competência e somente para a organização homologada:
+
+```dotenv
+FOLHA_CONSOLIDADA_PRODUTIVA=true
+FOLHA_CONSOLIDADA_EMPRESA_ID=UUID-REAL-DA-EMPRESA
+FOLHA_CONSOLIDADA_INICIO=AAAA-MM
+```
+
+Confirme o UUID no PostgreSQL, não o digite por aproximação:
+
+```bash
+docker compose exec database psql -U instituto -d instituto_folha \
+  -c "select id, cnpj, razao_social from empresa where ativa order by razao_social;"
+```
+
+Antes de reiniciar, confirme na aplicação que todos os casos multi-vínculo da
+competência estão resolvidos e que as simulações correspondentes estão homologadas.
+Depois:
+
+```bash
+docker compose up -d --force-recreate web worker
+docker compose logs --since 5m web worker
+```
+
+Faça a primeira Folha em uma competência de homologação. O servidor recusará fontes
+obsoletas, Vínculos diferentes da simulação, proventos alterados e fechamento sem todas
+as Folhas da Pessoa. Para interromper novas operações multi-vínculo, restaure
+`FOLHA_CONSOLIDADA_PRODUTIVA=false` e recrie web e worker. Folhas fechadas não são
+reescritas.
 
 ## Migrações
 

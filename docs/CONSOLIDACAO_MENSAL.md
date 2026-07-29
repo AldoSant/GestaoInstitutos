@@ -8,11 +8,12 @@ mais de um Termo, Meta ou fonte pagadora durante a mesma competência. Somar res
 calculados isoladamente pode duplicar deduções, ultrapassar limites ou produzir
 retenções diferentes do total mensal correto.
 
-O motor produtivo continua homologado somente para uma ocorrência da Pessoa por
-competência dentro das Folhas da organização. O rateio multi-lote já existe em modo de
-simulação versionada, mas a criação e o processamento da Folha seguem bloqueando a mesma
-Pessoa em lotes separados. O bloqueio usa trava transacional por organização e
-competência.
+O rateio multi-lote existe em simulação versionada e em um caminho produtivo
+deliberadamente desativado por padrão. Sem ativação explícita, a criação e o
+processamento da Folha seguem bloqueando a mesma Pessoa em lotes separados. Quando
+ativado para uma empresa e a partir de uma competência, o caminho produtivo exige uma
+simulação homologada ainda atual e usa o rateio exato nela congelado. A trava
+transacional continua sendo aplicada por organização e competência.
 
 Esse controle não substitui a conferência contábil. Ele cria uma fila auditável de
 casos reais para que RH e contabilidade classifiquem e homologuem o motor controlado
@@ -62,10 +63,11 @@ Decisões:
 - `NAO_APLICAVEL`: a ocorrência foi analisada e não representa consolidação fiscal;
   a justificativa deve explicar objetivamente a exceção.
 
-Uma decisão de caso **não** altera a Folha ou remove o bloqueio multi-lote. Para
-`RATEIO_NECESSARIO` e `UNIFICAR_VINCULOS`, o dossiê mensal só considera a consolidação
-conforme quando existe também uma simulação `HOMOLOGADA`, revalidada contra fontes,
-regra e enquadramento atuais.
+Uma decisão de caso, isoladamente, **não** altera a Folha nem remove o bloqueio
+multi-lote. Para `RATEIO_NECESSARIO` e `UNIFICAR_VINCULOS`, é indispensável uma
+simulação `HOMOLOGADA`, revalidada contra fontes, regra, enquadramento e composição de
+Vínculos atuais. O consumo pela Folha depende ainda da ativação operacional descrita
+abaixo.
 
 ## Conteúdo do hash
 
@@ -140,7 +142,8 @@ previsto é projeção contratual ou da medição, não uma base fiscal calculad
 - fonte congelada não pode ser corrigida no lugar;
 - ausência de caso não é aprovação;
 - classificação do RH não substitui memória de cálculo;
-- o bloqueio multi-lote só sai após homologação do agregado e do rateio.
+- o bloqueio multi-lote só sai após homologação do agregado, do rateio e ativação
+  explícita para a organização e a competência.
 
 ## Agregado e rateio implementados em modo controlado
 
@@ -156,6 +159,31 @@ O imposto é calculado uma vez sobre o agregado mensal. A fonte da simulação e
 distribuição por maior resto e congela regra, enquadramento, bases, dependentes, outras
 fontes, medição, Eventos, resultados e hashes. Consulte
 [Simulação fiscal consolidada](SIMULACAO_FISCAL_CONSOLIDADA.md).
+
+## Ativação produtiva controlada
+
+O caminho produtivo exige simultaneamente:
+
+- `FOLHA_CONSOLIDADA_PRODUTIVA=true`;
+- `FOLHA_CONSOLIDADA_EMPRESA_ID` igual ao UUID da única organização autorizada;
+- `FOLHA_CONSOLIDADA_INICIO` no formato `AAAA-MM`.
+
+Antes da competência inicial ou para outra organização, o bloqueio anterior permanece.
+Web e worker devem receber exatamente os mesmos valores. A ativação não dispensa o
+fluxo: caso resolvido, simulação homologada, fontes e parâmetros ainda atuais e mesma
+composição de Vínculos.
+
+Durante o processamento, a Folha recalcula cada Vínculo individualmente e confirma que
+proventos e descontos de Eventos não mudaram. Somente então substitui INSS, IRRF, bases
+e totais pelas parcelas homologadas, registrando `simulacaoId` e `hashResultado` na
+memória e no snapshot. O fechamento exige que:
+
+- todos os Vínculos ativos da Pessoa tenham uma Folha não cancelada;
+- todos os itens tenham sido processados com a simulação homologada atual;
+- revisão, memória e hash canônico da Folha permaneçam íntegros.
+
+Desativar a variável volta a bloquear novas operações multi-lote; não reescreve Folhas
+já fechadas nem apaga evidências.
 
 ## Decisões que ainda exigem homologação
 

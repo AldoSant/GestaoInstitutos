@@ -8,6 +8,7 @@ simulação, aplicação e conferência antes de liberar a próxima.
 
 Os fluxos implementados coletam e importam **Pessoas completas**, **Atividades**, **Lotações**,
 **Termos**, **Metas** e **Vínculos**. O importador também aceita snapshots normalizados de
+**Eventos/Rubricas**, **Lançamentos de Eventos** e **Produtividade/Medições**, além de
 **Folhas históricas completas** — cabeçalho, pessoas e rubricas — e **Guias
 previdenciárias históricas**. O mapeador retomável dos formulários de lançamentos,
 Folhas e GPS coleta evidências estruturais para manter os adaptadores sincronizados com
@@ -15,6 +16,11 @@ o layout Webrun.
 
 Dados reais nunca são versionados. O coletor grava em `.private/importacoes/giw`, pasta
 ignorada pelo Git. Usuário e senha são lidos exclusivamente de variáveis de ambiente.
+
+Quando o GIW estiver indisponível, Folhas e guias recebidas em CSV podem seguir o mesmo
+pipeline de validação e importação. O conversor registra o nome e o SHA-256 do arquivo
+recebido no snapshot, agrupa várias rubricas da mesma pessoa sem duplicar os totais e
+recusa qualquer fechamento inconsistente.
 
 ## Sequência obrigatória
 
@@ -146,10 +152,71 @@ Se existir exatamente uma empresa ativa, `--empresa-id` pode ser omitido.
 
 Os contratos completos dos dois snapshots históricos estão em:
 
+- `docs/exemplos/giw-eventos.json`;
+- `docs/exemplos/giw-lancamentos-eventos.json`;
+- `docs/exemplos/giw-produtividade.json`;
 - `docs/exemplos/giw-folhas-historicas.json`;
 - `docs/exemplos/giw-guias-inss-historicas.json`.
 
 Os exemplos são fictícios e podem ser usados para testar apenas a validação estrutural.
+
+## Converter arquivos CSV recebidos do RH ou do GIW
+
+Os modelos versionados, sem dados reais, estão em:
+
+- `docs/modelos/folhas-historicas.csv`;
+- `docs/modelos/guias-inss-historicas.csv`.
+
+Na planilha de Folhas, cada linha representa uma rubrica. Os dados e totais do item
+devem ser repetidos nas linhas das demais rubricas da mesma pessoa. O conversor agrupa
+por `folha_legacy_id` e `item_legacy_id`, exige que os valores repetidos sejam idênticos
+e calcula o cabeçalho da Folha pela soma dos itens. Se o arquivo não trouxer
+`pessoa_legacy_id`, a chave é derivada do CPF e, na ausência dele, da matrícula.
+
+Conversão:
+
+```bash
+npm run giw:converter:historico -- \
+  --tipo folhas \
+  --arquivo /caminho/folhas.csv \
+  --extraido-em 2026-07-28T15:00:00-03:00
+
+npm run giw:converter:historico -- \
+  --tipo guias \
+  --arquivo /caminho/guias.csv \
+  --extraido-em 2026-07-28T15:00:00-03:00
+
+npm run giw:converter:historico -- \
+  --tipo pessoas \
+  --arquivo /caminho/folhas.csv \
+  --extraido-em 2026-07-28T15:00:00-03:00
+
+npm run giw:converter:historico -- \
+  --tipo eventos \
+  --arquivo /caminho/folhas.csv \
+  --extraido-em 2026-07-28T15:00:00-03:00
+```
+
+Por padrão, os snapshots são gravados em `.private/importacoes/giw`. A saída usa
+criação exclusiva e não sobrescreve um arquivo anterior. Depois da conversão, execute
+`giw:importar` primeiro sem `--aplicar`, confira o relatório e só então aplique.
+
+O modo `pessoas` deriva do mesmo CSV um cadastro operacional deduplicado por chave
+legada, CPF ou matrícula. Nome ou CPF divergente entre meses bloqueia o resultado. As
+fichas são marcadas com `dadosCompletos: false`: elas já evitam redigitação do
+prestador, mas uma coleta posterior do GIW ainda poderá complementar endereço, conta,
+dados profissionais e dependentes sem perder informação.
+
+O modo `eventos` consolida as rubricas históricas pelo identificador do Evento e recusa
+descrição, natureza ou incidência divergente entre meses. INSS e IRRF precisam estar
+explicitamente preenchidos: o conversor não presume incidência tributária. O tipo de
+cálculo derivado é `VALOR`, pois uma ocorrência histórica isolada não comprova que a
+regra contratual original era percentual.
+
+O CSV aceita `;` ou `,`, aspas, valores brasileiros (`1.234,56`) e cabeçalhos com ou
+sem acentos. O limite é de 50 MB e 100.000 linhas. Arquivo vazio, coluna obrigatória
+ausente, CPF inválido, rubrica duplicada, item divergente ou total sem fechamento
+interrompe a conversão inteira.
 
 ## Mapear movimentos históricos sem alterar o GIW
 
@@ -161,8 +228,9 @@ GIW_SENHA='sua-senha' \
 npm run giw:mapear:historico
 ```
 
-O comando abre exclusivamente consultas de **Lançamentos de eventos**, **Folhas** e
-**Emissão de GPS**. Para cada formulário, preserva em `.private`:
+O comando abre exclusivamente consultas de **Eventos/Rubricas**, **Lançamentos de
+eventos**, **Produtividade**, **Folhas** e **Emissão de GPS**. Para cada formulário,
+preserva em `.private`:
 
 - abas, rótulos, IDs e nomes dos campos;
 - cabeçalhos e linhas de todas as páginas do localizador;
@@ -189,6 +257,11 @@ do Git.
 - o checksum normalizado identifica registros que não mudaram;
 - CPF/CNPJ ajuda a reaproveitar uma pessoa já cadastrada antes da primeira importação;
 - reexecutar o mesmo snapshot não cria uma segunda pessoa.
+- dry-runs revertem todas as mutações, mas preservam uma execução auditável separada
+  com arquivo, checksum, decisão prevista por registro e erros;
+- Lançamentos exigem que Vínculo e Evento já tenham chave GIW; Produtividade exige o
+  Vínculo;
+- atualizar Produtividade usada por Folha fechada continua bloqueado pelo banco.
 
 Em dry-run, todas as alterações são executadas dentro de uma transação e revertidas no
 final. Assim a simulação usa as mesmas consultas e validações da aplicação real.
@@ -201,13 +274,13 @@ final. Assim a simulação usa as mesmas consultas e validações da aplicação
 | 2 | Pessoas | 464569402 | empresa | coletor e importador prontos |
 | 3 | Atividades | 464569252 | empresa | coletor e importador prontos |
 | 4 | Lotações | 464569449 | empresa | coletor e importador prontos |
-| 5 | Eventos/rubricas | 8716 | parâmetros | mapeado |
+| 5 | Eventos/rubricas | 8716 | parâmetros | contrato, validação e importador prontos |
 | 6 | Tabela de IRRF | 8733 | regras por vigência | mapeado |
 | 7 | Limites de INSS | 464569398 | regras por vigência | mapeado |
 | 8 | Termos e Metas | 464569250 | empresa | coletor e importador prontos |
 | 9 | Vínculos | 464569258 | pessoa, termo, meta, atividade e lotação | coletor e importador prontos |
-| 10 | Lançamentos de eventos | 464569425 | pessoa, termo e evento | mapeado |
-| 11 | Produtividade | 464569461 | vínculo e competência | mapeado |
+| 10 | Lançamentos de eventos | 464569425 | vínculo e evento | contrato, validação e importador prontos |
+| 11 | Produtividade | 464569461 | vínculo e competência | contrato, validação e importador prontos |
 | 12 | Folhas | 464569390 | todos os anteriores | contrato, persistência e importador prontos; adaptador visual pendente de reconexão |
 | 13 | Emissão de GPS | 464569421 | folha fechada | contrato, persistência e importador prontos; adaptador visual pendente de reconexão |
 
@@ -241,10 +314,15 @@ não tiver sido importada.
 Critério de saída: cada prestador de uma folha histórica aponta para termo, meta e
 vínculo válidos.
 
-### Etapa D — regras e movimentos
+### Etapa D — regras e movimentos — núcleo implementado
 
-Importar rubricas, tabelas por vigência, lançamentos e produtividade. Regras fiscais
-observadas no GIW permanecem separadas das regras normativas confirmadas.
+Eventos, Lançamentos e Produtividade possuem contratos, validação e importação
+idempotente. Eventos preservam natureza, cálculo e incidências. Lançamentos resolvem
+Vínculo e Evento exclusivamente por chave legada. Produtividade materializa a medição
+mensal com memória de percentual, quantidade ou valor, evidência e conferente.
+
+Falta confirmar os seletores no GIW disponível e coletar os registros reais. Regras
+fiscais observadas no legado permanecem separadas das regras normativas confirmadas.
 
 Critério de saída: eventos históricos explicam proventos, descontos e bases.
 
@@ -277,4 +355,6 @@ diferenças, aprovar o corte e manter plano de retorno.
 - nenhuma guia é transmitida e nenhum registro do GIW é alterado;
 - a sonda histórica captura a estrutura e amostras privadas, mas depende do GIW
   acessível para confirmar os seletores do adaptador normalizado;
+- o conversor CSV permite avançar com Folhas e guias fornecidas, mas não substitui os
+  cadastros completos de Pessoas, Termos, Metas, Vínculos, Eventos e Produtividade;
 - o importador pressupõe que as migrações novas já foram aplicadas.

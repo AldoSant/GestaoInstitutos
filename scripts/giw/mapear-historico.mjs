@@ -1,15 +1,43 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import {
+  abrirMenuCadastro,
   abrirMenuMovimentacao,
   abrirSessaoGiw,
   giwBaseUrl,
 } from "./cliente.mjs";
 
 const formularios = [
-  { entity: "lancamentos_eventos", formId: "464569425", menu: /lançamentos?.*eventos?/i },
-  { entity: "folhas_historicas", formId: "464569390", menu: /^folhas?$/i },
-  { entity: "guias_inss_historicas", formId: "464569421", menu: /(emiss[aã]o.*gps|gps)/i },
+  {
+    entity: "eventos",
+    formId: "8716",
+    menu: /(^eventos?$|rubricas?)/i,
+    section: "cadastro",
+  },
+  {
+    entity: "lancamentos_eventos",
+    formId: "464569425",
+    menu: /lançamentos?.*eventos?/i,
+    section: "movimentacao",
+  },
+  {
+    entity: "produtividade",
+    formId: "464569461",
+    menu: /produtividade/i,
+    section: "movimentacao",
+  },
+  {
+    entity: "folhas_historicas",
+    formId: "464569390",
+    menu: /^folhas?$/i,
+    section: "movimentacao",
+  },
+  {
+    entity: "guias_inss_historicas",
+    formId: "464569421",
+    menu: /(emiss[aã]o.*gps|gps)/i,
+    section: "movimentacao",
+  },
 ];
 const timestamp = new Date().toISOString();
 const output = resolve(
@@ -182,9 +210,10 @@ async function proximaPagina(consulta) {
 const state = await estadoInicial();
 const { browser, sistema, menu } = await abrirSessaoGiw();
 try {
-  await abrirMenuMovimentacao(menu);
   for (const form of formularios) {
     if (state.forms[form.entity]?.completed) continue;
+    if (form.section === "cadastro") await abrirMenuCadastro(menu);
+    else await abrirMenuMovimentacao(menu);
     await clicarMenu(menu, form);
     const formulario = await localizarFormulario(sistema, form.formId);
     const consulta = await abrirLocalizador(formulario);

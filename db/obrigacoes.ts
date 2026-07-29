@@ -8,6 +8,10 @@ import {
   validarEstadoFolhasParaApuracao,
   validarIntegridadeFontesObrigacao,
 } from "@/lib/integridade-obrigacao";
+import {
+  hashSnapshotRetificacao,
+  normalizarSolicitacaoRetificacao,
+} from "@/lib/retificacao-obrigacao";
 import { getPool } from "./index";
 
 function validarId(valor: string, campo: string) {
@@ -132,6 +136,14 @@ export async function apurarRetencoesSegurados({
       throw new Error("Uma obrigação emitida ou cancelada não pode ser recalculada.");
     }
     const obrigacaoId = obrigacao.rows[0].id;
+    await client.query(
+      `update obrigacao_fiscal_retificacao
+          set status = 'EM_ANDAMENTO',
+              iniciada_em = coalesce(iniciada_em, now())
+        where empresa_id = $1 and obrigacao_id = $2
+          and status = 'SOLICITADA'`,
+      [empresaId, obrigacaoId],
+    );
 
     await client.query(
       `update obrigacao_fiscal_documento
@@ -254,6 +266,132 @@ export async function apurarRetencoesSegurados({
   });
 }
 
+export async function solicitarRetificacaoObrigacao({
+  empresaId,
+  obrigacaoId,
+  motivo,
+  responsavel,
+}: {
+  empresaId: string;
+  obrigacaoId: string;
+  motivo: string;
+  responsavel: string;
+}) {
+  validarId(empresaId, "Empresa");
+  validarId(obrigacaoId, "Obrigação");
+  const solicitacao = normalizarSolicitacaoRetificacao({
+    motivo,
+    responsavel,
+  });
+  return transacao(async (client) => {
+    await client.query(
+      `select set_config('app.ator', $1, true),
+              set_config('app.motivo', $2, true)`,
+      [solicitacao.responsavel, solicitacao.motivo],
+    );
+    const atual = await client.query<{
+      id: string;
+      status: string;
+      competencia: string;
+    }>(
+      `select id, status::text, competencia::text
+         from obrigacao_fiscal
+        where id = $1 and empresa_id = $2
+        for update`,
+      [obrigacaoId, empresaId],
+    );
+    const obrigacao = atual.rows[0];
+    if (!obrigacao) throw new Error("Obrigação não encontrada.");
+    if (obrigacao.status !== "EMITIDA") {
+      throw new Error(
+        "Somente uma obrigação emitida pode iniciar retificação formal.",
+      );
+    }
+    const snapshotResultado = await client.query<{
+      snapshot: Record<string, unknown>;
+    }>(
+      `select jsonb_build_object(
+         'obrigacao', to_jsonb(obrigacao),
+         'folhas', coalesce((
+           select jsonb_agg(to_jsonb(fonte) order by fonte.folha_id)
+             from obrigacao_fiscal_folha fonte
+            where fonte.obrigacao_id = obrigacao.id
+         ), '[]'::jsonb),
+         'itens', coalesce((
+           select jsonb_agg(to_jsonb(item) order by item.natureza, item.id)
+             from obrigacao_fiscal_item item
+            where item.obrigacao_id = obrigacao.id
+         ), '[]'::jsonb),
+         'documentos', coalesce((
+           select jsonb_agg(to_jsonb(documento) order by documento.tipo, documento.id)
+             from obrigacao_fiscal_documento documento
+            where documento.obrigacao_id = obrigacao.id
+         ), '[]'::jsonb)
+       ) snapshot
+       from obrigacao_fiscal obrigacao
+      where obrigacao.id = $1 and obrigacao.empresa_id = $2`,
+      [obrigacaoId, empresaId],
+    );
+    const snapshot = snapshotResultado.rows[0]?.snapshot;
+    if (!snapshot) {
+      throw new Error("Não foi possível congelar a obrigação emitida.");
+    }
+    const hashSnapshot = hashSnapshotRetificacao(snapshot);
+    const inserida = await client.query<{
+      id: string;
+      versao: number;
+      status: string;
+    }>(
+      `insert into obrigacao_fiscal_retificacao
+         (empresa_id, obrigacao_id, versao, status, motivo, responsavel,
+          snapshot_anterior, hash_snapshot_anterior)
+       select $1, $2,
+              coalesce(max(retificacao.versao), 0) + 1,
+              'SOLICITADA', $3, $4, $5::jsonb, $6
+         from obrigacao_fiscal_retificacao retificacao
+        where retificacao.obrigacao_id = $2
+       returning id, versao, status`,
+      [
+        empresaId,
+        obrigacaoId,
+        solicitacao.motivo,
+        solicitacao.responsavel,
+        JSON.stringify(snapshot),
+        hashSnapshot,
+      ],
+    );
+    const retificacao = inserida.rows[0];
+    await client.query(
+      `update obrigacao_fiscal_documento
+          set verificado = false,
+              conteudo = conteudo || jsonb_build_object(
+                'invalidadoPorRetificacaoEm', now(),
+                'retificacaoId', $2::uuid,
+                'motivo', $3::text
+              )
+        where obrigacao_id = $1 and verificado`,
+      [obrigacaoId, retificacao.id, solicitacao.motivo],
+    );
+    await client.query(
+      `update obrigacao_fiscal
+          set status = 'BLOQUEADA',
+              valor_declarado = null,
+              diferenca = null,
+              conciliada_em = null,
+              bloqueio_motivo =
+                'Retificação formal em andamento. Reabra e reprocesse as Folhas necessárias, reapure e registre novos documentos oficiais.'
+        where id = $1`,
+      [obrigacaoId],
+    );
+    return {
+      ...retificacao,
+      obrigacaoId,
+      competencia: obrigacao.competencia,
+      hashSnapshot,
+    };
+  });
+}
+
 export async function listarObrigacoes(empresaId: string) {
   validarId(empresaId, "Empresa");
   const resultado = await getPool().query<{
@@ -292,6 +430,18 @@ export async function listarObrigacoes(empresaId: string) {
       localizador: string;
       hashSha256: string | null;
       verificado: boolean;
+    }>;
+    retificacoes: Array<{
+      id: string;
+      versao: number;
+      status: string;
+      motivo: string;
+      responsavel: string;
+      protocolo: string | null;
+      hashSnapshotAnterior: string;
+      solicitadaEm: string;
+      iniciadaEm: string | null;
+      concluidaEm: string | null;
     }>;
   }>(
     `select o.id, o.competencia::text, o.tipo, o.status,
@@ -361,6 +511,30 @@ export async function listarObrigacoes(empresaId: string) {
               ),
               '[]'::jsonb
             ) documentos
+            ,
+            coalesce(
+              (
+                select jsonb_agg(
+                  jsonb_build_object(
+                    'id', retificacao.id,
+                    'versao', retificacao.versao,
+                    'status', retificacao.status,
+                    'motivo', retificacao.motivo,
+                    'responsavel', retificacao.responsavel,
+                    'protocolo', retificacao.protocolo,
+                    'hashSnapshotAnterior',
+                      retificacao.hash_snapshot_anterior,
+                    'solicitadaEm', retificacao.solicitada_em,
+                    'iniciadaEm', retificacao.iniciada_em,
+                    'concluidaEm', retificacao.concluida_em
+                  )
+                  order by retificacao.versao desc
+                )
+                  from obrigacao_fiscal_retificacao retificacao
+                 where retificacao.obrigacao_id = o.id
+              ),
+              '[]'::jsonb
+            ) retificacoes
        from obrigacao_fiscal o
       where o.empresa_id = $1
       order by o.competencia desc, o.criado_em desc
@@ -376,7 +550,7 @@ export async function carregarEspelhoObrigacao(
 ) {
   validarId(empresaId, "Empresa");
   validarId(obrigacaoId, "Obrigação");
-  const [cabecalho, itens, documentos] = await Promise.all([
+  const [cabecalho, itens, documentos, retificacoes] = await Promise.all([
     getPool().query<{
       id: string;
       competencia: string;
@@ -388,11 +562,14 @@ export async function carregarEspelhoObrigacao(
       total: string;
       valor_declarado: string | null;
       diferenca: string | null;
+      bloqueio_motivo: string | null;
+      conciliada_em: Date | null;
       criado_em: Date;
     }>(
       `select id, competencia::text, tipo, status, principal::text,
               juros::text, multa::text, total::text,
-              valor_declarado::text, diferenca::text, criado_em
+              valor_declarado::text, diferenca::text, bloqueio_motivo,
+              conciliada_em, criado_em
          from obrigacao_fiscal
         where id = $1 and empresa_id = $2`,
       [obrigacaoId, empresaId],
@@ -434,14 +611,35 @@ export async function carregarEspelhoObrigacao(
       referencia: string;
       valor_total: string;
       emitido_em: string;
+      localizador: string;
       verificado: boolean;
       hash_sha256: string | null;
     }>(
       `select tipo, referencia, valor_total::text, emitido_em::text,
-              verificado, hash_sha256
+              localizador, verificado, hash_sha256
          from obrigacao_fiscal_documento
         where obrigacao_id = $1 and empresa_id = $2
         order by emitido_em, tipo, referencia`,
+      [obrigacaoId, empresaId],
+    ),
+    getPool().query<{
+      id: string;
+      versao: number;
+      status: string;
+      motivo: string;
+      responsavel: string;
+      protocolo: string | null;
+      hash_snapshot_anterior: string;
+      solicitada_em: Date;
+      iniciada_em: Date | null;
+      concluida_em: Date | null;
+    }>(
+      `select id, versao, status, motivo, responsavel, protocolo,
+              hash_snapshot_anterior, solicitada_em, iniciada_em,
+              concluida_em
+         from obrigacao_fiscal_retificacao
+        where obrigacao_id = $1 and empresa_id = $2
+        order by versao`,
       [obrigacaoId, empresaId],
     ),
   ]);
@@ -453,6 +651,7 @@ export async function carregarEspelhoObrigacao(
     obrigacao: cabecalho.rows[0],
     itens: itens.rows,
     documentos: documentos.rows,
+    retificacoes: retificacoes.rows,
   };
 }
 
@@ -600,6 +799,18 @@ export async function registrarDocumentoObrigacao({
       ],
     );
 
+    if (verificado && tipo === "RECIBO_DCTFWEB") {
+      await client.query(
+        `update obrigacao_fiscal_retificacao
+            set protocolo = $2,
+                status = 'EM_ANDAMENTO',
+                iniciada_em = coalesce(iniciada_em, now())
+          where obrigacao_id = $1
+            and status in ('SOLICITADA', 'EM_ANDAMENTO')`,
+        [obrigacaoId, referencia],
+      );
+    }
+
     if (verificado && tipo === "TOTALIZADOR_DCTFWEB") {
       await client.query(
         `update obrigacao_fiscal
@@ -654,6 +865,29 @@ export async function registrarDocumentoObrigacao({
             set status = 'EMITIDA', bloqueio_motivo = null
           where id = $1`,
         [obrigacaoId],
+      );
+      await client.query(
+        `update obrigacao_fiscal_retificacao retificacao
+            set status = 'CONCLUIDA',
+                protocolo = coalesce(retificacao.protocolo, $2),
+                concluida_em = now(),
+                resultado = jsonb_build_object(
+                  'obrigacaoId', obrigacao.id,
+                  'status', obrigacao.status,
+                  'principal', obrigacao.principal::text,
+                  'juros', obrigacao.juros::text,
+                  'multa', obrigacao.multa::text,
+                  'total', obrigacao.total::text,
+                  'valorDeclarado', obrigacao.valor_declarado::text,
+                  'diferenca', obrigacao.diferenca::text,
+                  'darfReferencia', $2::text,
+                  'darfDocumentoId', $3::uuid
+                )
+           from obrigacao_fiscal obrigacao
+          where retificacao.obrigacao_id = $1
+            and retificacao.status in ('SOLICITADA', 'EM_ANDAMENTO')
+            and obrigacao.id = retificacao.obrigacao_id`,
+        [obrigacaoId, referencia, inserido.rows[0].id],
       );
     }
     return { id: inserido.rows[0].id, obrigacaoId, tipo };

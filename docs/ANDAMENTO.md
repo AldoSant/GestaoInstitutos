@@ -2,7 +2,7 @@
 
 ## Visão geral
 
-**Estimativa atual: 88% concluído.**
+**Estimativa atual: 93% concluído.**
 
 O percentual mede capacidade operacional validada, e não quantidade de telas ou linhas
 de código. Uma etapa só avança quando existe persistência, validação, teste e caminho de
@@ -12,21 +12,32 @@ homologação. Interfaces demonstrativas contam apenas como descoberta de fluxo.
 |---|---:|---:|---|
 | Plataforma, banco, deploy e CI | 15% | 14% | Pool, concorrência, auditoria, fila e worker operacional implementados; falta comprovar restauração periódica na VPS, ampliar monitoramento e identificar o usuário autenticado. |
 | Descoberta, regras e modelo relacional | 10% | 8% | Fluxo principal e modelo identificados. Regime geral e imunidade beneficente agora possuem cenários distintos e versionados; contratos, CEBAS e amostras reais ainda precisam ampliar a evidência. |
-| Migração e cadastros-base | 15% | 13% | Pessoas completas, Atividades, Lotações, Prestadores e o acervo histórico de Folhas/guias possuem contratos e importação idempotente; falta executar os adaptadores contra o GIW novamente disponível. |
+| Migração e cadastros-base | 15% | 14% | Pessoas, cadastros, contratos, Eventos, Lançamentos, Produtividade e o acervo histórico de Folhas/guias possuem contratos e importação idempotente; falta executar os adaptadores contra o GIW novamente disponível. |
 | Termos, metas e vínculos | 15% | 14% | Coleta/importação e CRUD da cadeia implementados; falta executar e reconciliar os dados reais de todos os anos. |
-| Folha auditável | 20% | 19% | Processamento, memória, hash, revisão, medição mensal, aprovação formal do RH, fechamento, reabertura, bases fiscais e resumo de rubricas estão operacionais. O agregado multi-lote e o rateio exato já operam em simulação versionada; a Folha permanece bloqueada até a homologação real. |
-| Obrigação previdenciária | 15% | 13% | Segurado e patronal são apurados conforme o enquadramento congelado. Apuração parcial é recusada; revisão e hash das fontes são congelados e revalidados antes dos documentos. Totalizador, recibo e DARF possuem máquina de estados e espelho CSV; faltam integração oficial e homologação real. |
-| Homologação, paralelo e corte | 10% | 7% | Comparação CSV, acervo histórico isolado, conciliação por pessoa/competência, casos multi-lote, simulações fiscais e dossiês estão operacionais. Faltam executar os meses reais, treinar, ensaiar retificação e efetuar o corte. |
-| **Total** | **100%** | **88%** | |
+| Folha auditável | 20% | 20% | Processamento, memória, hash canônico, revisão, medição, aprovação do RH, fechamento e reabertura estão operacionais. O rateio multi-lote homologado possui consumo produtivo delimitado por empresa e competência, revalidação de fontes e cobertura integral antes do fechamento; permanece desligado por padrão até a homologação real. |
+| Obrigação previdenciária | 15% | 14% | Segurado e patronal são apurados conforme o enquadramento congelado. Apuração parcial é recusada; revisão e hash das fontes são revalidados. Totalizador, recibo e DARF possuem máquina de estados, CSV e dossiê imprimível com fechamento monetário; falta integração oficial e homologação real. |
+| Homologação, paralelo e corte | 10% | 9% | Painel real, oito gates, comparação CSV, acervo histórico, casos multi-lote, simulações, relatórios, pagamentos e retificação formal estão operacionais. Faltam executar os meses reais, treinar e efetuar o corte. |
+| **Total** | **100%** | **93%** | |
 
 ## O que já pode ser usado
 
 - aplicação, PostgreSQL, migrações e containers com CI;
+- painel inicial operacional alimentado apenas pelo PostgreSQL, com próximo bloqueio,
+  histórico de competências e acessos diretos ao fechamento;
 - coleta e importação idempotente de Pessoas completas, Atividades, Lotações, Termos,
   Metas e Vínculos do GIW;
 - contratos normalizados e importação idempotente de Folhas históricas completas e
   guias previdenciárias, mantendo o acervo separado da Folha oficial;
-- sonda somente leitura e retomável para mapear Lançamentos, Folhas e GPS no Webrun;
+- conversão de CSVs fornecidos de Folhas e guias em snapshots privados, com modelos,
+  agrupamento de rubricas, SHA-256 da fonte e recusa de totais divergentes;
+- derivação deduplicada de Pessoas a partir das Folhas fornecidas, sem marcar como
+  completos os campos cadastrais que não existirem no relatório;
+- derivação conservadora de Eventos a partir das rubricas históricas, bloqueando
+  incidências ausentes ou conflitantes em vez de presumir tratamento tributário;
+- importação idempotente de Eventos, Lançamentos recorrentes e Produtividade, com
+  dependências resolvidas por chave GIW e dry-run persistido para auditoria;
+- sonda somente leitura e retomável para mapear Eventos, Lançamentos,
+  Produtividade, Folhas e GPS no Webrun;
 - painel `/migracoes` com cobertura das chaves legadas, comparação por pessoa e
   competência e dossiê CSV;
 - ficha de Pessoa com identificação civil/profissional, contatos, endereço, conta
@@ -57,6 +68,10 @@ homologação. Interfaces demonstrativas contam apenas como descoberta de fluxo.
   rubricas; o fechamento é bloqueado sem aprovação válida;
 - telas de listagem e conferência conectadas ao PostgreSQL, com memória JSON para
   auditoria técnica e relatório CSV determinístico para revisão operacional do RH;
+- relatório A4 da Folha com resumo, uma página por prestador, rubricas, bases, hashes,
+  rateio consolidado e blocos de assinatura;
+- relação interna de pagamentos A4 e CSV com total em centavos, conta congelada no
+  hash, pendências tipadas e liberação somente para Folha fechada sem dados incompletos;
 - importação de referência do GIW/RH na Folha, com comparação de proventos, INSS,
   IRRF, descontos e líquido por matrícula, diferenças explícitas, idempotência e
   evidência imutável por revisão e hash;
@@ -73,10 +88,13 @@ homologação. Interfaces demonstrativas contam apenas como descoberta de fluxo.
   única vez e rateia INSS/IRRF por maior resto sem perder centavos;
 - simulações fiscais persistentes com snapshots, hashes de fontes/regra/enquadramento/
   resultado, máquina de estados, decisões terminais imutáveis e exportação CSV;
-- bloqueio explícito que impede até a simulação homologada de alimentar a Folha antes
-  da campanha real e de uma ativação técnica separada;
+- consumo produtivo do rateio multi-vínculo, desativado por padrão e delimitado por
+  empresa e competência, que revalida simulação, fontes, regras, enquadramento e
+  composição dos Vínculos antes de alterar somente as parcelas fiscais;
+- fechamento que exige todas as Folhas da Pessoa e o mesmo ID/hash de simulação
+  homologada registrado em cada memória;
 - homologação da competência integrando medições, consolidação, Folhas, aprovação do
-  RH, paralelo GIW, obrigação e documentos DCTFWeb/DARF em uma versão por hash;
+  RH, paralelo GIW, pagamentos, obrigação e documentos DCTFWeb/DARF em uma versão por hash;
 - campanha móvel de três competências, aprovação final auditada, invalidação de versão
   obsoleta e dossiê CSV com uma linha por controle;
 - apuração previdenciária persistente da parcela dos segurados a partir de Folhas
@@ -90,22 +108,29 @@ homologação. Interfaces demonstrativas contam apenas como descoberta de fluxo.
   Folhas novas ou reabertas antes de aceitar qualquer documento verificado;
 - espelho previdenciário CSV por item, com fonte, Termo, Meta, prestador, base,
   alíquota, valor, totais e evidências documentais;
+- dossiê previdenciário imprimível que valida itens contra principal e acréscimos
+  contra total, exigindo totalizador, recibo e DARF para qualquer estado emitido;
 - cancelamento de Folha aberta/na fila com interrupção de tarefa pendente; reabertura
   invalida obrigações e documentos não emitidos, enquanto fontes já emitidas são
   protegidas;
 - cancelamento terminal de obrigação ainda não emitida, mantendo itens e totais como
   evidência auditável;
+- retificação de obrigação emitida com snapshot integral anterior, SHA-256, versão,
+  responsável, protocolo, reapuração e conclusão somente após novo DARF conciliado;
 - diagnóstico de duplicidade da obrigação previdenciária do legado;
 - documentação de implantação, modelo relacional e evidências.
 
 ## Caminho crítico restante
 
-1. Executar a coleta real da cadeia contratual e reconciliar contagens por Termo e Meta.
-2. Homologar as fórmulas de produtividade/proporcionalização com contratos e RH.
-3. Executar as simulações mensais já implementadas sobre três competências reais,
-   homologar o agregado e o rateio por Pessoa e só então projetar a ativação na Folha.
+1. Homologar as fórmulas de produtividade/proporcionalização com contratos e RH.
+2. Executar as simulações mensais sobre três competências reais e homologar agregado,
+   rateio, Folhas e obrigação por Pessoa.
+3. Ativar o consumo produtivo apenas para a empresa e a competência aprovadas, ensaiar
+   fechamento, reabertura e regressão e então avançar a competência inicial.
 4. Revalidar os seletores históricos quando o GIW voltar, coletar Folhas/guias e
    concluir a campanha de três competências reais no painel e nos dossiês já implementados.
+   Se o portal continuar fora do ar, usar os conversores CSV já disponíveis para Folhas
+   e guias e obter os demais cadastros por exportação assistida.
 5. Homologar o enquadramento real da entidade e reconciliar com eSocial/DCTFWeb reais.
 6. Três competências reais em paralelo, com diferenças explicadas.
 7. Backup/restauração, acesso, auditoria e corte controlado do GIW.

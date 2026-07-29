@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   AlertTriangle,
+  ArrowRight,
   CheckCircle2,
   Download,
   FileLock2,
@@ -16,6 +17,7 @@ import {
   diagnosticarHomologacaoCompetencia,
 } from "@/db/homologacoes-competencia";
 import {
+  destinoItemCompetencia,
   rotuloItemCompetencia,
   type StatusChecklistCompetencia,
 } from "@/lib/homologacao-competencia";
@@ -135,7 +137,7 @@ export default async function HomologacoesPage({
         label: aprovada ? "Competência aprovada" : "Fechamento controlado",
         text: aprovada
           ? `A versão ${versaoAtual.versao} corresponde às fontes atuais e possui decisão final.`
-          : "Aprovação exige os sete controles obrigatórios na mesma versão de fontes.",
+          : "Aprovação exige os oito controles obrigatórios na mesma versão de fontes.",
       }}
       actions={
         versaoAtual ? (
@@ -218,7 +220,7 @@ export default async function HomologacoesPage({
               />
             </label>
             <button className="button secondary" type="submit">
-              <FileLock2 size={16} /> Congelar os sete controles
+              <FileLock2 size={16} /> Congelar os oito controles
             </button>
           </form>
         )}
@@ -341,7 +343,7 @@ export default async function HomologacoesPage({
                 </p>
               </div>
               <StatusBadge tone="info">
-                <ListChecks size={14} /> 7 verificações
+                <ListChecks size={14} /> {diagnostico.itens.length} verificações
               </StatusBadge>
             </div>
             <div className="table-wrap">
@@ -353,6 +355,7 @@ export default async function HomologacoesPage({
                     <th>Conformes</th>
                     <th>Pendentes</th>
                     <th>Evidência</th>
+                    <th>Ação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -376,6 +379,15 @@ export default async function HomologacoesPage({
                           <summary>{item.hashEvidencia.slice(0, 12)}</summary>
                           <pre>{JSON.stringify(item.detalhes, null, 2)}</pre>
                         </details>
+                      </td>
+                      <td>
+                        <Link
+                          className="row-action"
+                          href={destinoItemCompetencia(item.tipo, competencia)}
+                          aria-label={`Resolver ${rotuloItemCompetencia(item.tipo)}`}
+                        >
+                          <ArrowRight size={17} />
+                        </Link>
                       </td>
                     </tr>
                   ))}
@@ -459,7 +471,7 @@ export default async function HomologacoesPage({
             <span className="section-kicker">Histórico preservado</span>
             <h2>Versões da competência</h2>
             <p>
-              Mudanças em qualquer um dos sete controles tornam a versão
+              Mudanças em qualquer um dos oito controles tornam a versão
               anterior inválida para aprovação, sem apagar a decisão.
             </p>
           </div>

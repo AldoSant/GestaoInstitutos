@@ -84,6 +84,71 @@ export type ComparacaoPessoaHistorica = {
   diferenca_inss: string;
 };
 
+export type CoberturaEntidadeGiw = {
+  entidade: string;
+  ordem: number;
+  registros_mapeados: number;
+  ultima_atualizacao: Date | null;
+};
+
+export type ExecucaoImportacaoGiw = {
+  id: string;
+  entidade: string;
+  arquivo: string;
+  modo: string;
+  status: string;
+  total_lidos: number;
+  total_inseridos: number;
+  total_atualizados: number;
+  total_ignorados: number;
+  total_erros: number;
+  iniciado_em: Date;
+  concluido_em: Date | null;
+};
+
+export async function carregarCoberturaMigracao(empresaId: string) {
+  const db = getDb();
+  const [cobertura, execucoes] = await Promise.all([
+    db.execute<CoberturaEntidadeGiw>(sql`
+      with catalogo(entidade, ordem) as (
+        values
+          ('pessoas', 1),
+          ('atividades', 2),
+          ('lotacoes', 3),
+          ('termos', 4),
+          ('vinculos', 5),
+          ('eventos', 6),
+          ('lancamentos_eventos', 7),
+          ('produtividade', 8),
+          ('folhas_historicas', 9),
+          ('guias_inss_historicas', 10)
+      )
+      select
+        c.entidade,
+        c.ordem::int,
+        count(l.legacy_id)::int registros_mapeados,
+        max(l.atualizado_em) ultima_atualizacao
+      from catalogo c
+      left join legado_chave l
+        on l.empresa_id = ${empresaId}
+       and l.origem = 'GIW'
+       and l.entidade = c.entidade
+      group by c.entidade, c.ordem
+      order by c.ordem
+    `),
+    db.execute<ExecucaoImportacaoGiw>(sql`
+      select
+        id, entidade, arquivo, modo, status, total_lidos, total_inseridos,
+        total_atualizados, total_ignorados, total_erros, iniciado_em, concluido_em
+      from importacao_execucao
+      where empresa_id = ${empresaId} and origem = 'GIW'
+      order by iniciado_em desc
+      limit 20
+    `),
+  ]);
+  return { cobertura: cobertura.rows, execucoes: execucoes.rows };
+}
+
 export async function carregarMigracaoHistorica(
   empresaId: string,
   competencia: string,

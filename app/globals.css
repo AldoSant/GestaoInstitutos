@@ -331,3 +331,170 @@ td small { margin-top: 3px; color: #89979b; font-size: 9px; }
 
 .memory-detail p:last-child { border-bottom: 0; }
 .memory-detail small { color: var(--muted); }
+
+.print-document {
+  min-height: 100vh;
+  padding: 28px;
+  color: #182528;
+  background: #eef2f1;
+}
+.print-toolbar {
+  width: min(1100px, 100%);
+  margin: 0 auto 18px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.print-sheet {
+  width: min(1100px, 100%);
+  min-height: 297mm;
+  margin: 0 auto 24px;
+  padding: 18mm 16mm;
+  background: #fff;
+  box-shadow: 0 12px 35px rgba(21, 52, 67, .12);
+}
+.print-header {
+  padding-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 2px solid #173f49;
+}
+.print-header span,
+.print-header p,
+.print-document-code span {
+  color: #617074;
+  font-size: 10px;
+}
+.print-header h1,
+.print-header h2 {
+  margin: 5px 0;
+  font-family: Georgia, "Times New Roman", serif;
+}
+.print-header h1 { font-size: 24px; }
+.print-header h2 { font-size: 21px; }
+.print-header p { margin: 0; }
+.print-document-code {
+  min-width: 210px;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  text-align: right;
+}
+.print-document-code strong { font-size: 12px; }
+.print-meta {
+  margin: 18px 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid #d8e0df;
+}
+.print-meta div { padding: 10px 12px; border-bottom: 1px solid #e4e9e8; }
+.print-meta div:nth-child(odd) { border-right: 1px solid #e4e9e8; }
+.print-meta div:nth-last-child(-n+2) { border-bottom: 0; }
+.print-meta dt { color: #617074; font-size: 9px; text-transform: uppercase; }
+.print-meta dd { margin: 3px 0 0; font-size: 10px; font-weight: 700; }
+.print-totals {
+  margin: 18px 0;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  border: 1px solid #d8e0df;
+}
+.print-totals div { padding: 11px; border-right: 1px solid #e4e9e8; }
+.print-totals div:last-child { border-right: 0; }
+.print-totals span,
+.print-totals strong { display: block; }
+.print-totals span { color: #617074; font-size: 9px; }
+.print-totals strong { margin-top: 4px; font-size: 11px; }
+.print-totals.individual { grid-template-columns: repeat(4, 1fr); }
+.print-totals.individual div:nth-child(4) { border-right: 0; }
+.print-totals.individual div:nth-child(-n+4) { border-bottom: 1px solid #e4e9e8; }
+.print-evidence,
+.print-integrity {
+  margin: 16px 0;
+  padding: 11px 13px;
+  border: 1px solid #bfd8d3;
+  background: #f3faf8;
+  overflow-wrap: anywhere;
+}
+.print-evidence strong,
+.print-evidence p,
+.print-integrity p { margin: 0; font-size: 9px; }
+.print-evidence p + p,
+.print-integrity p + p { margin-top: 5px; }
+.print-table {
+  width: 100%;
+  margin: 16px 0;
+  border-collapse: collapse;
+  font-size: 9px;
+}
+.print-table th,
+.print-table td {
+  padding: 8px;
+  border: 1px solid #d8e0df;
+  text-align: left;
+  vertical-align: top;
+}
+.print-table th {
+  color: #fff;
+  background: #173f49;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+.print-table td:not(:first-child) { white-space: nowrap; }
+.print-table small { margin-top: 2px; display: block; color: #617074; }
+.print-activity { margin: 18px 0 8px; font-size: 10px; }
+.signature-grid {
+  margin-top: 48px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px;
+}
+.signature-grid.two { grid-template-columns: repeat(2, 1fr); }
+.signature-grid div {
+  padding-top: 8px;
+  border-top: 1px solid #29383b;
+  text-align: center;
+  font-size: 9px;
+}
+.print-footnote {
+  margin-top: 20px;
+  color: #617074;
+  font-size: 8px;
+  line-height: 1.5;
+}
+.print-warning {
+  margin: 18px 0;
+  padding: 12px 14px;
+  border: 1px solid #e7c77c;
+  background: #fff9e9;
+}
+.print-warning.subtle {
+  border-color: #d8e0df;
+  background: #f7f9f8;
+}
+.print-warning strong,
+.print-warning p { margin: 0; font-size: 9px; }
+.print-warning p { margin-top: 4px; color: #617074; line-height: 1.5; }
+.print-section-title {
+  margin: 24px 0 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15px;
+}
+
+@media print {
+  @page { size: A4 portrait; margin: 10mm; }
+  body { background: #fff !important; }
+  .print-document { padding: 0; background: #fff; }
+  .print-toolbar { display: none; }
+  .print-sheet {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+  .print-person-sheet { break-before: page; page-break-before: always; }
+  .print-table tr,
+  .print-evidence,
+  .print-integrity { break-inside: avoid; page-break-inside: avoid; }
+}

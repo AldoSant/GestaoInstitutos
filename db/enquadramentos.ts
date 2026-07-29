@@ -64,6 +64,29 @@ export async function carregarEnquadramentoPorCompetencia(
   return resultado.rows[0];
 }
 
+export async function carregarEnquadramentoPorId(
+  empresaId: string,
+  enquadramentoId: string,
+  executor: Pick<PoolClient, "query"> = getPool(),
+) {
+  validarId(empresaId, "Empresa");
+  validarId(enquadramentoId, "Enquadramento");
+  const resultado = await executor.query<LinhaEnquadramentoPrevidenciario>(
+    `select id, empresa_id, regime, inicio_vigencia::text, fim_vigencia::text,
+            aliquota_segurado_numerador, aliquota_segurado_denominador,
+            aliquota_patronal_numerador, aliquota_patronal_denominador,
+            cebas_numero, cebas_inicio::text, cebas_fim::text, evidencia,
+            fonte_normativa, publicado, criado_em
+       from enquadramento_previdenciario
+      where empresa_id = $1 and id = $2`,
+    [empresaId, enquadramentoId],
+  );
+  if (!resultado.rows[0]) {
+    throw new Error("Enquadramento previdenciário congelado não encontrado.");
+  }
+  return resultado.rows[0];
+}
+
 export async function listarEnquadramentos(empresaId: string) {
   validarId(empresaId, "Empresa");
   const resultado = await getPool().query<LinhaEnquadramentoPrevidenciario>(

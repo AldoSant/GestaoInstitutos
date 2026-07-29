@@ -10,7 +10,10 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
-import { carregarMigracaoHistorica } from "@/db/migracoes-historicas";
+import {
+  carregarCoberturaMigracao,
+  carregarMigracaoHistorica,
+} from "@/db/migracoes-historicas";
 
 export const dynamic = "force-dynamic";
 
@@ -34,13 +37,27 @@ function data(value: string | null) {
   );
 }
 
-function dataHora(value: Date) {
+function dataHora(value: Date | null) {
+  if (!value) return "—";
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
     timeZone: "America/Bahia",
   }).format(new Date(value));
 }
+
+const rotulosEntidade: Record<string, string> = {
+  pessoas: "Pessoas",
+  atividades: "Atividades",
+  lotacoes: "Lotações",
+  termos: "Termos e Metas",
+  vinculos: "Vínculos",
+  eventos: "Eventos/Rubricas",
+  lancamentos_eventos: "Lançamentos de Eventos",
+  produtividade: "Produtividade/Medições",
+  folhas_historicas: "Folhas históricas",
+  guias_inss_historicas: "Guias previdenciárias",
+};
 
 function igual(a: string, b: string) {
   return Math.round(Number(a) * 100) === Math.round(Number(b) * 100);
@@ -76,9 +93,16 @@ export default async function MigracoesPage({
   }
 
   let dados: Awaited<ReturnType<typeof carregarMigracaoHistorica>> | null = null;
+  let controle: Awaited<ReturnType<typeof carregarCoberturaMigracao>> = {
+    cobertura: [],
+    execucoes: [],
+  };
   let erro = "";
   try {
-    dados = await carregarMigracaoHistorica(empresa.id, competencia);
+    [dados, controle] = await Promise.all([
+      carregarMigracaoHistorica(empresa.id, competencia),
+      carregarCoberturaMigracao(empresa.id),
+    ]);
   } catch (error) {
     erro =
       error instanceof Error
@@ -168,6 +192,144 @@ export default async function MigracoesPage({
             Comparar competência
           </button>
         </form>
+      </section>
+
+      <section className="panel">
+        <div className="panel-header">
+          <div>
+            <span className="section-kicker">Cadeia de dependências</span>
+            <h2>Cobertura das chaves do GIW</h2>
+            <p>
+              Mostra o que já possui correspondência durável entre o código do
+              legado e o UUID local. Zero significa que a etapa ainda não foi
+              aplicada nesta organização.
+            </p>
+          </div>
+          <StatusBadge
+            tone={
+              controle.cobertura.length > 0 &&
+              controle.cobertura.every((item) => item.registros_mapeados > 0)
+                ? "success"
+                : "warning"
+            }
+          >
+            <History size={14} />
+            {
+              controle.cobertura.filter((item) => item.registros_mapeados > 0)
+                .length
+            }
+            /{controle.cobertura.length} etapas iniciadas
+          </StatusBadge>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ordem</th>
+                <th>Entidade</th>
+                <th>Chaves mapeadas</th>
+                <th>Última atualização</th>
+                <th>Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {controle.cobertura.map((item) => (
+                <tr key={item.entidade}>
+                  <td>{item.ordem}</td>
+                  <td>
+                    <strong>
+                      {rotulosEntidade[item.entidade] ?? item.entidade}
+                    </strong>
+                    <small>{item.entidade}</small>
+                  </td>
+                  <td>{item.registros_mapeados}</td>
+                  <td>{dataHora(item.ultima_atualizacao)}</td>
+                  <td>
+                    <StatusBadge
+                      tone={item.registros_mapeados > 0 ? "success" : "warning"}
+                    >
+                      {item.registros_mapeados > 0 ? "Importada" : "Pendente"}
+                    </StatusBadge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-header">
+          <div>
+            <span className="section-kicker">Trilha operacional</span>
+            <h2>Últimas execuções de importação</h2>
+            <p>
+              Dry-runs e aplicações preservam arquivo, modo, contagens,
+              resultado e horário para conferência.
+            </p>
+          </div>
+          <StatusBadge tone="info">
+            <FileArchive size={14} /> {controle.execucoes.length} execução(ões)
+          </StatusBadge>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Entidade / arquivo</th>
+                <th>Modo</th>
+                <th>Lidos</th>
+                <th>Inseridos</th>
+                <th>Atualizados</th>
+                <th>Ignorados</th>
+                <th>Erros</th>
+                <th>Resultado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {controle.execucoes.map((execucao) => (
+                <tr key={execucao.id}>
+                  <td>
+                    <strong>
+                      {rotulosEntidade[execucao.entidade] ?? execucao.entidade}
+                    </strong>
+                    <small>
+                      {execucao.arquivo} · {dataHora(execucao.iniciado_em)}
+                    </small>
+                  </td>
+                  <td>{execucao.modo === "APLICAR" ? "Aplicação" : "Dry-run"}</td>
+                  <td>{execucao.total_lidos}</td>
+                  <td>{execucao.total_inseridos}</td>
+                  <td>{execucao.total_atualizados}</td>
+                  <td>{execucao.total_ignorados}</td>
+                  <td>{execucao.total_erros}</td>
+                  <td>
+                    <StatusBadge
+                      tone={
+                        execucao.status === "CONCLUIDA"
+                          ? "success"
+                          : execucao.status === "CONCLUIDA_COM_ERROS"
+                            ? "warning"
+                            : execucao.status === "FALHA"
+                              ? "danger"
+                              : "info"
+                      }
+                    >
+                      {execucao.status.replaceAll("_", " ")}
+                    </StatusBadge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {controle.execucoes.length === 0 && (
+          <div className="empty-state">
+            <History size={28} />
+            <strong>Nenhuma execução registrada</strong>
+            <p>Faça primeiro um dry-run contra o PostgreSQL.</p>
+          </div>
+        )}
       </section>
 
       {resumo && (

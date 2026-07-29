@@ -204,7 +204,7 @@ test("preserva lotação inativa e rejeita decimal inválido", () => {
   assert.ok(atividade.issues.some((issue) => issue.field === "valor"));
 });
 
-test("dispatcher reconhece as três entidades suportadas", () => {
+test("dispatcher reconhece cadastros-base suportados", () => {
   assert.equal(validarSnapshotGiw(snapshot([])).snapshot?.entity, "pessoas");
   assert.equal(
     validarSnapshotGiw({

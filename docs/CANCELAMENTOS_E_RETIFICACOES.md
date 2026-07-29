@@ -25,15 +25,18 @@ previdenciária e das pré-condições de fechamento da competência.
 Reabrir uma Folha fechada:
 
 1. exige justificativa;
-2. é recusado quando a Folha compõe obrigação já `EMITIDA`;
+2. é recusado quando a Folha compõe obrigação `EMITIDA` sem retificação formal aberta;
 3. muda obrigações relacionadas ainda não emitidas para `BLOQUEADA`;
 4. limpa conciliação e diferença anteriores;
 5. desmarca documentos verificados e registra motivo e Folha no conteúdo documental;
 6. exige reprocessamento, nova conferência do RH e reapuração previdenciária.
 
-Quando a obrigação já foi emitida, a equipe deve primeiro definir e registrar o
-procedimento fiscal de retificação aplicável. O sistema não presume que basta editar
-a origem de uma declaração transmitida.
+Quando a obrigação já foi emitida, a equipe inicia **Retificação formal** na tela de
+Obrigações. O sistema congela cabeçalho, Folhas, itens e documentos anteriores em JSON,
+calcula o SHA-256 do original, invalida as conferências documentais e bloqueia a
+obrigação. Depois disso, as Folhas necessárias podem ser reabertas, reprocessadas e
+reaprovadas. A reapuração inicia a execução da retificação; o novo recibo registra o
+protocolo e um novo DARF conciliado conclui o caso sem apagar a emissão anterior.
 
 ## Cancelamento da obrigação
 
@@ -54,9 +57,9 @@ Obrigações `RASCUNHO`, `BLOQUEADA` ou `APURADA` podem ser canceladas com motiv
 | Folha | `ABERTA` | Cancelar | Memória preservada e Folha excluída do fluxo fiscal. |
 | Folha | `PROCESSANDO` | Aguardar | Evita corrida entre worker e decisão administrativa. |
 | Folha | `FECHADA` | Reabrir | Invalida obrigação não emitida e exige reapuração. |
-| Folha | ligada a obrigação `EMITIDA` | Bloqueada | Exige procedimento de retificação. |
+| Folha | ligada a obrigação `EMITIDA` | Bloqueada | Exige abrir retificação e congelar o original. |
 | Obrigação | `BLOQUEADA`/`APURADA` | Cancelar | Documentos invalidados e estado terminal. |
-| Obrigação | `EMITIDA` | Bloqueada | Exige procedimento fiscal externo e fluxo futuro específico. |
+| Obrigação | `EMITIDA` | Retificar | Congela o original, bloqueia, reapura e exige nova cadeia documental. |
 
 ## Evidência mínima do motivo
 

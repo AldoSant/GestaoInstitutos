@@ -79,6 +79,17 @@ Cada obrigação oferece **Espelho CSV**, contendo:
 O arquivo usa separador `;`, moeda brasileira e proteção contra fórmulas de planilha.
 A resposta HTTP inclui `X-Content-SHA256` para conferência do conteúdo baixado.
 
+## Dossiê imprimível
+
+Além do CSV, cada obrigação oferece **Dossiê imprimível**. Antes da renderização, o
+servidor exige fechamento monetário entre itens, principal, juros, multa e total. Uma
+obrigação `EMITIDA` também precisa possuir totalizador, recibo e DARF verificados, com
+o DARF no mesmo valor.
+
+O dossiê lista as fontes, hashes, documentos e localizadores e possui blocos de
+assinatura. Ele traz uma advertência permanente de que **não substitui o DARF oficial**.
+Consulte [Relatórios operacionais](RELATORIOS_OPERACIONAIS.md).
+
 ## Roteiro operacional
 
 1. Fechar todas as Folhas da competência após aprovação do RH.
@@ -88,7 +99,8 @@ A resposta HTTP inclui `X-Content-SHA256` para conferência do conteúdo baixado
 5. Registrar o totalizador como verificado; divergência mantém o bloqueio.
 6. Registrar o recibo verificado.
 7. Registrar o DARF verificado com o mesmo total.
-8. Guardar localizador e SHA-256 dos documentos no repositório documental interno.
+8. Gerar o dossiê imprimível e conferir o fechamento e as fontes congeladas.
+9. Guardar localizador e SHA-256 dos documentos no repositório documental interno.
 
 Se uma Folha for criada, reaberta ou alterada, reapure antes de continuar.
 

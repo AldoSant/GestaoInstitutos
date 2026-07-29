@@ -16,9 +16,14 @@ Este primeiro incremento contém:
 - parâmetros fiscais de 2026 conferidos em fontes oficiais e documentados;
 - memória individual anonimizada;
 - bloqueio da divergência previdenciária identificada no legado;
-- modelo PostgreSQL com 45 tabelas, integridade relacional e trilha de importação;
+- modelo PostgreSQL com 46 tabelas, integridade relacional e trilha de importação;
 - coletores e importadores idempotentes de Pessoas completas, Atividades, Lotações,
   Termos, Metas e Vínculos do GIW;
+- contratos e importadores de Eventos, Lançamentos, Produtividade, Folhas históricas e
+  guias, com dry-run auditável e dependências resolvidas por chave legada;
+- conversores de CSVs fornecidos de Folhas e guias para snapshots históricos privados,
+  com agrupamento por rubrica, validação de fechamento, SHA-256 da fonte e derivação
+  deduplicada de Pessoas e Eventos para evitar recadastro manual;
 - migração da ficha civil/profissional, contatos, endereço, conta bancária e dependentes
   da Pessoa, sem colocar snapshots reais no Git;
 - cadastro persistente de Pessoas, Atividades e Lotações, com busca, edição e
@@ -30,6 +35,12 @@ Este primeiro incremento contém:
   partir de Folhas fechadas, com emissão bloqueada até a conciliação completa;
 - espelho CSV previdenciário com Folha, revisão, hash, base, alíquota, valor e
   documentos; apuração parcial e fontes alteradas são recusadas;
+- relatório A4 da Folha com resumo, demonstrativo individual por prestador, rubricas,
+  hashes, rateio homologado e assinaturas, pronto para impressão ou PDF;
+- relação interna de pagamentos A4 e CSV, usando a conta congelada no hash da Folha e
+  bloqueando a liberação enquanto a Folha estiver aberta ou houver dado bancário incompleto;
+- dossiê previdenciário imprimível que reconcilia itens, principal, acréscimos e a
+  cadeia totalizador–recibo–DARF sem se apresentar como guia oficial;
 - enquadramento versionado da cota patronal e da alíquota do segurado, sem presumir
   imunidade pelo nome ou pela natureza sem fins lucrativos;
 - conciliação documental de totalizador, recibo e DARF da DCTFWeb;
@@ -47,20 +58,24 @@ Este primeiro incremento contém:
   congeladas, decisão auditada do RH, invalidação automática e exportação CSV;
 - simulação fiscal consolidada por Pessoa e competência, com INSS/IRRF agregados,
   rateio determinístico por maior resto, fontes imutáveis, quatro hashes, estados de
-  homologação e espelho CSV; o resultado permanece isolado da Folha;
-- homologação mensal com sete controles integrados, versões imutáveis, aprovação
+  homologação e espelho CSV; o consumo produtivo exige três configurações explícitas,
+  uma simulação homologada ainda atual e a cobertura de todas as Folhas da Pessoa;
+- painel inicial totalmente conectado ao PostgreSQL, sem números demonstrativos;
+- homologação mensal com oito controles integrados, incluindo prontidão bancária, aprovação
   auditada, dossiê CSV e campanha de três competências para execução paralela;
+- retificação formal de obrigação emitida, congelando o original completo por SHA-256
+  antes de reabrir fontes, reapurar e registrar novos documentos;
 - cancelamento auditado de Folhas e obrigações, com tarefas interrompidas, estados
   terminais e invalidação automática das evidências afetadas;
 - cadastro persistente de Eventos/Rubricas e lançamentos recorrentes por Vínculo e
   competência, com validação de natureza, incidências, vigência e sobreposição;
-- migrações Drizzle versionadas até `0027_legacy-payroll-evidence`;
+- migrações Drizzle versionadas até `0028_operational-close-and-retification`;
 - Dockerfile e Compose para implantação própria;
 - testes automatizados e pipeline de integração contínua.
 
 Os módulos `/cadastros`, `/prestadores`, `/instrumentos`, `/vinculos`, `/medicoes`,
 `/eventos`, `/folhas`, `/consolidacoes`, `/consolidacoes/simulacoes`,
-`/homologacoes`, `/obrigacoes` e `/parametros`
+`/homologacoes`, `/migracoes`, `/obrigacoes` e `/parametros`
 usam PostgreSQL. O login ainda é
 demonstrativo e nenhuma obrigação é transmitida. Consulte o
 [andamento ponderado do MVP](docs/ANDAMENTO.md).
@@ -123,6 +138,8 @@ Antes de usar em servidor, defina valores fortes para `POSTGRES_PASSWORD` e `AUT
 - [Consolidação mensal por pessoa](docs/CONSOLIDACAO_MENSAL.md)
 - [Simulação fiscal consolidada](docs/SIMULACAO_FISCAL_CONSOLIDADA.md)
 - [Obrigação previdenciária e conciliação](docs/OBRIGACAO_PREVIDENCIARIA.md)
+- [Relatórios operacionais](docs/RELATORIOS_OPERACIONAIS.md)
+- [Relação interna de pagamentos](docs/RELACAO_PAGAMENTOS.md)
 - [Cancelamentos e retificações](docs/CANCELAMENTOS_E_RETIFICACOES.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Andamento do MVP](docs/ANDAMENTO.md)

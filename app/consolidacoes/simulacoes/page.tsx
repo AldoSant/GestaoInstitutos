@@ -14,6 +14,9 @@ import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { listarCasosConsolidacao } from "@/db/consolidacoes";
 import { listarSimulacoesConsolidacaoFiscal } from "@/db/simulacoes-consolidacao";
 import {
+  avaliarAtivacaoConsolidacaoProdutiva,
+} from "@/lib/aplicacao-consolidacao";
+import {
   rotuloStatusSimulacao,
   type StatusSimulacaoFiscal,
 } from "@/lib/simulacao-consolidacao";
@@ -119,6 +122,22 @@ export default async function SimulacoesConsolidacaoPage({
   const homologadas = simulacoes.filter(
     (simulacao) => simulacao.status === "HOMOLOGADA",
   ).length;
+  let ativacao: ReturnType<typeof avaliarAtivacaoConsolidacaoProdutiva> = {
+    ativa: false,
+    motivo: "configuração inválida",
+  };
+  try {
+    ativacao = avaliarAtivacaoConsolidacaoProdutiva({
+      empresaId: empresa.id,
+      competencia,
+    });
+  } catch (error) {
+    erro =
+      erro ||
+      (error instanceof Error
+        ? error.message
+        : "A ativação produtiva está configurada incorretamente.");
+  }
 
   return (
     <AppShell
@@ -126,8 +145,10 @@ export default async function SimulacoesConsolidacaoPage({
       eyebrow="Pessoa · competência · múltiplos vínculos"
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
       notice={{
-        label: "Modo controlado",
-        text: "O cálculo é versionado e auditável, mas não altera Folhas nem obrigações fiscais.",
+        label: ativacao.ativa ? "Modo produtivo controlado" : "Modo de simulação",
+        text: ativacao.ativa
+          ? `O rateio homologado pode alimentar Folhas desta empresa desde ${ativacao.inicio}.`
+          : `O cálculo não alimenta Folhas nesta competência: ${ativacao.motivo}.`,
       }}
       actions={
         <div className="button-row">
@@ -167,14 +188,22 @@ export default async function SimulacoesConsolidacaoPage({
         </section>
       )}
 
-      <section className="alert-box warning">
-        <FileLock2 size={22} />
+      <section className={`alert-box ${ativacao.ativa ? "success" : "warning"}`}>
+        {ativacao.ativa ? (
+          <CheckCircle2 size={22} />
+        ) : (
+          <FileLock2 size={22} />
+        )}
         <div>
-          <strong>Sem efeito produtivo, inclusive após homologação</strong>
+          <strong>
+            {ativacao.ativa
+              ? "Consumo produtivo habilitado nesta competência"
+              : "Consumo produtivo bloqueado"}
+          </strong>
           <p>
-            “Homologada” significa que o RH validou a hipótese contra os dados
-            legados. A Folha continua bloqueando pessoas multi-lote até uma
-            etapa posterior de ativação técnica explícita.
+            {ativacao.ativa
+              ? "Somente uma simulação homologada ainda atual pode alimentar a Folha. Mudança de fonte, regra, enquadramento ou Vínculo interrompe o processamento, e o fechamento exige todas as Folhas da Pessoa."
+              : "“Homologada” registra a decisão do RH, mas não produz efeito financeiro enquanto empresa e competência não forem habilitadas na implantação."}
           </p>
         </div>
       </section>
@@ -266,7 +295,7 @@ export default async function SimulacoesConsolidacaoPage({
         </div>
         <div>
           <span>Integração na Folha</span>
-          <strong>Bloqueada</strong>
+          <strong>{ativacao.ativa ? "Habilitada" : "Bloqueada"}</strong>
         </div>
       </section>
 

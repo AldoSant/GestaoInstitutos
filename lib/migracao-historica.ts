@@ -70,6 +70,9 @@ type GiwSource<FormId extends string> = {
   formId: FormId;
   extractedAt: string;
   baseUrl?: string;
+  captureMethod?: "WEBRUN" | "CSV_FORNECIDO";
+  sourceFileName?: string;
+  sourceFileSha256?: string;
 };
 
 export type GiwSnapshotFolhasHistoricas = {
@@ -186,6 +189,14 @@ function validarCabecalho(
   if (!extractedAt || Number.isNaN(Date.parse(extractedAt))) {
     problema(issues, null, "source.extractedAt", "data/hora inválida");
   }
+  const captureMethod = texto(value.source.captureMethod);
+  if (captureMethod && !["WEBRUN", "CSV_FORNECIDO"].includes(captureMethod)) {
+    problema(issues, null, "source.captureMethod", "método de captura inválido");
+  }
+  const sourceFileSha256 = texto(value.source.sourceFileSha256).toLowerCase();
+  if (sourceFileSha256 && !/^[a-f0-9]{64}$/.test(sourceFileSha256)) {
+    problema(issues, null, "source.sourceFileSha256", "SHA-256 inválido");
+  }
   if (!Array.isArray(value.records)) {
     problema(issues, null, "records", "deve ser uma lista");
     return null;
@@ -193,6 +204,9 @@ function validarCabecalho(
   return {
     extractedAt,
     baseUrl: typeof value.source.baseUrl === "string" ? value.source.baseUrl : undefined,
+    captureMethod: captureMethod || undefined,
+    sourceFileName: texto(value.source.sourceFileName) || undefined,
+    sourceFileSha256: sourceFileSha256 || undefined,
     records: value.records,
   };
 }
@@ -462,6 +476,9 @@ export function validarSnapshotFolhasHistoricas(
         formId: "464569390",
         extractedAt: header.extractedAt,
         baseUrl: header.baseUrl,
+        captureMethod: header.captureMethod as "WEBRUN" | "CSV_FORNECIDO" | undefined,
+        sourceFileName: header.sourceFileName,
+        sourceFileSha256: header.sourceFileSha256,
       },
       entity: "folhas_historicas",
       records,
@@ -561,6 +578,9 @@ export function validarSnapshotGuiasInssHistoricas(
         formId: "464569421",
         extractedAt: header.extractedAt,
         baseUrl: header.baseUrl,
+        captureMethod: header.captureMethod as "WEBRUN" | "CSV_FORNECIDO" | undefined,
+        sourceFileName: header.sourceFileName,
+        sourceFileSha256: header.sourceFileSha256,
       },
       entity: "guias_inss_historicas",
       records,

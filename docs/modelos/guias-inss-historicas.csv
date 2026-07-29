@@ -1,0 +1,2 @@
+guia_legacy_id;competencia;tipo;status;identificador;codigo_receita;vencimento;pagamento;principal;juros;multa;compensacoes;total;folha_legacy_ids
+GUIA-EXEMPLO-1;06/2026;GPS;EMITIDA;GPS-001;2100;20/07/2026;;110,00;0,00;0,00;0,00;110,00;FOLHA-EXEMPLO-1

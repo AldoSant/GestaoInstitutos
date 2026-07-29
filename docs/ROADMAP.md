@@ -1,14 +1,14 @@
 # Roadmap
 
-## Prioridade operacional atual — migração e funcionalidade
+## Prioridade operacional atual — conclusão funcional do MVP
 
-1. Pipeline seguro e idempotente de importação do GIW.
-2. Pessoas e prestadores completos, seguidos dos cadastros-base.
-3. Termos, metas e vínculos.
-4. Eventos, produtividade e tabelas por vigência.
-5. Processamento persistente da folha.
-6. Apuração e reconciliação da obrigação previdenciária.
-7. Execução paralela e corte do legado.
+1. Validar Folha individual e consolidada em PostgreSQL e no fluxo do worker.
+2. Fechar apuração e reconciliação da obrigação previdenciária.
+3. Homologar produtividade, Eventos e enquadramento com RH/contabilidade.
+4. Executar três competências em paralelo e ensaiar reabertura/retificação.
+5. Comprovar backup/restauração e preparar o corte do legado.
+
+A migração permanece disponível, mas não é o foco do caminho crítico desta etapa.
 
 Autenticação completa e perfis continuam previstos, mas não bloqueiam estas entregas.
 Até essa etapa, a aplicação deve permanecer em ambiente interno controlado. O roteiro
@@ -47,6 +47,11 @@ persistência e validações no servidor e no banco. O próximo recorte é recon
 coleta contratual real e homologar composição de Eventos e fórmulas de produtividade
 sobre a cadeia já persistente.
 
+O importador GIW agora cobre também os três movimentos: Eventos, Lançamentos e
+Produtividade possuem contratos versionados, dry-run auditável, checksum e resolução
+obrigatória das dependências. O painel de Migração apresenta cobertura por entidade e
+as últimas execuções. Falta confirmar os seletores do legado e executar a carga real.
+
 Critério de aceite: cadastros sobrevivem a reinicializações, dados do GIW são conciliados
 sem duplicação e toda linha importada tem origem rastreável.
 
@@ -70,6 +75,11 @@ determinístico de conferência para o RH, com hashes da Folha e da regra fiscal
 decisão do RH é registrada de forma imutável, inclui checklist e vale apenas para o
 hash analisado; sem aprovação vigente, o fechamento é bloqueado.
 
+A conta bancária agora integra o snapshot e o hash de cada item. A relação A4 e seu
+espelho CSV bloqueiam liberação se a Folha não estiver fechada ou se algum prestador
+estiver sem agência, conta ou tipo válido. Transmissão e retorno bancários continuam
+fora do MVP.
+
 Outras fontes pagadoras e medições mensais possuem cadastro por competência, evidência
 de conferência e snapshot. A criação da Folha executa pré-validação cadastral, fiscal e
 de medições antes de enfileirar. Percentual, quantidade × valor unitário e valor
@@ -77,8 +87,8 @@ explícito são suportados sem pressupor fórmulas contratuais. Ainda falta homo
 centavo a centavo com as três competências reais antes de liberar o uso financeiro.
 
 A revisão estrutural identificou que o rateio entre Folhas diferentes da mesma pessoa
-e competência ainda não está homologado. Até o agregado mensal ser implementado, a
-criação e o worker bloqueiam esse cenário sob trava transacional. O desenho e os
+e competência exige uma ativação controlada. Sem ela, a criação e o worker bloqueiam
+esse cenário sob trava transacional. O desenho e os
 critérios estão em [Consolidação mensal por pessoa](CONSOLIDACAO_MENSAL.md). A tela da
 Folha agora também apresenta bases totais de INSS/IRRF e resumo de rubricas. O
 diagnóstico `/consolidacoes` antecipa pessoas multi-lote, medições e Folhas existentes.
@@ -87,8 +97,10 @@ decisão, justificativa e responsável. Mudança nas fontes invalida automaticam
 decisão anterior, preservando-a para auditoria. O CSV inclui o estado da homologação.
 O motor agregado agora existe em modo controlado: calcula INSS/IRRF uma única vez por
 Pessoa, rateia por maior resto, versiona entradas e resultado e possui fluxo próprio de
-homologação em `/consolidacoes/simulacoes`. Ele não remove o bloqueio da Folha; a
-ativação depende das três competências reais e de mudança técnica separada.
+homologação em `/consolidacoes/simulacoes`. O consumo pela Folha está implementado,
+desligado por padrão e limitado por empresa e competência inicial. Ele exige a
+simulação homologada ainda atual, registra seu ID/hash em cada item e bloqueia o
+fechamento sem todas as Folhas da Pessoa.
 
 Folha na fila ou aberta pode ser cancelada com motivo e preservação da memória.
 Reabrir uma Folha invalida automaticamente obrigação e documentos ainda não emitidos;
@@ -113,8 +125,10 @@ emitida a obrigação com totalizador idêntico, recibo verificado e DARF do mes
 A apuração parcial agora é recusada. A relação com cada Folha congela revisão e hash;
 documentos verificados só são aceitos se nenhuma fonte mudou ou foi acrescentada.
 Reapurar invalida conferências anteriores. O espelho CSV detalha cada item e as
-evidências para conferência contábil. Ainda faltam integração/exportação oficial e
-homologação com documentos reais.
+evidências para conferência contábil. O dossiê A4 recompõe itens, principal, juros,
+multa e total, lista as fontes congeladas e só aceita estado emitido com a cadeia
+documental completa. Ainda faltam integração/exportação oficial e homologação com
+documentos reais.
 
 Obrigações ainda não emitidas podem ser canceladas de modo terminal e auditado,
 invalidando documentos verificados sem apagar a composição histórica.
@@ -148,7 +162,9 @@ validação de fechamento, checksum e importação idempotente. `/migracoes` com
 com a operação nova por competência e pessoa e exporta um dossiê CSV. O desenho está em
 [Migração histórica](MIGRACAO_HISTORICA.md). O adaptador visual permanece condicionado
 à reconexão do endereço do GIW; a sonda retomável já está pronta para confirmar os
-seletores sem alterar o legado.
+seletores sem alterar o legado. Como contingência, exportações CSV de Folhas e guias
+podem ser convertidas em snapshots históricos rastreáveis, com agrupamento por
+Folha/pessoa/rubrica, SHA-256 e validação integral dos fechamentos.
 
 ## Incremento 5 — acesso e endurecimento
 
@@ -161,7 +177,7 @@ seletores sem alterar o legado.
 ## Expansões posteriores
 
 - empenho e execução orçamentária;
-- pagamentos e arquivos bancários;
+- transmissão, retorno e conciliação de arquivos bancários;
 - prestação de contas;
 - documentos e contratos;
 - painéis gerenciais.

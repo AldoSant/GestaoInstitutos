@@ -197,6 +197,13 @@
       "when": 1785559200000,
       "tag": "0027_legacy-payroll-evidence",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1785645600000,
+      "tag": "0028_operational-close-and-retification",
+      "breakpoints": true
     }
   ]
 }

@@ -15,6 +15,8 @@
 | [Consolidação mensal por pessoa](CONSOLIDACAO_MENSAL.md) | Limite multi-lote atual, bloqueio seguro e modelo-alvo de agregação e rateio fiscal. |
 | [Simulação fiscal consolidada](SIMULACAO_FISCAL_CONSOLIDADA.md) | Motor agregado, rateio exato, persistência, homologação e bloqueio produtivo. |
 | [Obrigação previdenciária](OBRIGACAO_PREVIDENCIARIA.md) | Apuração completa, fontes congeladas, estados, espelho CSV e conciliação documental. |
+| [Relatórios operacionais](RELATORIOS_OPERACIONAIS.md) | Relatório A4 da Folha, demonstrativos individuais e dossiê previdenciário. |
+| [Relação de pagamentos](RELACAO_PAGAMENTOS.md) | Conta congelada, gates de liberação, relação A4 e espelho CSV. |
 | [Cancelamentos e retificações](CANCELAMENTOS_E_RETIFICACOES.md) | Estados permitidos, impacto fiscal, invalidação de evidências e justificativas. |
 | [Roadmap](ROADMAP.md) | Incrementos, critérios de aceite e ordem recomendada. |
 | [Andamento do MVP](ANDAMENTO.md) | Percentual ponderado, entregas utilizáveis e caminho crítico restante. |

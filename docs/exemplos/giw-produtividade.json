@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0",
+  "source": {
+    "system": "GIW",
+    "formId": "464569461",
+    "extractedAt": "2026-06-30T18:10:00.000Z"
+  },
+  "entity": "produtividade",
+  "records": [
+    {
+      "legacyId": "PRODUTIVIDADE-EXEMPLO",
+      "vinculoLegacyId": "VINCULO-EXEMPLO",
+      "competencia": "2026-06-01",
+      "tipo": "PERCENTUAL",
+      "valorContratual": "1000.00",
+      "percentual": "80.0000",
+      "quantidade": null,
+      "valorUnitario": null,
+      "valorApurado": "800.00",
+      "evidenciaReferencia": "Ficha GIW fictícia sem validade",
+      "evidenciaHash": null,
+      "conferente": "Importação GIW",
+      "observacao": "Registro exclusivamente demonstrativo."
+    }
+  ]
+}

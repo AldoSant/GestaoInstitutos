@@ -34,7 +34,7 @@ test(
           where table_schema = 'public'
             and table_type = 'BASE TABLE'`,
       );
-      assert.equal(Number(tabelas.rows[0].total), 45);
+      assert.equal(Number(tabelas.rows[0].total), 46);
 
       const restricoes = await client.query<{ conname: string }>(
         `select conname
@@ -187,10 +187,20 @@ test(
             'ck_legado_guia_valores',
             'ck_legado_guia_folhas',
             'ck_legado_guia_checksum',
-            'ck_legado_guia_snapshot'
+            'ck_legado_guia_snapshot',
+            'fk_retificacao_empresa',
+            'fk_retificacao_empresa_obrigacao',
+            'ck_retificacao_versao',
+            'ck_retificacao_status',
+            'ck_retificacao_motivo',
+            'ck_retificacao_responsavel',
+            'ck_retificacao_hash',
+            'ck_retificacao_snapshot',
+            'ck_retificacao_resultado',
+            'ck_retificacao_conclusao'
           )`,
       );
-      assert.equal(restricoes.rowCount, 148);
+      assert.equal(restricoes.rowCount, 158);
 
       const gatilhos = await client.query<{ tgname: string }>(
         `select tgname
@@ -231,10 +241,53 @@ test(
               'tr_proteger_simulacao_fiscal',
               'tr_proteger_simulacao_fiscal_fonte',
               'tr_auditar_simulacao_fiscal',
-              'tr_auditar_simulacao_fiscal_fonte'
+              'tr_auditar_simulacao_fiscal_fonte',
+              'tr_proteger_retificacao_obrigacao',
+              'tr_auditar_retificacao_obrigacao'
             )`,
       );
-      assert.equal(gatilhos.rowCount, 35);
+      assert.equal(gatilhos.rowCount, 37);
+
+      const auditoriaImportacao = await client.query<{
+        dry_runs: number;
+        dry_runs_com_fonte: number;
+        movimentos_mapeados: number;
+      }>(
+        `select
+           (
+             select count(*)::int
+               from importacao_execucao
+              where origem = 'GIW' and modo = 'DRY_RUN'
+                and status = 'CONCLUIDA'
+           ) dry_runs,
+           (
+             select count(*)::int
+               from importacao_execucao
+              where origem = 'GIW' and modo = 'DRY_RUN'
+                and status = 'CONCLUIDA'
+                and resumo->'fonte'->>'sistema' = 'GIW'
+                and coalesce(resumo->'fonte'->>'formulario', '') <> ''
+                and coalesce(resumo->'fonte'->>'extraidoEm', '') <> ''
+           ) dry_runs_com_fonte,
+           (
+             select count(*)::int
+               from legado_chave
+              where origem = 'GIW'
+                and (entidade, destino_tabela) in (
+                  ('eventos', 'evento'),
+                  ('lancamentos_eventos', 'lancamento_evento_recorrente'),
+                  ('produtividade', 'medicao_mensal')
+                )
+           ) movimentos_mapeados`,
+      );
+      if (process.env.CI === "true") {
+        assert.ok(auditoriaImportacao.rows[0].dry_runs >= 1);
+        assert.equal(
+          auditoriaImportacao.rows[0].dry_runs_com_fonte,
+          auditoriaImportacao.rows[0].dry_runs,
+        );
+        assert.equal(auditoriaImportacao.rows[0].movimentos_mapeados, 3);
+      }
 
       await client.query("begin");
       const empresaId = randomUUID();
@@ -659,7 +712,7 @@ test(
            (id, empresa_id, competencia, versao, hash_fontes, resumo,
             criado_por)
          values ($1, $2, date '2026-01-01', 1, repeat('b', 64),
-                 '{"pronta":true,"bloqueios":[],"conformes":7,"total":7}'::jsonb,
+                 '{"pronta":true,"bloqueios":[],"conformes":8,"total":8}'::jsonb,
                  'TESTE_AUTOMATIZADO')`,
         [homologacaoCompetenciaId, empresaId],
       );

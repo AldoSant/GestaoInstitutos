@@ -10,11 +10,11 @@ prontidão e congela uma versão reproduzível.
 A tela acompanha automaticamente três competências, terminando no mês escolhido. Uma
 competência só aparece como aprovada quando:
 
-1. os sete controles vivos estão conformes;
+1. os oito controles vivos estão conformes;
 2. existe uma versão congelada com o mesmo hash;
 3. um responsável registrou a aprovação final com justificativa.
 
-## Os sete controles
+## Os oito controles
 
 | Controle | Evidência exigida | Ausência |
 |---|---|---|
@@ -23,10 +23,11 @@ competência só aparece como aprovada quando:
 | Folhas | Existe uma Folha fechada para cada combinação ativa de Termo e Meta. | Bloqueia a homologação. |
 | Conferência do RH | Cada Folha atual possui aprovação correspondente à revisão e ao hash fechados. | Bloqueia a homologação. |
 | Paralelo GIW | Cada Folha atual possui comparação conciliada com arquivo GIW/RH. | Permanece pendente. |
+| Pagamentos | Cada item pertence a Folha fechada e possui agência, número e tipo de conta válidos no snapshot. | Bloqueia a homologação. |
 | Obrigação | A obrigação previdenciária está apurada ou emitida, sem diferença. | Bloqueia a homologação. |
 | Documentos DCTFWeb | Totalizador, recibo e DARF estão verificados; a obrigação está emitida. | Permanece pendente. |
 
-`NAO_APLICAVEL` é um resultado calculado, não uma dispensa manual. Todos os sete itens
+`NAO_APLICAVEL` é um resultado calculado, não uma dispensa manual. Todos os oito itens
 permanecem obrigatórios no checklist.
 
 ## Versionamento
@@ -39,7 +40,7 @@ Cada diagnóstico produz:
 - um hash SHA-256 global da competência;
 - resumo com prontidão e lista de bloqueios.
 
-O botão **Congelar os sete controles** materializa
+O botão **Congelar os oito controles** materializa
 `homologacao_competencia` e seus itens imutáveis em
 `homologacao_competencia_item`. Repetir a operação com as mesmas fontes é idempotente.
 Uma mudança em qualquer controle cria nova versão e invalida as anteriores.
@@ -51,7 +52,7 @@ precisa de nova decisão. A auditoria mantém a decisão que existia antes da in
 
 - `PENDENTE`: versão congelada sem tratamento;
 - `EM_ANALISE`: responsável iniciou a revisão;
-- `APROVADA`: sete controles conformes e decisão final registrada;
+- `APROVADA`: oito controles conformes e decisão final registrada;
 - `REJEITADA`: competência formalmente recusada com justificativa;
 - `INVALIDADA`: ao menos uma fonte não corresponde mais ao hash.
 
@@ -109,7 +110,7 @@ HTTP. Ele pode ser arquivado com as evidências do RH e da contabilidade.
 5. Apurar a obrigação e registrar os documentos verificados.
 6. Abrir `/homologacoes` e recalcular o diagnóstico.
 7. Corrigir todo item `PENDENTE` ou `BLOQUEIO`.
-8. Congelar os sete controles.
+8. Congelar os oito controles.
 9. Registrar a versão como `EM_ANALISE`.
 10. Conferir o CSV do dossiê e as evidências externas.
 11. Aprovar ou rejeitar com responsável e justificativa.
@@ -119,7 +120,7 @@ HTTP. Ele pode ser arquivado com as evidências do RH e da contabilidade.
 O sistema está tecnicamente pronto para propor o corte quando as três competências da
 campanha estiverem simultaneamente:
 
-- com sete controles conformes;
+- com oito controles conformes;
 - congeladas em versões que ainda correspondem às fontes atuais;
 - aprovadas pelo RH;
 - reconciliadas com os documentos reais;

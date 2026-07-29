@@ -1740,7 +1740,7 @@ export const itensHomologacaoCompetencia = pgTable(
       "ck_homologacao_item_tipo",
       sql`${table.tipo} in (
         'MEDICOES', 'CONSOLIDACAO', 'FOLHAS', 'CONFERENCIA_RH',
-        'PARALELO_GIW', 'OBRIGACAO', 'DOCUMENTOS_DCTFWEB'
+        'PARALELO_GIW', 'PAGAMENTOS', 'OBRIGACAO', 'DOCUMENTOS_DCTFWEB'
       )`,
     ),
     check(
@@ -1954,6 +1954,89 @@ export const documentosObrigacao = pgTable(
     check(
       "ck_obrigacao_documento_hash",
       sql`${table.hashSha256} is null or ${table.hashSha256} ~ '^[0-9a-f]{64}$'`,
+    ),
+  ],
+);
+
+export const retificacoesObrigacao = pgTable(
+  "obrigacao_fiscal_retificacao",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
+    obrigacaoId: uuid("obrigacao_id").notNull(),
+    versao: integer("versao").notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("SOLICITADA"),
+    motivo: text("motivo").notNull(),
+    responsavel: varchar("responsavel", { length: 160 }).notNull(),
+    protocolo: varchar("protocolo", { length: 160 }),
+    snapshotAnterior: jsonb("snapshot_anterior").notNull(),
+    hashSnapshotAnterior: varchar("hash_snapshot_anterior", {
+      length: 64,
+    }).notNull(),
+    resultado: jsonb("resultado"),
+    solicitadaEm: timestamp("solicitada_em", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    iniciadaEm: timestamp("iniciada_em", { withTimezone: true }),
+    concluidaEm: timestamp("concluida_em", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("uq_retificacao_obrigacao_versao").on(
+      table.obrigacaoId,
+      table.versao,
+    ),
+    uniqueIndex("uq_retificacao_obrigacao_ativa")
+      .on(table.obrigacaoId)
+      .where(sql`${table.status} in ('SOLICITADA', 'EM_ANDAMENTO')`),
+    index("ix_retificacao_empresa_status").on(
+      table.empresaId,
+      table.status,
+      table.solicitadaEm,
+    ),
+    foreignKey({
+      columns: [table.empresaId],
+      foreignColumns: [empresas.id],
+      name: "fk_retificacao_empresa",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.obrigacaoId],
+      foreignColumns: [obrigacoes.empresaId, obrigacoes.id],
+      name: "fk_retificacao_empresa_obrigacao",
+    }),
+    check("ck_retificacao_versao", sql`${table.versao} > 0`),
+    check(
+      "ck_retificacao_status",
+      sql`${table.status} in ('SOLICITADA', 'EM_ANDAMENTO', 'CONCLUIDA', 'CANCELADA')`,
+    ),
+    check(
+      "ck_retificacao_motivo",
+      sql`length(btrim(${table.motivo})) between 20 and 3000`,
+    ),
+    check(
+      "ck_retificacao_responsavel",
+      sql`length(btrim(${table.responsavel})) between 3 and 160`,
+    ),
+    check(
+      "ck_retificacao_hash",
+      sql`${table.hashSnapshotAnterior} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "ck_retificacao_snapshot",
+      sql`jsonb_typeof(${table.snapshotAnterior}) = 'object'`,
+    ),
+    check(
+      "ck_retificacao_resultado",
+      sql`${table.resultado} is null or jsonb_typeof(${table.resultado}) = 'object'`,
+    ),
+    check(
+      "ck_retificacao_conclusao",
+      sql`(
+        ${table.status} = 'CONCLUIDA'
+        and ${table.concluidaEm} is not null
+        and ${table.resultado} is not null
+      ) or (
+        ${table.status} <> 'CONCLUIDA' and ${table.concluidaEm} is null
+      )`,
     ),
   ],
 );

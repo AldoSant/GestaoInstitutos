@@ -7,6 +7,7 @@ import {
   apurarRetencoesSegurados,
   cancelarObrigacao,
   registrarDocumentoObrigacao,
+  solicitarRetificacaoObrigacao,
 } from "@/db/obrigacoes";
 import { validarDocumentoObrigacao } from "@/lib/documentos-obrigacao";
 
@@ -83,6 +84,33 @@ export async function cancelarObrigacaoFiscal(formData: FormData) {
   const params = new URLSearchParams({
     [erro ? "erro" : "sucesso"]:
       erro || "Obrigação cancelada com invalidação das conferências documentais.",
+  });
+  redirect(`/obrigacoes?${params.toString()}`);
+}
+
+export async function solicitarRetificacaoFiscal(formData: FormData) {
+  const obrigacaoId = String(formData.get("obrigacaoId") ?? "");
+  let erro = "";
+  let sucesso = "";
+  try {
+    const empresa = await resolverEmpresaAtiva();
+    const retificacao = await solicitarRetificacaoObrigacao({
+      empresaId: empresa.id,
+      obrigacaoId,
+      motivo: String(formData.get("motivo") ?? ""),
+      responsavel: String(formData.get("responsavel") ?? ""),
+    });
+    sucesso = `Retificação v${retificacao.versao} aberta. O original foi congelado no hash ${retificacao.hashSnapshot.slice(0, 12)}.`;
+  } catch (error) {
+    erro =
+      error instanceof Error
+        ? error.message
+        : "Não foi possível iniciar a retificação.";
+  }
+  revalidatePath("/obrigacoes");
+  revalidatePath("/homologacoes");
+  const params = new URLSearchParams({
+    [erro ? "erro" : "sucesso"]: erro || sucesso,
   });
   redirect(`/obrigacoes?${params.toString()}`);
 }

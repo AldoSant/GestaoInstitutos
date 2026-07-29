@@ -12,6 +12,7 @@ export async function resolverEmpresaAtiva() {
   const registros = await getDb()
     .select({
       id: empresas.id,
+      cnpj: empresas.cnpj,
       razaoSocial: empresas.razaoSocial,
       nomeFantasia: empresas.nomeFantasia,
     })

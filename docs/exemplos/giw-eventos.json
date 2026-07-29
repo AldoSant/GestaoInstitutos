@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0",
+  "source": {
+    "system": "GIW",
+    "formId": "8716",
+    "extractedAt": "2026-06-30T18:00:00.000Z"
+  },
+  "entity": "eventos",
+  "records": [
+    {
+      "legacyId": "EVENTO-EXEMPLO",
+      "codigo": "001",
+      "descricao": "Retribuição fictícia",
+      "natureza": "PROVENTO",
+      "tipoCalculo": "VALOR",
+      "incideInss": true,
+      "incideIrrf": true,
+      "ativo": true
+    }
+  ]
+}

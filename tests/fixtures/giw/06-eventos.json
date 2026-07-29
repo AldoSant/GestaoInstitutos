@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0",
+  "source": {
+    "system": "GIW",
+    "formId": "8716",
+    "extractedAt": "2026-07-28T12:00:00.000Z"
+  },
+  "entity": "eventos",
+  "records": [
+    {
+      "legacyId": "8101",
+      "codigo": "INF-CI",
+      "descricao": "Informativo sintético da CI",
+      "natureza": "INFORMATIVO",
+      "tipoCalculo": "VALOR",
+      "incideInss": false,
+      "incideIrrf": false,
+      "ativo": true
+    }
+  ]
+}

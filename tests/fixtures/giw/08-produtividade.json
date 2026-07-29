@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0",
+  "source": {
+    "system": "GIW",
+    "formId": "464569461",
+    "extractedAt": "2026-07-28T12:10:00.000Z"
+  },
+  "entity": "produtividade",
+  "records": [
+    {
+      "legacyId": "8301",
+      "vinculoLegacyId": "5001",
+      "competencia": "2026-06-01",
+      "tipo": "PERCENTUAL",
+      "valorContratual": "4080.00",
+      "percentual": "100.0000",
+      "quantidade": null,
+      "valorUnitario": null,
+      "valorApurado": "4080.00",
+      "evidenciaReferencia": "Produtividade sintética CI 2026-06",
+      "evidenciaHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "conferente": "Importação GIW CI",
+      "observacao": "Fixture sem dados reais."
+    }
+  ]
+}

@@ -13,14 +13,16 @@ export default function AjudaPage() {
           ativas sobrepostas. A cadeia pode ser coletada e importada do GIW com
           identificação de origem e repetição segura. Folhas possuem memória, revisão,
           conferência, homologação e cancelamento; obrigações congelam suas fontes e
-          controlam documentos DCTFWeb/DARF. A homologação mensal reúne sete controles,
-          congela versões por hash e acompanha três competências em paralelo.
+          controlam documentos DCTFWeb/DARF e retificações formais. A homologação
+          mensal reúne oito controles, incluindo pagamentos, congela versões por hash
+          e acompanha três competências em paralelo.
         </p>
         <h3>Próximas entregas</h3>
         <ol>
           <li>Reconciliação dos vínculos reais coletados do GIW.</li>
           <li>Homologação de produtividade, eventos e três competências reais.</li>
-          <li>Rateio fiscal multi-lote a partir dos casos de consolidação.</li>
+          <li>Integração oficial de transmissão e retorno governamental.</li>
+          <li>Ensaio de backup, restauração, retificação e corte operacional.</li>
           <li>Autenticação, perfis e segregação completa por organização.</li>
         </ol>
       </section>

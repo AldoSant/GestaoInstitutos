@@ -6,6 +6,20 @@ Trazer o acervo operacional do GIW sem transformar um resultado legado em verdad
 contábil do sistema novo. O dado importado é evidência para reconstrução, conferência e
 operação paralela.
 
+Se o portal estiver indisponível, os modelos CSV de Folhas e guias podem ser
+preenchidos ou gerados a partir de uma exportação do RH. O comando
+`giw:converter:historico` transforma esses arquivos em snapshots com a mesma validação,
+mantendo nome do arquivo e SHA-256 como evidência. O CSV original e o snapshot
+permanecem em `.private` e não devem ser versionados.
+
+O mesmo CSV de Folhas pode gerar um snapshot de Pessoas. Essa derivação cria cadastros
+parciais e deduplicados para reduzir a redigitação, mas não presume endereço, conta,
+dependentes ou informação profissional que o relatório não contenha.
+
+As rubricas também podem gerar o catálogo inicial de Eventos, desde que natureza,
+incidência de INSS e incidência de IRRF estejam explícitas e consistentes em todas as
+ocorrências. Ausência ou conflito bloqueia a derivação.
+
 ## Isolamento
 
 | Tabela | Conteúdo | Efeito na operação oficial |
@@ -42,6 +56,11 @@ O dossiê CSV preserva resumo, diferenças individuais, lotes e documentos. Dife
 zero é requisito de reprodução, mas não substitui a validação normativa: uma GPS antiga
 pode ser evidência válida e, ainda assim, não ser o documento correto para a operação
 atual submetida à DCTFWeb.
+
+O mesmo painel apresenta a cobertura da cadeia anterior à Folha — Pessoas, Atividades,
+Lotações, Termos, Vínculos, Eventos, Lançamentos e Produtividade — e as vinte execuções
+mais recentes. Uma execução em dry-run é persistida depois que a transação simulada foi
+revertida, de modo que a auditoria não transforma a simulação em dado operacional.
 
 ## Campanha de corte
 

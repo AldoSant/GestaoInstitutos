@@ -5,6 +5,14 @@ import {
   type GiwSnapshotFolhasHistoricas,
   type GiwSnapshotGuiasInssHistoricas,
 } from "./migracao-historica";
+import {
+  validarSnapshotEventos,
+  validarSnapshotLancamentosEventos,
+  validarSnapshotProdutividade,
+  type GiwSnapshotEventos,
+  type GiwSnapshotLancamentosEventos,
+  type GiwSnapshotProdutividade,
+} from "./movimentos-giw";
 
 export type {
   GiwFolhaHistorica,
@@ -14,6 +22,14 @@ export type {
   GiwSnapshotFolhasHistoricas,
   GiwSnapshotGuiasInssHistoricas,
 } from "./migracao-historica";
+export type {
+  GiwEvento,
+  GiwLancamentoEvento,
+  GiwProdutividade,
+  GiwSnapshotEventos,
+  GiwSnapshotLancamentosEventos,
+  GiwSnapshotProdutividade,
+} from "./movimentos-giw";
 
 export type GiwPessoa = {
   legacyId: string;
@@ -144,6 +160,9 @@ export type GiwSnapshotPessoas = {
     formId: "464569402";
     extractedAt: string;
     baseUrl?: string;
+    captureMethod?: "WEBRUN" | "CSV_FORNECIDO";
+    sourceFileName?: string;
+    sourceFileSha256?: string;
   };
   entity: "pessoas";
   records: GiwPessoa[];
@@ -203,6 +222,9 @@ export type GiwSnapshot =
   | GiwSnapshotLotacoes
   | GiwSnapshotTermos
   | GiwSnapshotVinculos
+  | GiwSnapshotEventos
+  | GiwSnapshotLancamentosEventos
+  | GiwSnapshotProdutividade
   | GiwSnapshotFolhasHistoricas
   | GiwSnapshotGuiasInssHistoricas;
 
@@ -492,6 +514,24 @@ export function validarSnapshotPessoas(value: unknown): ValidationResult {
       message: "formulário de pessoas esperado: 464569402",
     });
   }
+  const captureMethod = String(value.source.captureMethod ?? "").trim();
+  if (captureMethod && !["WEBRUN", "CSV_FORNECIDO"].includes(captureMethod)) {
+    issues.push({
+      record: null,
+      field: "source.captureMethod",
+      message: "método de captura inválido",
+    });
+  }
+  const sourceFileSha256 = String(value.source.sourceFileSha256 ?? "")
+    .trim()
+    .toLowerCase();
+  if (sourceFileSha256 && !/^[a-f0-9]{64}$/.test(sourceFileSha256)) {
+    issues.push({
+      record: null,
+      field: "source.sourceFileSha256",
+      message: "SHA-256 inválido",
+    });
+  }
 
   if (issues.length > 0) return { snapshot: null, issues };
 
@@ -504,6 +544,15 @@ export function validarSnapshotPessoas(value: unknown): ValidationResult {
         extractedAt,
         baseUrl:
           typeof value.source.baseUrl === "string" ? value.source.baseUrl : undefined,
+        captureMethod:
+          captureMethod === "WEBRUN" || captureMethod === "CSV_FORNECIDO"
+            ? captureMethod
+            : undefined,
+        sourceFileName:
+          typeof value.source.sourceFileName === "string"
+            ? value.source.sourceFileName.trim() || undefined
+            : undefined,
+        sourceFileSha256: sourceFileSha256 || undefined,
       },
       entity: "pessoas",
       records,
@@ -1149,6 +1198,13 @@ export function validarSnapshotGiw(value: unknown): ValidationResult<GiwSnapshot
   if (value.entity === "lotacoes") return validarSnapshotLotacoes(value);
   if (value.entity === "termos") return validarSnapshotTermos(value);
   if (value.entity === "vinculos") return validarSnapshotVinculos(value);
+  if (value.entity === "eventos") return validarSnapshotEventos(value);
+  if (value.entity === "lancamentos_eventos") {
+    return validarSnapshotLancamentosEventos(value);
+  }
+  if (value.entity === "produtividade") {
+    return validarSnapshotProdutividade(value);
+  }
   if (value.entity === "folhas_historicas") {
     return validarSnapshotFolhasHistoricas(value);
   }

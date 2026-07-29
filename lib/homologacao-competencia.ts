@@ -4,6 +4,7 @@ export const TIPOS_CHECKLIST_COMPETENCIA = [
   "FOLHAS",
   "CONFERENCIA_RH",
   "PARALELO_GIW",
+  "PAGAMENTOS",
   "OBRIGACAO",
   "DOCUMENTOS_DCTFWEB",
 ] as const;
@@ -135,8 +136,27 @@ export function rotuloItemCompetencia(tipo: TipoChecklistCompetencia) {
     FOLHAS: "Folhas fechadas",
     CONFERENCIA_RH: "Conferências do RH",
     PARALELO_GIW: "Comparação com o GIW",
+    PAGAMENTOS: "Relação de pagamentos",
     OBRIGACAO: "Obrigação previdenciária",
     DOCUMENTOS_DCTFWEB: "Documentos DCTFWeb/DARF",
   };
   return rotulos[tipo];
+}
+
+export function destinoItemCompetencia(
+  tipo: TipoChecklistCompetencia,
+  competencia: string,
+) {
+  const mes = encodeURIComponent(competencia);
+  const destinos: Record<TipoChecklistCompetencia, string> = {
+    MEDICOES: `/medicoes?competencia=${mes}`,
+    CONSOLIDACAO: `/consolidacoes?competencia=${mes}`,
+    FOLHAS: "/folhas",
+    CONFERENCIA_RH: "/folhas",
+    PARALELO_GIW: "/folhas",
+    PAGAMENTOS: "/folhas",
+    OBRIGACAO: "/obrigacoes",
+    DOCUMENTOS_DCTFWEB: "/obrigacoes",
+  };
+  return destinos[tipo];
 }

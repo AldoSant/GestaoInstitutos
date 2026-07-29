@@ -1,23 +1,32 @@
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import {
+  aplicarRateioConsolidadoNaFolha,
+  avaliarAtivacaoConsolidacaoProdutiva,
+  type RateioConsolidadoFonte,
+} from "@/lib/aplicacao-consolidacao";
+import {
   normalizarMotivoCancelamento,
   validarStatusCancelamentoFolha,
 } from "@/lib/cancelamento";
 import { normalizarConferenciaFolha } from "@/lib/conferencia-folha";
 import { validarAusenciaDeConflitoPessoaCompetencia } from "@/lib/consolidacao-folha";
-import { hashJson } from "@/lib/json-canonico";
+import { calcularHashResultadoFolha } from "@/lib/hash-folha";
 import {
   processarVinculoFolha,
   type EventoCompetencia,
 } from "@/lib/processamento-folha";
 import { resolverEnquadramentoPrestador } from "@/lib/inteligencia-contabil";
-import { carregarEnquadramentoPorCompetencia } from "./enquadramentos";
+import {
+  carregarEnquadramentoPorCompetencia,
+  carregarEnquadramentoPorId,
+} from "./enquadramentos";
 import { getPool } from "./index";
 import {
   carregarRegraFiscalPorCompetencia,
   carregarRegraFiscalPorId,
 } from "./regras";
+import { carregarRateioProdutivoHomologado } from "./simulacoes-consolidacao";
 
 type StatusFolha =
   | "RASCUNHO"
@@ -44,6 +53,8 @@ type LinhaFolha = {
 
 type LinhaVinculo = {
   vinculo_id: string;
+  pessoa_id: string;
+  quantidade_vinculos_pessoa: number;
   prestador_id: string;
   valor_retribuicao: string;
   valor_contratual: string;
@@ -139,6 +150,29 @@ async function configurarAuditoria(
     `select set_config('app.ator', $1, true),
             set_config('app.motivo', $2, true)`,
     [atorNormalizado(ator), motivo],
+  );
+}
+
+async function bloquearCompetenciaDaFolha(
+  client: PoolClient,
+  folhaId: string,
+) {
+  const coordenadas = await client.query<{
+    empresa_id: string;
+    competencia: string;
+  }>(
+    `select empresa_id, competencia::text
+       from folha
+      where id = $1`,
+    [folhaId],
+  );
+  if (!coordenadas.rows[0]) return;
+  await client.query(
+    "select pg_advisory_xact_lock(hashtext($1), hashtext($2))",
+    [
+      coordenadas.rows[0].empresa_id,
+      coordenadas.rows[0].competencia,
+    ],
   );
 }
 
@@ -274,13 +308,14 @@ async function validarPessoaEmFolhaUnicaNaCompetencia(
   },
 ) {
   const conflitos = await client.query<{
+    pessoa_id: string;
     nome: string;
     matricula: string;
     folha_id: string;
     termo_numero: string;
     meta_codigo: string;
   }>(
-    `select distinct pessoa.nome_razao_social nome, atual.matricula,
+    `select distinct pessoa.id pessoa_id, pessoa.nome_razao_social nome, atual.matricula,
             f.id folha_id, termo.numero termo_numero, meta.codigo meta_codigo
        from prestador_vinculo vinculo_atual
        join prestador atual
@@ -323,15 +358,125 @@ async function validarPessoaEmFolhaUnicaNaCompetencia(
       limit 8`,
     [empresaId, termoId, metaId, competencia, folhaAtualId],
   );
-  validarAusenciaDeConflitoPessoaCompetencia(
-    conflitos.rows.map((item) => ({
-      nome: item.nome,
-      matricula: item.matricula,
-      folhaId: item.folha_id,
-      termoNumero: item.termo_numero,
-      metaCodigo: item.meta_codigo,
-    })),
+  if (conflitos.rowCount === 0) return;
+  const ativacao = avaliarAtivacaoConsolidacaoProdutiva({
+    empresaId,
+    competencia,
+  });
+  if (!ativacao.ativa) {
+    validarAusenciaDeConflitoPessoaCompetencia(
+      conflitos.rows.map((item) => ({
+        nome: item.nome,
+        matricula: item.matricula,
+        folhaId: item.folha_id,
+        termoNumero: item.termo_numero,
+        metaCodigo: item.meta_codigo,
+      })),
+    );
+    return;
+  }
+  for (const pessoaId of new Set(conflitos.rows.map((item) => item.pessoa_id))) {
+    await carregarRateioProdutivoHomologado({
+      empresaId,
+      pessoaId,
+      competencia,
+      executor: client,
+    });
+  }
+}
+
+async function validarConsolidacaoProdutivaFechamento(
+  client: PoolClient,
+  folha: LinhaFolha,
+) {
+  const ativacao = avaliarAtivacaoConsolidacaoProdutiva({
+    empresaId: folha.empresa_id,
+    competencia: folha.competencia,
+  });
+  if (!ativacao.ativa) return;
+  const pessoas = await client.query<{ pessoa_id: string; quantidade: number }>(
+    `select pessoa.id pessoa_id, count(distinct todos.id)::int quantidade
+       from folha_item item
+       join prestador_vinculo vinculo
+         on vinculo.empresa_id = item.empresa_id and vinculo.id = item.vinculo_id
+       join prestador
+         on prestador.empresa_id = vinculo.empresa_id
+        and prestador.id = vinculo.prestador_id
+       join pessoa
+         on pessoa.empresa_id = prestador.empresa_id
+        and pessoa.id = prestador.pessoa_id
+       join prestador prestador_todos
+         on prestador_todos.empresa_id = pessoa.empresa_id
+        and prestador_todos.pessoa_id = pessoa.id
+        and prestador_todos.ativo
+       join prestador_vinculo todos
+         on todos.empresa_id = prestador_todos.empresa_id
+        and todos.prestador_id = prestador_todos.id
+        and todos.ativo and todos.inicio <= $2::date
+        and (todos.fim is null or todos.fim >= $2::date)
+      where item.folha_id = $1
+      group by pessoa.id
+     having count(distinct todos.id) > 1`,
+    [folha.id, folha.competencia],
   );
+  for (const pessoa of pessoas.rows) {
+    const rateio = await carregarRateioProdutivoHomologado({
+      empresaId: folha.empresa_id,
+      pessoaId: pessoa.pessoa_id,
+      competencia: folha.competencia,
+      exigirCoberturaFolhas: true,
+      executor: client,
+    });
+    const divergentes = await client.query<{ total: number }>(
+      `select count(*)::int total
+         from prestador_vinculo vinculo
+         join prestador
+           on prestador.empresa_id = vinculo.empresa_id
+          and prestador.id = vinculo.prestador_id
+         left join lateral (
+           select candidata.id, candidata.status
+             from folha candidata
+            where candidata.empresa_id = vinculo.empresa_id
+              and candidata.termo_id = vinculo.termo_id
+              and candidata.meta_id = vinculo.meta_id
+              and candidata.competencia = $3::date
+              and candidata.status <> 'CANCELADA'
+            order by candidata.revisao desc, candidata.numero desc
+            limit 1
+         ) folha_origem on true
+         left join folha_item item
+           on item.empresa_id = vinculo.empresa_id
+          and item.folha_id = folha_origem.id
+          and item.vinculo_id = vinculo.id
+        where vinculo.empresa_id = $1 and prestador.pessoa_id = $2
+          and prestador.ativo and vinculo.ativo
+          and vinculo.inicio <= $3::date
+          and (vinculo.fim is null or vinculo.fim >= $3::date)
+          and (
+            folha_origem.id is null
+            or folha_origem.status not in ('ABERTA', 'FECHADA')
+            or item.id is null
+            or item.memoria #>> '{consolidacaoFiscal,modo}'
+              is distinct from 'RATEIO_HOMOLOGADO'
+            or item.memoria #>> '{consolidacaoFiscal,simulacaoId}'
+              is distinct from $4
+            or item.memoria #>> '{consolidacaoFiscal,hashResultado}'
+              is distinct from $5
+          )`,
+      [
+        folha.empresa_id,
+        pessoa.pessoa_id,
+        folha.competencia,
+        rateio.simulacaoId,
+        rateio.hashResultado,
+      ],
+    );
+    if (divergentes.rows[0].total > 0) {
+      throw new Error(
+        "Todas as Folhas da Pessoa devem estar processadas com a mesma simulação homologada antes do fechamento.",
+      );
+    }
+  }
 }
 
 export async function criarFolha({
@@ -487,6 +632,7 @@ export async function processarFolha(
   validarId(folhaId, "Folha");
   return transacao(async (client) => {
     await configurarAuditoria(client, ator, "Processamento determinístico da Folha.");
+    await bloquearCompetenciaDaFolha(client, folhaId);
     const bloqueada = await client.query<LinhaFolha>(
       `select id, empresa_id, termo_id, meta_id, regra_calculo_id,
               enquadramento_previdenciario_id,
@@ -508,10 +654,6 @@ export async function processarFolha(
     if (!["RASCUNHO", "ABERTA"].includes(folha.status)) {
       throw new Error(`Folha em estado ${folha.status} não pode ser processada.`);
     }
-    await client.query(
-      "select pg_advisory_xact_lock(hashtext($1), hashtext($2))",
-      [folha.empresa_id, folha.competencia],
-    );
     await validarPessoaEmFolhaUnicaNaCompetencia(client, {
       empresaId: folha.empresa_id,
       termoId: folha.termo_id,
@@ -546,7 +688,22 @@ export async function processarFolha(
     );
 
     const dados = await client.query<LinhaVinculo>(
-      `select v.id vinculo_id, pr.id prestador_id,
+      `select v.id vinculo_id, p.id pessoa_id, pr.id prestador_id,
+              (
+                select count(*)::int
+                  from prestador prestador_pessoa
+                  join prestador_vinculo vinculo_pessoa
+                    on vinculo_pessoa.empresa_id = prestador_pessoa.empresa_id
+                   and vinculo_pessoa.prestador_id = prestador_pessoa.id
+                 where prestador_pessoa.empresa_id = v.empresa_id
+                   and prestador_pessoa.pessoa_id = p.id
+                   and prestador_pessoa.ativo and vinculo_pessoa.ativo
+                   and vinculo_pessoa.inicio <= f.competencia
+                   and (
+                     vinculo_pessoa.fim is null
+                     or vinculo_pessoa.fim >= f.competencia
+                   )
+              ) quantidade_vinculos_pessoa,
               coalesce(mm.valor_apurado, v.valor_retribuicao)::text valor_retribuicao,
               v.valor_retribuicao::text valor_contratual,
               v.exige_medicao_mensal,
@@ -609,7 +766,7 @@ export async function processarFolha(
                   'id', p.id, 'tipo', p.tipo, 'nome', p.nome_razao_social,
                   'cpf', p.cpf, 'cnpj', p.cnpj
                 ),
-                 'prestador', jsonb_build_object(
+                  'prestador', jsonb_build_object(
                    'id', pr.id, 'matricula', pr.matricula,
                    'nitPisPasep', pr.nit_pis_pasep,
                    'categoriaContribuinte', pr.categoria_contribuinte,
@@ -633,9 +790,24 @@ export async function processarFolha(
                           and cof.comprovante_verificado
                      ),
                      '[]'::jsonb
+                    )
+                  ),
+                 'contaBancaria', (
+                   select jsonb_build_object(
+                     'id', conta.id,
+                     'agenciaLegacyId', conta.agencia_legacy_id,
+                     'agencia', conta.agencia,
+                     'numero', conta.numero,
+                     'digito', conta.digito,
+                     'variacao', conta.variacao,
+                     'tipo', conta.tipo
                    )
+                     from pessoa_conta_bancaria conta
+                    where conta.empresa_id = v.empresa_id
+                      and conta.pessoa_id = p.id
+                    limit 1
                  ),
-                'vinculo', to_jsonb(v),
+                 'vinculo', to_jsonb(v),
                 'termo', jsonb_build_object(
                   'id', t.id, 'numero', t.numero, 'descricao', t.descricao
                 ),
@@ -718,6 +890,14 @@ export async function processarFolha(
 
     const itens: Array<Record<string, unknown>> = [];
     const linhasPersistidas: Array<Record<string, unknown>> = [];
+    const ativacaoConsolidada = avaliarAtivacaoConsolidacaoProdutiva({
+      empresaId: folha.empresa_id,
+      competencia: folha.competencia,
+    });
+    const rateiosPorPessoa = new Map<
+      string,
+      Map<string, RateioConsolidadoFonte>
+    >();
     for (const [vinculoId, grupo] of agrupados) {
       const base = grupo[0];
       if (base.exige_medicao_mensal && !base.medicao_id) {
@@ -737,7 +917,7 @@ export async function processarFolha(
           incideInss: linha.evento_incide_inss!,
           incideIrrf: linha.evento_incide_irrf!,
         }));
-      const resultado = processarVinculoFolha(
+      let resultado = processarVinculoFolha(
         {
           vinculoId,
           tipoPessoa: base.tipo_pessoa,
@@ -781,6 +961,28 @@ export async function processarFolha(
         },
         regra.parametros,
       );
+      if (ativacaoConsolidada.ativa && base.quantidade_vinculos_pessoa > 1) {
+        let rateios = rateiosPorPessoa.get(base.pessoa_id);
+        if (!rateios) {
+          const homologado = await carregarRateioProdutivoHomologado({
+            empresaId: folha.empresa_id,
+            pessoaId: base.pessoa_id,
+            competencia: folha.competencia,
+            executor: client,
+          });
+          rateios = new Map(
+            homologado.fontes.map((fonte) => [fonte.vinculoId, fonte]),
+          );
+          rateiosPorPessoa.set(base.pessoa_id, rateios);
+        }
+        const rateio = rateios.get(vinculoId);
+        if (!rateio) {
+          throw new Error(
+            `A simulação homologada não contém o Vínculo ${vinculoId}.`,
+          );
+        }
+        resultado = aplicarRateioConsolidadoNaFolha(resultado, rateio);
+      }
       const itemId = randomUUID();
       itens.push({
         id: itemId,
@@ -797,7 +999,13 @@ export async function processarFolha(
         irrfReducao: moedaSql(resultado.irrfReducaoCentavos),
         valorIrrf: moedaSql(resultado.valorIrrfCentavos),
         totalLiquido: moedaSql(resultado.totalLiquidoCentavos),
-        snapshots: base.snapshot,
+        snapshots:
+          "consolidacaoFiscal" in resultado.memoria
+            ? {
+                ...base.snapshot,
+                consolidacaoFiscal: resultado.memoria.consolidacaoFiscal,
+              }
+            : base.snapshot,
         memoria: resultado.memoria,
       });
       resultado.linhas.forEach((linha, indice) => {
@@ -862,7 +1070,7 @@ export async function processarFolha(
     );
 
     const conteudo = await carregarConteudoHash(client, folha.id);
-    const hashResultado = hashJson({
+    const hashResultado = calcularHashResultadoFolha({
       folha: {
         empresaId: folha.empresa_id,
         termoId: folha.termo_id,
@@ -923,6 +1131,7 @@ export async function solicitarReprocessamentoFolha(
   validarId(folhaId, "Folha");
   return transacao(async (client) => {
     await configurarAuditoria(client, ator, "Solicitação de reprocessamento da Folha.");
+    await bloquearCompetenciaDaFolha(client, folhaId);
     const atual = await client.query<LinhaFolha>(
       `select id, empresa_id, termo_id, meta_id, regra_calculo_id,
               enquadramento_previdenciario_id,
@@ -974,6 +1183,7 @@ export async function fecharFolha(
   validarId(folhaId, "Folha");
   return transacao(async (client) => {
     await configurarAuditoria(client, ator, "Fechamento conferido da Folha.");
+    await bloquearCompetenciaDaFolha(client, folhaId);
     const atual = await client.query<LinhaFolha>(
       `select id, empresa_id, termo_id, meta_id, regra_calculo_id,
               enquadramento_previdenciario_id,
@@ -986,6 +1196,7 @@ export async function fecharFolha(
     if (!folha || folha.status !== "ABERTA" || !folha.regra_calculo_id) {
       throw new Error("Somente uma Folha aberta e processada pode ser fechada.");
     }
+    await validarConsolidacaoProdutivaFechamento(client, folha);
     const regra = await carregarRegraFiscalPorId(
       folha.regra_calculo_id,
       folha.empresa_id,
@@ -993,7 +1204,15 @@ export async function fecharFolha(
     );
     const conteudo = await carregarConteudoHash(client, folha.id);
     if (conteudo.length === 0) throw new Error("A Folha não possui itens calculados.");
-    const hashAtual = hashJson({
+    if (!folha.enquadramento_previdenciario_id) {
+      throw new Error("A Folha não possui enquadramento previdenciário congelado.");
+    }
+    const enquadramento = await carregarEnquadramentoPorId(
+      folha.empresa_id,
+      folha.enquadramento_previdenciario_id,
+      client,
+    );
+    const hashAtual = calcularHashResultadoFolha({
       folha: {
         empresaId: folha.empresa_id,
         termoId: folha.termo_id,
@@ -1007,6 +1226,18 @@ export async function fecharFolha(
         codigo: regra.codigo,
         versao: regra.versao,
         hashConteudo: regra.hashConteudo,
+      },
+      enquadramentoPrevidenciario: {
+        id: enquadramento.id,
+        regime: enquadramento.regime,
+        aliquotaSeguradoNumerador:
+          enquadramento.aliquota_segurado_numerador,
+        aliquotaSeguradoDenominador:
+          enquadramento.aliquota_segurado_denominador,
+        aliquotaPatronalNumerador:
+          enquadramento.aliquota_patronal_numerador,
+        aliquotaPatronalDenominador:
+          enquadramento.aliquota_patronal_denominador,
       },
       itens: conteudo,
     });
@@ -1159,6 +1390,7 @@ export async function reabrirFolha(
   }
   return transacao(async (client) => {
     await configurarAuditoria(client, ator, justificativa);
+    await bloquearCompetenciaDaFolha(client, folhaId);
     const obrigacoesEmitidas = await client.query<{ total: number }>(
       `select count(*)::int total
          from obrigacao_fiscal_folha fonte
@@ -1236,6 +1468,7 @@ export async function cancelarFolha(
   const justificativa = normalizarMotivoCancelamento(motivo, "Folha");
   return transacao(async (client) => {
     await configurarAuditoria(client, ator, justificativa);
+    await bloquearCompetenciaDaFolha(client, folhaId);
     const atual = await client.query<{
       id: string;
       empresa_id: string;

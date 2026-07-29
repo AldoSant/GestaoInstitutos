@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0",
+  "source": {
+    "system": "GIW",
+    "formId": "464569425",
+    "extractedAt": "2026-06-30T18:05:00.000Z"
+  },
+  "entity": "lancamentos_eventos",
+  "records": [
+    {
+      "legacyId": "LANCAMENTO-EXEMPLO",
+      "vinculoLegacyId": "VINCULO-EXEMPLO",
+      "eventoLegacyId": "EVENTO-EXEMPLO",
+      "valor": "1000.0000",
+      "inicioCompetencia": "2026-06-01",
+      "fimCompetencia": null,
+      "ativo": true
+    }
+  ]
+}

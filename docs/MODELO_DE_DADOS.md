@@ -2,7 +2,7 @@
 
 ## Modelo implementado
 
-As migrações Drizzle criam 45 tabelas, agrupadas em:
+As migrações Drizzle criam 46 tabelas, agrupadas em:
 
 - organização e acesso: `empresa`, `usuario`, `usuario_empresa`;
 - pessoas: `pessoa`, `pessoa_endereco`, `pessoa_conta_bancaria`, `dependente`,

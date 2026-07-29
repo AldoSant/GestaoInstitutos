@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
+import type { RateioConsolidadoFonte } from "@/lib/aplicacao-consolidacao";
 import { processarPessoaConsolidada } from "@/lib/consolidacao-fiscal";
+import { decimalParaInteiro } from "@/lib/dinheiro";
 import { hashJson } from "@/lib/json-canonico";
 import type {
   EntradaVinculoFolha,
@@ -837,6 +839,261 @@ export async function diagnosticarAtualidadeSimulacaoFiscal(
           : "Não foi possível revalidar a simulação.",
     };
   }
+}
+
+export async function carregarRateioProdutivoHomologado({
+  empresaId,
+  pessoaId,
+  competencia,
+  exigirCoberturaFolhas = false,
+  executor = getPool(),
+}: {
+  empresaId: string;
+  pessoaId: string;
+  competencia: string;
+  exigirCoberturaFolhas?: boolean;
+  executor?: Executor;
+}) {
+  validarId(empresaId, "Empresa");
+  validarId(pessoaId, "Pessoa");
+  const data = competenciaConsolidacao(competencia.slice(0, 7));
+  const simulacao = await executor.query<{
+    id: string;
+    caso_id: string;
+    hash_fontes: string;
+    hash_regra: string;
+    hash_enquadramento: string;
+    hash_resultado: string;
+    total_proventos: string;
+    total_descontos: string;
+    total_liquido: string;
+    base_inss_bruta: string;
+    base_inss: string;
+    valor_inss: string;
+    rendimentos_irrf: string;
+    base_irrf: string;
+    irrf_bruto: string;
+    irrf_reducao: string;
+    valor_irrf: string;
+  }>(
+    `select id, caso_id, hash_fontes, hash_regra, hash_enquadramento,
+            hash_resultado, total_proventos::text, total_descontos::text,
+            total_liquido::text, base_inss_bruta::text, base_inss::text,
+            valor_inss::text, rendimentos_irrf::text, base_irrf::text,
+            irrf_bruto::text, irrf_reducao::text, valor_irrf::text
+       from consolidacao_fiscal_simulacao
+      where empresa_id = $1 and pessoa_id = $2 and competencia = $3::date
+        and status = 'HOMOLOGADA'
+      order by versao desc
+      limit 1`,
+    [empresaId, pessoaId, data],
+  );
+  if (!simulacao.rows[0]) {
+    throw new Error(
+      "A Pessoa possui múltiplos Vínculos, mas não há simulação fiscal homologada.",
+    );
+  }
+  const caso = await carregarCaso(
+    executor,
+    empresaId,
+    simulacao.rows[0].caso_id,
+  );
+  if (
+    caso.status !== "RESOLVIDO" ||
+    !["RATEIO_NECESSARIO", "UNIFICAR_VINCULOS"].includes(caso.decisao ?? "")
+  ) {
+    throw new Error("O caso da simulação homologada não está resolvido para rateio.");
+  }
+  const contexto = await carregarContextoCalculo(executor, caso);
+  if (
+    contexto.hashFontes !== simulacao.rows[0].hash_fontes ||
+    contexto.regra.hashConteudo !== simulacao.rows[0].hash_regra ||
+    contexto.hashEnquadramento !== simulacao.rows[0].hash_enquadramento
+  ) {
+    throw new Error(
+      "A simulação homologada ficou obsoleta após mudança em fontes ou parâmetros.",
+    );
+  }
+  if (exigirCoberturaFolhas) {
+    const semFolha = await executor.query<{
+      vinculo_id: string;
+      termo_numero: string;
+      meta_codigo: string;
+    }>(
+      `select vinculo.id vinculo_id, termo.numero termo_numero,
+              meta.codigo meta_codigo
+         from prestador_vinculo vinculo
+         join prestador
+           on prestador.empresa_id = vinculo.empresa_id
+          and prestador.id = vinculo.prestador_id
+         join termo
+           on termo.empresa_id = vinculo.empresa_id
+          and termo.id = vinculo.termo_id
+         join termo_meta meta
+           on meta.termo_id = termo.id and meta.id = vinculo.meta_id
+        where vinculo.empresa_id = $1 and prestador.pessoa_id = $2
+          and vinculo.ativo and vinculo.inicio <= $3::date
+          and (vinculo.fim is null or vinculo.fim >= $3::date)
+          and not exists (
+            select 1
+              from folha
+             where folha.empresa_id = vinculo.empresa_id
+               and folha.termo_id = vinculo.termo_id
+               and folha.meta_id = vinculo.meta_id
+               and folha.competencia = $3::date
+               and folha.status <> 'CANCELADA'
+          )
+        order by termo.numero, meta.codigo, vinculo.id`,
+      [empresaId, pessoaId, data],
+    );
+    if (semFolha.rowCount) {
+      const exemplos = semFolha.rows
+        .slice(0, 5)
+        .map((item) => `${item.termo_numero}/${item.meta_codigo}`)
+        .join(", ");
+      throw new Error(
+        `Crie todas as Folhas da Pessoa antes do fechamento consolidado. ` +
+          `Pendentes: ${exemplos}.`,
+      );
+    }
+  }
+  const atuais = await executor.query<{ vinculo_ids: string[] }>(
+    `select coalesce(array_agg(vinculo.id::text order by vinculo.id), '{}') vinculo_ids
+       from prestador_vinculo vinculo
+       join prestador
+         on prestador.empresa_id = vinculo.empresa_id
+        and prestador.id = vinculo.prestador_id
+        and prestador.ativo
+      where vinculo.empresa_id = $1 and prestador.pessoa_id = $2
+        and vinculo.ativo and vinculo.inicio <= $3::date
+        and (vinculo.fim is null or vinculo.fim >= $3::date)`,
+    [empresaId, pessoaId, data],
+  );
+  const fontes = await executor.query<{
+    vinculo_id: string;
+    total_proventos: string;
+    descontos_eventos: string;
+    total_descontos: string;
+    total_liquido: string;
+    base_inss_bruta: string;
+    base_inss_rateada: string;
+    valor_inss_rateado: string;
+    base_irrf_bruta: string;
+    base_irrf_rateada: string;
+    irrf_bruto_rateado: string;
+    irrf_reducao_rateada: string;
+    valor_irrf_rateado: string;
+  }>(
+    `select vinculo_id, total_proventos::text, descontos_eventos::text,
+            total_descontos::text, total_liquido::text, base_inss_bruta::text,
+            base_inss_rateada::text, valor_inss_rateado::text,
+            base_irrf_bruta::text, base_irrf_rateada::text,
+            irrf_bruto_rateado::text, irrf_reducao_rateada::text,
+            valor_irrf_rateado::text
+       from consolidacao_fiscal_simulacao_fonte
+      where empresa_id = $1 and simulacao_id = $2
+      order by vinculo_id`,
+    [empresaId, simulacao.rows[0].id],
+  );
+  const vinculosAtuais = atuais.rows[0]?.vinculo_ids ?? [];
+  const vinculosSimulados = fontes.rows.map((fonte) => fonte.vinculo_id).sort();
+  if (
+    vinculosAtuais.length < 2 ||
+    vinculosAtuais.length !== vinculosSimulados.length ||
+    vinculosAtuais.some((vinculoId, index) => vinculoId !== vinculosSimulados[index])
+  ) {
+    throw new Error(
+      "A composição de Vínculos mudou após a homologação da simulação fiscal.",
+    );
+  }
+  const paraCentavos = (value: string) => decimalParaInteiro(value, 2);
+  const rateios: RateioConsolidadoFonte[] = fontes.rows.map((fonte) => ({
+    simulacaoId: simulacao.rows[0].id,
+    hashResultado: simulacao.rows[0].hash_resultado,
+    vinculoId: fonte.vinculo_id,
+    totalProventosCentavos: paraCentavos(fonte.total_proventos),
+    descontosEventosCentavos: paraCentavos(fonte.descontos_eventos),
+    totalDescontosCentavos: paraCentavos(fonte.total_descontos),
+    totalLiquidoCentavos: paraCentavos(fonte.total_liquido),
+    baseInssBrutaCentavos: paraCentavos(fonte.base_inss_bruta),
+    baseInssCentavos: paraCentavos(fonte.base_inss_rateada),
+    valorInssCentavos: paraCentavos(fonte.valor_inss_rateado),
+    baseIrrfBrutaCentavos: paraCentavos(fonte.base_irrf_bruta),
+    baseIrrfCentavos: paraCentavos(fonte.base_irrf_rateada),
+    irrfBrutoCentavos: paraCentavos(fonte.irrf_bruto_rateado),
+    irrfReducaoCentavos: paraCentavos(fonte.irrf_reducao_rateada),
+    valorIrrfCentavos: paraCentavos(fonte.valor_irrf_rateado),
+  }));
+  const soma = (
+    campo: keyof Pick<
+      RateioConsolidadoFonte,
+      | "totalProventosCentavos"
+      | "totalDescontosCentavos"
+      | "totalLiquidoCentavos"
+      | "baseInssBrutaCentavos"
+      | "baseInssCentavos"
+      | "valorInssCentavos"
+      | "baseIrrfBrutaCentavos"
+      | "baseIrrfCentavos"
+      | "irrfBrutoCentavos"
+      | "irrfReducaoCentavos"
+      | "valorIrrfCentavos"
+    >,
+  ) => rateios.reduce((total, rateio) => total + rateio[campo], 0);
+  const totaisEsperados = simulacao.rows[0];
+  const divergencias = [
+    soma("totalProventosCentavos") ===
+    paraCentavos(totaisEsperados.total_proventos)
+      ? null
+      : "PROVENTOS",
+    soma("totalDescontosCentavos") ===
+    paraCentavos(totaisEsperados.total_descontos)
+      ? null
+      : "DESCONTOS",
+    soma("totalLiquidoCentavos") ===
+    paraCentavos(totaisEsperados.total_liquido)
+      ? null
+      : "LÍQUIDO",
+    soma("baseInssBrutaCentavos") ===
+    paraCentavos(totaisEsperados.base_inss_bruta)
+      ? null
+      : "BASE INSS BRUTA",
+    soma("baseInssCentavos") === paraCentavos(totaisEsperados.base_inss)
+      ? null
+      : "BASE INSS",
+    soma("valorInssCentavos") === paraCentavos(totaisEsperados.valor_inss)
+      ? null
+      : "INSS",
+    soma("baseIrrfBrutaCentavos") ===
+    paraCentavos(totaisEsperados.rendimentos_irrf)
+      ? null
+      : "RENDIMENTOS IRRF",
+    soma("baseIrrfCentavos") === paraCentavos(totaisEsperados.base_irrf)
+      ? null
+      : "BASE IRRF",
+    soma("irrfBrutoCentavos") === paraCentavos(totaisEsperados.irrf_bruto)
+      ? null
+      : "IRRF BRUTO",
+    soma("irrfReducaoCentavos") ===
+    paraCentavos(totaisEsperados.irrf_reducao)
+      ? null
+      : "REDUÇÃO IRRF",
+    soma("valorIrrfCentavos") === paraCentavos(totaisEsperados.valor_irrf)
+      ? null
+      : "IRRF",
+  ].filter((item): item is string => item !== null);
+  if (divergencias.length) {
+    throw new Error(
+      `As fontes da simulação homologada não fecham com o agregado: ${divergencias.join(", ")}.`,
+    );
+  }
+  return {
+    simulacaoId: simulacao.rows[0].id,
+    hashResultado: simulacao.rows[0].hash_resultado,
+    pessoaId,
+    competencia: data,
+    fontes: rateios,
+  };
 }
 
 export async function atualizarStatusSimulacaoFiscal({

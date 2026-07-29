@@ -7,9 +7,10 @@ distribuída em mais de um Vínculo, Termo, Meta ou lote. O resultado é rateado
 determinística entre as fontes para permitir conferência centavo a centavo com o GIW e
 com os documentos do RH.
 
-Esta capacidade opera em **modo controlado**. Mesmo uma simulação marcada como
-`HOMOLOGADA` não altera Folhas nem obrigações. A ativação produtiva depende da campanha
-com três competências reais e de uma mudança técnica explícita posterior.
+Esta capacidade opera em **modo controlado**. Uma simulação `HOMOLOGADA` somente
+alimenta a Folha quando o operador habilita explicitamente uma empresa e uma
+competência inicial. O recurso permanece desativado por padrão e a homologação, sozinha,
+não produz efeito financeiro.
 
 ## Cadeia operacional
 
@@ -19,7 +20,9 @@ flowchart LR
   C --> R["Decisão do RH"]
   R --> S["Simulação fiscal versionada"]
   S --> H["Homologação contra GIW/RH"]
-  H -. "ativação futura e explícita" .-> F["Processamento da Folha"]
+  H --> G{"Empresa e competência habilitadas?"}
+  G -- "não" --> B["Bloqueio multi-lote"]
+  G -- "sim" --> F["Processamento e fechamento da Folha"]
 ```
 
 1. `/consolidacoes` detecta a mesma Pessoa em múltiplos Vínculos.
@@ -113,8 +116,21 @@ Para liberar o consumo desse agregado pela Folha:
 4. validar com RH e assessoria contábil a hipótese de rateio;
 5. confirmar o tratamento dos Eventos e das datas de pagamento;
 6. aprovar as três competências no dossiê mensal;
-7. implementar uma migração e um caso de uso explícitos para a ativação produtiva;
-8. repetir testes de regressão, obrigação previdenciária e retificação.
+7. registrar a empresa e a competência inicial nas três variáveis de ativação;
+8. reiniciar web e worker e executar o smoke produtivo multi-vínculo;
+9. repetir testes de regressão, obrigação previdenciária e retificação.
+
+## Garantias do consumo produtivo
+
+- empresa e competência são delimitadas por configuração, sem liberação global;
+- ausência de simulação homologada mantém o bloqueio;
+- mudança de fonte, regra, enquadramento ou composição de Vínculos invalida o consumo;
+- proventos e descontos de Eventos são recalculados e comparados antes do rateio;
+- apenas INSS, IRRF, bases e totais fiscais recebem as parcelas homologadas;
+- cada item registra o ID e o hash da simulação;
+- o fechamento exige Folha para todos os Vínculos ativos da Pessoa;
+- o CI executa duas Folhas sintéticas, processa pelo worker, aprova, fecha e confere que
+  a soma de INSS/IRRF coincide centavo a centavo com o agregado homologado.
 
 ## Validação automatizada
 

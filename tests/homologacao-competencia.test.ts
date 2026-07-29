@@ -4,6 +4,7 @@ import {
   avaliarProntidaoCompetencia,
   competenciasCampanha,
   conteudoHomologacaoCompetencia,
+  destinoItemCompetencia,
   normalizarDecisaoCompetencia,
   statusPorContagem,
   type ItemChecklistCompetencia,
@@ -108,4 +109,19 @@ test("aprovação registra decisão normalizada", () => {
   assert.equal(decisao.status, "APROVADA");
   assert.equal(decisao.responsavel, "Gerente de RH");
   assert.ok(decisao.decididoEm instanceof Date);
+});
+
+test("direciona cada bloqueio ao módulo operacional responsável", () => {
+  assert.equal(
+    destinoItemCompetencia("PAGAMENTOS", "2026-07"),
+    "/folhas",
+  );
+  assert.equal(
+    destinoItemCompetencia("MEDICOES", "2026-07"),
+    "/medicoes?competencia=2026-07",
+  );
+  assert.equal(
+    destinoItemCompetencia("DOCUMENTOS_DCTFWEB", "2026-07"),
+    "/obrigacoes",
+  );
 });

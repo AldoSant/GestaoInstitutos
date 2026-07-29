@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   ClipboardCheck,
+  CreditCard,
   Download,
   FileSpreadsheet,
   FileText,
@@ -56,6 +57,24 @@ function nomeStatus(status: string) {
   return status;
 }
 
+function consolidacaoMemoria(valor: unknown) {
+  if (!valor || typeof valor !== "object") return null;
+  const consolidacao = (valor as Record<string, unknown>).consolidacaoFiscal;
+  if (!consolidacao || typeof consolidacao !== "object") return null;
+  const dados = consolidacao as Record<string, unknown>;
+  if (
+    dados.modo !== "RATEIO_HOMOLOGADO" ||
+    typeof dados.simulacaoId !== "string" ||
+    typeof dados.hashResultado !== "string"
+  ) {
+    return null;
+  }
+  return {
+    simulacaoId: dados.simulacaoId,
+    hashResultado: dados.hashResultado,
+  };
+}
+
 export default async function FolhaDetalhePage({
   params,
   searchParams,
@@ -87,6 +106,12 @@ export default async function FolhaDetalhePage({
     (item) => item.hash_resultado === folha.hash_resultado,
   );
   const aprovadaPeloRh = conferenciaAtual?.resultado === "APROVADA";
+  const rateiosHomologados = dados.itens
+    .map((item) => consolidacaoMemoria(item.memoria))
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+  const simulacoesAplicadas = [
+    ...new Set(rateiosHomologados.map((item) => item.simulacaoId)),
+  ];
   const totais = dados.itens.reduce(
     (total, item) => ({
       proventos: total.proventos + Number(item.total_proventos),
@@ -162,6 +187,12 @@ export default async function FolhaDetalhePage({
               <Link className="button secondary" href={`/folhas/${folha.id}/memoria`}>
                 <Download size={16} /> Memória JSON
               </Link>
+              <Link className="button secondary" href={`/folhas/${folha.id}/relatorio`}>
+                <FileText size={16} /> Relatório imprimível
+              </Link>
+              <Link className="button secondary" href={`/folhas/${folha.id}/pagamentos`}>
+                <CreditCard size={16} /> Relação de pagamentos
+              </Link>
             </div>
           ) : undefined
         }
@@ -198,6 +229,22 @@ export default async function FolhaDetalhePage({
             </strong>
           </div>
         </section>
+
+        {rateiosHomologados.length > 0 && (
+          <section className="alert-box success">
+            <LockKeyhole size={22} />
+            <div>
+              <strong>Rateio fiscal homologado aplicado</strong>
+              <p>
+                {rateiosHomologados.length} item(ns) desta Folha usam a simulação{" "}
+                {simulacoesAplicadas
+                  .map((simulacaoId) => simulacaoId.slice(0, 12))
+                  .join(", ")}
+                . O ID e o hash completos estão congelados na memória JSON.
+              </p>
+            </div>
+          </section>
+        )}
 
         {folha.status === "RASCUNHO" && (
           <section className="alert-box">
@@ -404,10 +451,19 @@ export default async function FolhaDetalhePage({
                     prestador?: { matricula?: string };
                     vinculo?: { atividade?: string };
                   };
+                  const consolidacao = consolidacaoMemoria(item.memoria);
                   return (
                     <tr key={item.id}>
                       <td><strong>{snapshot.pessoa?.nome ?? "Prestador"}</strong><small>Matrícula {snapshot.prestador?.matricula ?? "—"}</small></td>
-                      <td>{snapshot.vinculo?.atividade ?? "—"}<small>{snapshot.pessoa?.tipo ?? "—"}</small></td>
+                      <td>
+                        {snapshot.vinculo?.atividade ?? "—"}
+                        <small>{snapshot.pessoa?.tipo ?? "—"}</small>
+                        {consolidacao && (
+                          <small>
+                            Rateio {consolidacao.simulacaoId.slice(0, 12)}…
+                          </small>
+                        )}
+                      </td>
                       <td>{moeda(item.total_proventos)}</td>
                       <td>{moeda(item.valor_inss)}</td>
                       <td>{moeda(item.valor_irrf)}</td>

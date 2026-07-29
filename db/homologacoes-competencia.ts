@@ -433,6 +433,92 @@ async function diagnosticarObrigacao(
   });
 }
 
+async function diagnosticarPagamentos(
+  executor: Executor,
+  empresaId: string,
+  data: string,
+) {
+  const resultado = await executor.query<{
+    total: number;
+    conformes: number;
+    fontes: Array<Record<string, unknown>>;
+  }>(
+    `with folhas_atuais as (
+       select distinct on (folha.termo_id, folha.meta_id)
+              folha.id, folha.numero, folha.revisao, folha.status::text,
+              folha.hash_resultado
+         from folha
+        where folha.empresa_id = $1
+          and folha.competencia = $2::date
+          and folha.status <> 'CANCELADA'
+        order by folha.termo_id, folha.meta_id, folha.numero desc
+     ),
+     fontes as (
+       select folha.id folha_id, folha.numero folha_numero,
+              folha.revisao, folha.status folha_status,
+              folha.hash_resultado,
+              item.id folha_item_id, item.total_liquido::text,
+              item.snapshots #>> '{pessoa,nome}' nome,
+              item.snapshots #>> '{pessoa,cpf}' cpf,
+              item.snapshots #>> '{pessoa,cnpj}' cnpj,
+              item.snapshots #>> '{prestador,matricula}' matricula,
+              item.snapshots #>> '{contaBancaria,agencia}' agencia,
+              item.snapshots #>> '{contaBancaria,numero}' conta,
+              item.snapshots #>> '{contaBancaria,digito}' digito,
+              item.snapshots #>> '{contaBancaria,tipo}' tipo_conta,
+              (
+                folha.status = 'FECHADA'
+                and nullif(btrim(item.snapshots #>> '{contaBancaria,agencia}'), '') is not null
+                and nullif(btrim(item.snapshots #>> '{contaBancaria,numero}'), '') is not null
+                and item.snapshots #>> '{contaBancaria,tipo}' in ('CORRENTE', 'POUPANCA')
+              ) conforme
+         from folhas_atuais folha
+         join folha_item item on item.folha_id = folha.id
+     )
+     select count(*)::int total,
+            count(*) filter (where conforme)::int conformes,
+            coalesce(
+              jsonb_agg(
+                jsonb_build_object(
+                  'folhaId', folha_id,
+                  'folhaNumero', folha_numero,
+                  'revisao', revisao,
+                  'folhaStatus', folha_status,
+                  'hashResultado', hash_resultado,
+                  'folhaItemId', folha_item_id,
+                  'nome', nome,
+                  'documento', coalesce(cpf, cnpj),
+                  'matricula', matricula,
+                  'agencia', agencia,
+                  'conta', conta,
+                  'digito', digito,
+                  'tipoConta', tipo_conta,
+                  'totalLiquido', total_liquido,
+                  'conforme', conforme
+                )
+                order by nome, matricula, folha_item_id
+              ),
+              '[]'::jsonb
+            ) fontes
+       from fontes`,
+    [empresaId, data],
+  );
+  const linha = resultado.rows[0] ?? { total: 0, conformes: 0, fontes: [] };
+  const pendentes = linha.total - linha.conformes;
+  return item("PAGAMENTOS", {
+    status: statusPorContagem({
+      total: linha.total,
+      pendentes,
+      vazio: "BLOQUEIO",
+      bloqueio: true,
+    }),
+    total: linha.total,
+    conformes: linha.conformes,
+    pendentes,
+    detalhes: { competencia: data, fontes: linha.fontes },
+  });
+}
+
 async function diagnosticarDocumentos(
   executor: Executor,
   empresaId: string,
@@ -601,6 +687,7 @@ export async function diagnosticarHomologacaoCompetencia(
     diagnosticarFolhas(executor, empresaId, data),
     diagnosticarConferencias(executor, empresaId, data),
     diagnosticarParalelo(executor, empresaId, data),
+    diagnosticarPagamentos(executor, empresaId, data),
     diagnosticarObrigacao(executor, empresaId, data),
     diagnosticarDocumentos(executor, empresaId, data),
   ]);
