@@ -1570,7 +1570,7 @@ async function importarGuiaInssHistorica(
     guia.multa,
     guia.compensacoes,
     guia.total,
-    guia.folhaLegacyIds,
+    JSON.stringify(guia.folhaLegacyIds),
     registroChecksum,
     extraidoEm,
     guia,
