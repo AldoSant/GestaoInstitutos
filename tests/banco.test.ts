@@ -862,6 +862,16 @@ test(
         "rollback to savepoint homologacao_mensal_nao_excluivel",
       );
 
+      await client.query(
+        `insert into prestador_vinculo
+           (empresa_id, prestador_id, termo_id, meta_id, numero_contrato,
+            atividade, inicio, fim, valor_retribuicao)
+         values ($1, $2, $3, $4, 'CONTRATO-PARALELO',
+                 'Atividade de contrato paralelo',
+                 date '2026-06-01', date '2026-12-31', 1000)`,
+        [empresaId, prestadorId, termoId, metaId],
+      );
+
       await client.query("savepoint vinculo_sobreposto");
       await assert.rejects(
         client.query(

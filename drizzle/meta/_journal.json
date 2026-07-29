@@ -225,6 +225,13 @@
       "when": 1785904800000,
       "tag": "0031_term_natural_key",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1785991200000,
+      "tag": "0032_contract_scoped_link_ranges",
+      "breakpoints": true
     }
   ]
 }
