@@ -603,10 +603,16 @@ async function importarTermo(
   const existente = await client.query<{ id: string }>(
     `select id
        from termo
-      where empresa_id = $1 and (id = $2::uuid or numero = $3)
+      where empresa_id = $1
+        and (id = $2::uuid or (numero = $3 and inicio = $4))
       order by case when id = $2::uuid then 0 else 1 end
       limit 1`,
-    [empresaId, chave.rows[0]?.destino_id ?? null, termo.numero],
+    [
+      empresaId,
+      chave.rows[0]?.destino_id ?? null,
+      termo.numero,
+      termo.inicio,
+    ],
   );
   let termoId = existente.rows[0]?.id;
   let status: "INSERIDO" | "ATUALIZADO";

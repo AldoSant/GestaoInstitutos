@@ -435,7 +435,11 @@ export const termos = pgTable(
   },
   (table) => [
     uniqueIndex("uq_termo_empresa_id").on(table.empresaId, table.id),
-    uniqueIndex("uq_termo_empresa_numero").on(table.empresaId, table.numero),
+    uniqueIndex("uq_termo_empresa_numero_inicio").on(
+      table.empresaId,
+      table.numero,
+      table.inicio,
+    ),
     check("ck_termo_vigencia", sql`${table.fim} is null or ${table.fim} >= ${table.inicio}`),
     check("ck_termo_valor_global", sql`${table.valorGlobal} >= 0`),
   ],

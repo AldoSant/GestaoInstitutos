@@ -489,6 +489,30 @@ test(
       );
       await client.query("rollback to savepoint valor_invalido");
 
+      await client.query("savepoint vigencias_termo");
+      await client.query(
+        `insert into termo
+           (empresa_id, numero, descricao, modalidade, inicio, valor_global)
+         values
+           ($1, 'TERMO-VERSIONADO', 'Versão inicial', 'TESTE', date '2026-01-01', 1),
+           ($1, 'TERMO-VERSIONADO', 'Versão posterior', 'TESTE', date '2026-04-01', 1)`,
+        [empresaId],
+      );
+      await assert.rejects(
+        client.query(
+          `insert into termo
+             (empresa_id, numero, descricao, modalidade, inicio, valor_global)
+           values ($1, 'TERMO-VERSIONADO', 'Duplicado', 'TESTE',
+                   date '2026-04-01', 1)`,
+          [empresaId],
+        ),
+        (error: unknown) =>
+          error instanceof Error &&
+          "constraint" in error &&
+          error.constraint === "uq_termo_empresa_numero_inicio",
+      );
+      await client.query("rollback to savepoint vigencias_termo");
+
       const pessoaId = randomUUID();
       const prestadorId = randomUUID();
       const termoId = randomUUID();

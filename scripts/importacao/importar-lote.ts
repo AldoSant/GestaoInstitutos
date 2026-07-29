@@ -106,6 +106,13 @@ async function executar() {
     console.log("Dry-run estrutural do lote concluído; DATABASE_URL ausente.");
     return;
   }
+  if (!aplicar) {
+    console.warn(
+      "Dry-run em banco processa cada snapshot isoladamente. As dependências " +
+        "relacionais precisam já estar aplicadas; para banco vazio, use o " +
+        "preflight estrutural sem DATABASE_URL e aplique primeiro em homologação descartável.",
+    );
+  }
 
   for (const [indice, entrada] of plano.entries()) {
     console.log(

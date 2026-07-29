@@ -214,9 +214,12 @@ DATABASE_URL='postgresql://...' npm run giw:importar:lote -- \
 O lote valida tudo antes de consultar o banco, confere a integridade das referências e
 ordena Pessoas, Atividades, Lotações, Termos, Vínculos, movimentos, Folhas e GPS.
 Snapshots repetidos, chaves duplicadas, dependências ausentes ou arquivos inválidos
-bloqueiam o lote inteiro. Depois do dry-run, repita com
-`--aplicar --confirmed-complete`; execute mais um dry-run ao final para comprovar que
-todos os registros ficam em `ignorar`.
+bloqueiam o lote inteiro. Em banco vazio, faça o preflight estrutural sem
+`DATABASE_URL` e aplique primeiro em uma homologação descartável com
+`--aplicar --confirmed-complete`. O dry-run conectado processa cada snapshot em uma
+transação isolada e, por isso, pressupõe que as dependências anteriores já estejam no
+banco. Execute-o depois da aplicação para comprovar que todos os registros ficam em
+`ignorar`; somente então rode a auditoria final.
 
 Finalize sempre com a auditoria de pós-migração, usando exatamente o mesmo conjunto de
 arquivos. Ela é somente leitura e reprova a carga se encontrar migration SQL ausente,
