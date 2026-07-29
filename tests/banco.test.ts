@@ -34,7 +34,7 @@ test(
           where table_schema = 'public'
             and table_type = 'BASE TABLE'`,
       );
-      assert.equal(Number(tabelas.rows[0].total), 46);
+      assert.equal(Number(tabelas.rows[0].total), 50);
 
       const restricoes = await client.query<{ conname: string }>(
         `select conname
@@ -197,10 +197,49 @@ test(
             'ck_retificacao_hash',
             'ck_retificacao_snapshot',
             'ck_retificacao_resultado',
-            'ck_retificacao_conclusao'
+            'ck_retificacao_conclusao',
+            'fk_fgts_apuracao_empresa',
+            'ck_fgts_apuracao_competencia',
+            'ck_fgts_apuracao_versao',
+            'ck_fgts_apuracao_status',
+            'ck_fgts_apuracao_valores',
+            'ck_fgts_apuracao_hash',
+            'ck_fgts_apuracao_snapshot',
+            'ck_fgts_apuracao_responsavel',
+            'ck_fgts_apuracao_conciliacao',
+            'fk_fgts_item_empresa',
+            'fk_fgts_item_empresa_apuracao',
+            'fk_fgts_item_empresa_pessoa',
+            'ck_fgts_item_categoria',
+            'ck_fgts_item_identificacao',
+            'ck_fgts_item_valores',
+            'ck_fgts_item_totalizador',
+            'ck_fgts_item_hash',
+            'ck_fgts_item_snapshot',
+            'fk_esocial_evento_empresa',
+            'fk_esocial_evento_empresa_apuracao',
+            'ck_esocial_evento_competencia',
+            'ck_esocial_evento_ambiente',
+            'ck_esocial_evento_tipo',
+            'ck_esocial_evento_estado',
+            'ck_esocial_evento_payload',
+            'ck_esocial_evento_hash',
+            'ck_esocial_evento_resposta',
+            'ck_esocial_evento_transmissao',
+            'ck_esocial_evento_conclusao',
+            'ck_esocial_evento_aceite',
+            'fk_fgts_guia_empresa',
+            'fk_fgts_guia_empresa_apuracao',
+            'ck_fgts_guia_tipo',
+            'ck_fgts_guia_status',
+            'ck_fgts_guia_datas',
+            'ck_fgts_guia_valores',
+            'ck_fgts_guia_hashes',
+            'ck_fgts_guia_conteudo',
+            'ck_fgts_guia_pagamento'
           )`,
       );
-      assert.equal(restricoes.rowCount, 158);
+      assert.equal(restricoes.rowCount, 197);
 
       const gatilhos = await client.query<{ tgname: string }>(
         `select tgname
@@ -243,10 +282,16 @@ test(
               'tr_auditar_simulacao_fiscal',
               'tr_auditar_simulacao_fiscal_fonte',
               'tr_proteger_retificacao_obrigacao',
-              'tr_auditar_retificacao_obrigacao'
+              'tr_auditar_retificacao_obrigacao',
+              'tr_proteger_evento_esocial',
+              'tr_proteger_guia_fgts',
+              'tr_auditar_fgts_apuracao',
+              'tr_auditar_fgts_apuracao_item',
+              'tr_auditar_evento_esocial',
+              'tr_auditar_guia_fgts'
             )`,
       );
-      assert.equal(gatilhos.rowCount, 37);
+      assert.equal(gatilhos.rowCount, 43);
 
       const auditoriaImportacao = await client.query<{
         dry_runs: number;

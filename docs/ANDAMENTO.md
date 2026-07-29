@@ -2,7 +2,14 @@
 
 ## Visão geral
 
-**Estimativa atual: 93% concluído.**
+**Estimativa do núcleo anterior, folha de prestadores + obrigação previdenciária:
+93% concluído.**
+
+> Em 28/07/2026 o alvo do MVP foi ampliado para incluir folha trabalhista,
+> transmissão ao eSocial e GFD oficial. Os 93% não representam esse novo alvo. O
+> percentual total será recalibrado depois de classificar uma Folha/GFD real, pois
+> prestador `701` não pode ser convertido silenciosamente em empregado com FGTS.
+> A fundação técnica do novo módulo já está implementada e testada.
 
 O percentual mede capacidade operacional validada, e não quantidade de telas ou linhas
 de código. Uma etapa só avança quando existe persistência, validação, teste e caminho de
@@ -18,6 +25,19 @@ homologação. Interfaces demonstrativas contam apenas como descoberta de fluxo.
 | Obrigação previdenciária | 15% | 14% | Segurado e patronal são apurados conforme o enquadramento congelado. Apuração parcial é recusada; revisão e hash das fontes são revalidados. Totalizador, recibo e DARF possuem máquina de estados, CSV e dossiê imprimível com fechamento monetário; falta integração oficial e homologação real. |
 | Homologação, paralelo e corte | 10% | 9% | Painel real, oito gates, comparação CSV, acervo histórico, casos multi-lote, simulações, relatórios, pagamentos e retificação formal estão operacionais. Faltam executar os meses reais, treinar e efetuar o corte. |
 | **Total** | **100%** | **93%** | |
+
+## Nova frente prioritária: FGTS Digital
+
+| Etapa | Estado | Evidência |
+|---|---|---|
+| Regra de elegibilidade e cálculo individual | Implementada | Categorias `101`, `103` e `721`; `701` bloqueada; truncamento por trabalhador/tipo de valor testado. |
+| Contrato de integração eSocial | Implementado | Interface de provedor, eventos mínimos e máquina de estados independentes de fornecedor. |
+| Persistência e auditoria | Implementada | Migração `0029`: apuração, itens S-5003, eventos eSocial e GFD oficial. |
+| Pesquisa de canal oficial e alternativas | Concluída para o desenho | Web Service oficial, `erpbrasil/esociallib`, TecnoSpeed e RESocial documentados para _spike_. |
+| Contrato trabalhista e rubricas eSocial | Pendente | Exige amostra real do RH e separação de prestador. |
+| Folha trabalhista | Pendente | Não deve reutilizar o motor de contribuinte individual. |
+| Produção restrita do eSocial | Pendente | Exige certificado/procuração e escolha provisória de adaptador. |
+| Emissão, importação e pagamento da GFD | Pendente | A GFD é emitida no FGTS Digital; falta operar e reconciliar uma competência real. |
 
 ## O que já pode ser usado
 

@@ -15,6 +15,7 @@ import {
   Gauge,
   GitMerge,
   History,
+  Landmark,
   Link2,
   ListChecks,
   LogOut,
@@ -38,6 +39,7 @@ const navegacao = [
   { href: "/medicoes", label: "Medições", icon: ListChecks },
   { href: "/eventos", label: "Eventos", icon: ReceiptText },
   { href: "/prestadores", label: "Prestadores", icon: UsersRound },
+  { href: "/fgts", label: "FGTS Digital", icon: Landmark },
   { href: "/obrigacoes", label: "Obrigações", icon: FileCheck2 },
   { href: "/parametros", label: "Parâmetros", icon: Settings2 },
 ];

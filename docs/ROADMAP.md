@@ -135,6 +135,30 @@ invalidando documentos verificados sem apagar a composição histórica.
 
 Critério de aceite: nenhuma obrigação é emitida com item sem origem ou com diferença não aprovada.
 
+## Incremento prioritário — folha trabalhista e FGTS Digital
+
+- separar contrato de trabalho de Vínculo de prestador;
+- cadastrar estabelecimentos, lotações tributárias, cargos e rubricas eSocial;
+- processar folha trabalhista para categorias inicialmente homologadas;
+- formar e validar S-1200 pelos XSD oficiais;
+- transmitir por adaptador substituível e consultar protocolo/recibo;
+- conciliar S-5003 por trabalhador e S-5013 por competência;
+- registrar a GFD oficial, Pix, pagamento e retificações;
+- incluir FGTS na homologação mensal.
+
+Fundação concluída: categorias `101`, `103` e `721` possuem regra inicial explícita,
+a categoria `701` é bloqueada, o cálculo é truncado por trabalhador/tipo de valor e a
+integração possui contrato independente do fornecedor. A decisão técnica e a pesquisa
+estão em [FGTS Digital](FGTS_DIGITAL.md).
+
+Não há API pública oficial confirmada para gerar a GFD. O primeiro MVP automatiza a
+cadeia do eSocial e trata a emissão no portal/importação da GFD como etapa assistida.
+Web Service oficial, `erpbrasil/esociallib`, TecnoSpeed e RESocial serão comparados em
+produção restrita antes da escolha.
+
+Critério de aceite: a soma interna fecha com S-5003/S-5013 e com a GFD oficial, sem
+habilitar FGTS para categoria sem direito validado.
+
 ## Incremento 4 — homologação e corte
 
 - importação histórica controlada;
@@ -149,9 +173,9 @@ Cada execução preserva hashes do arquivo e da revisão, responsável, totais e
 em registros imutáveis. Repetir o mesmo arquivo é idempotente. O contrato e o roteiro
 estão em [Homologação paralela da Folha](HOMOLOGACAO_FOLHA.md).
 
-`/homologacoes` agora consolida sete gates por competência: medições, casos
-multi-vínculo, Folhas fechadas, conferência do RH, comparação GIW, obrigação e
-documentos DCTFWeb/DARF. Cada fotografia possui hash, versão, itens imutáveis, decisão
+`/homologacoes` agora consolida oito gates por competência: medições, casos
+multi-vínculo, Folhas fechadas, conferência do RH, comparação GIW, pagamentos,
+obrigação e documentos DCTFWeb/DARF. Cada fotografia possui hash, versão, itens imutáveis, decisão
 auditada e dossiê CSV. A campanha móvel apresenta três competências e só as considera
 concluídas quando a versão vigente estiver aprovada. O procedimento está em
 [Homologação mensal](HOMOLOGACAO_MENSAL.md). Ainda faltam executar os meses reais,

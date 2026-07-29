@@ -2,7 +2,10 @@
 
 ## Objetivo do primeiro recorte
 
-Entregar folha de prestadores e apuração previdenciária com cálculo determinístico, memória reproduzível, segregação por organização e trilha de auditoria.
+Entregar folha de prestadores e apuração previdenciária com cálculo determinístico,
+memória reproduzível, segregação por organização e trilha de auditoria. O alvo
+revisado acrescenta folha trabalhista e FGTS Digital sem confundir os dois tipos de
+relação.
 
 ```mermaid
 flowchart LR
@@ -13,6 +16,10 @@ flowchart LR
   MEM --> DB
   APP --> OBR["Obrigações tipadas"]
   OBR -. futuro .-> EXT["eSocial / DCTFWeb / DARF"]
+  APP --> FGT["Apuração FGTS por trabalhador"]
+  FGT --> ESO["Adaptador eSocial substituível"]
+  ESO --> GOV["WS oficial ou provedor homologado"]
+  GOV --> GFD["GFD oficial no FGTS Digital"]
   APP --> AUD["Auditoria"]
 ```
 
@@ -87,6 +94,19 @@ emitida. Repetir a apuração recompõe a mesma chave empresa–competência–t
 duplicação e invalida a conciliação anterior. A apuração exige todas as Folhas
 fechadas e congela revisão e hash de cada origem. Antes de aceitar um documento
 verificado, o servidor recusa Folha nova, pendente, reaberta ou com hash diferente.
+
+### Folha trabalhista e FGTS
+
+Prestador `701` continua no domínio previdenciário e não pode ser promovido
+silenciosamente a empregado. O novo domínio aceita inicialmente as categorias `101`,
+`103` e `721`, calcula e trunca o valor por trabalhador e tipo de valor, soma os itens
+individualizados e preserva a fonte por hash.
+
+`fgts_apuracao` versiona a competência; `fgts_apuracao_item` reconcilia a memória
+interna com S-5003; `integracao_esocial_evento` mantém payload, protocolo, recibo e
+retorno; `fgts_guia` referencia somente a GFD oficial. A comunicação usa a interface
+`ProvedorEsocial`, permitindo Web Service direto ou serviço contratado sem alterar o
+domínio. Consulte [FGTS Digital](FGTS_DIGITAL.md).
 
 ### Obrigações
 

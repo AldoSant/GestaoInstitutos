@@ -11,12 +11,14 @@
 | [Biblioteca contábil e fiscal](BIBLIOTECA_CONTABIL_FISCAL.md) | Matriz de enquadramentos, normas contábeis, obrigações e controle de mudança. |
 | [Medições e homologação](MEDICOES_E_HOMOLOGACAO.md) | Produtividade, proporcionalização, evidências e roteiro de conferência do RH. |
 | [Homologação paralela da Folha](HOMOLOGACAO_FOLHA.md) | Contrato CSV, comparação com GIW/RH, classificações, auditoria e critério de corte. |
-| [Homologação mensal](HOMOLOGACAO_MENSAL.md) | Sete controles, dossiê versionado, campanha de três competências e aprovação final. |
+| [Homologação mensal](HOMOLOGACAO_MENSAL.md) | Oito controles, dossiê versionado, campanha de três competências e aprovação final. |
 | [Consolidação mensal por pessoa](CONSOLIDACAO_MENSAL.md) | Limite multi-lote atual, bloqueio seguro e modelo-alvo de agregação e rateio fiscal. |
 | [Simulação fiscal consolidada](SIMULACAO_FISCAL_CONSOLIDADA.md) | Motor agregado, rateio exato, persistência, homologação e bloqueio produtivo. |
 | [Obrigação previdenciária](OBRIGACAO_PREVIDENCIARIA.md) | Apuração completa, fontes congeladas, estados, espelho CSV e conciliação documental. |
 | [Relatórios operacionais](RELATORIOS_OPERACIONAIS.md) | Relatório A4 da Folha, demonstrativos individuais e dossiê previdenciário. |
 | [Relação de pagamentos](RELACAO_PAGAMENTOS.md) | Conta congelada, gates de liberação, relação A4 e espelho CSV. |
+| [FGTS Digital](FGTS_DIGITAL.md) | Elegibilidade, cálculo, eSocial, alternativas de integração e cadeia da GFD oficial. |
+| [Amostras de Folha e GPS](ANALISE_AMOSTRAS_FOLHA_GPS.md) | Reconciliação dos PDFs do GIW, duplicidades e limites normativos da GPS 1007. |
 | [Cancelamentos e retificações](CANCELAMENTOS_E_RETIFICACOES.md) | Estados permitidos, impacto fiscal, invalidação de evidências e justificativas. |
 | [Roadmap](ROADMAP.md) | Incrementos, critérios de aceite e ordem recomendada. |
 | [Andamento do MVP](ANDAMENTO.md) | Percentual ponderado, entregas utilizáveis e caminho crítico restante. |

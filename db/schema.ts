@@ -2041,6 +2041,342 @@ export const retificacoesObrigacao = pgTable(
   ],
 );
 
+export const apuracoesFgts = pgTable(
+  "fgts_apuracao",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    competencia: date("competencia").notNull(),
+    versao: integer("versao").notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("RASCUNHO"),
+    baseInterna: numeric("base_interna", { precision: 18, scale: 2 })
+      .notNull()
+      .default("0"),
+    valorInterno: numeric("valor_interno", { precision: 18, scale: 2 })
+      .notNull()
+      .default("0"),
+    baseS5013: numeric("base_s5013", { precision: 18, scale: 2 }),
+    valorS5013: numeric("valor_s5013", { precision: 18, scale: 2 }),
+    diferenca: numeric("diferenca", { precision: 18, scale: 2 }),
+    snapshotFontes: jsonb("snapshot_fontes").notNull(),
+    hashFontes: varchar("hash_fontes", { length: 64 }).notNull(),
+    responsavel: varchar("responsavel", { length: 160 }).notNull(),
+    calculadaEm: timestamp("calculada_em", { withTimezone: true }),
+    conciliadaEm: timestamp("conciliada_em", { withTimezone: true }),
+    ...auditoriaBasica,
+  },
+  (table) => [
+    uniqueIndex("uq_fgts_apuracao_empresa_id").on(table.empresaId, table.id),
+    uniqueIndex("uq_fgts_apuracao_competencia_versao").on(
+      table.empresaId,
+      table.competencia,
+      table.versao,
+    ),
+    uniqueIndex("uq_fgts_apuracao_ativa")
+      .on(table.empresaId, table.competencia)
+      .where(sql`${table.status} not in ('CANCELADA')`),
+    index("ix_fgts_apuracao_empresa_status").on(
+      table.empresaId,
+      table.status,
+      table.competencia,
+    ),
+    check(
+      "ck_fgts_apuracao_competencia",
+      sql`${table.competencia} = date_trunc('month', ${table.competencia})::date`,
+    ),
+    check("ck_fgts_apuracao_versao", sql`${table.versao} > 0`),
+    check(
+      "ck_fgts_apuracao_status",
+      sql`${table.status} in (
+        'RASCUNHO', 'CALCULADA', 'TRANSMITIDA', 'CONCILIADA',
+        'GUIA_REGISTRADA', 'PAGA', 'BLOQUEADA', 'CANCELADA'
+      )`,
+    ),
+    check(
+      "ck_fgts_apuracao_valores",
+      sql`${table.baseInterna} >= 0
+          and ${table.valorInterno} >= 0
+          and (${table.baseS5013} is null or ${table.baseS5013} >= 0)
+          and (${table.valorS5013} is null or ${table.valorS5013} >= 0)`,
+    ),
+    check("ck_fgts_apuracao_hash", sql`${table.hashFontes} ~ '^[0-9a-f]{64}$'`),
+    check(
+      "ck_fgts_apuracao_snapshot",
+      sql`jsonb_typeof(${table.snapshotFontes}) = 'object'`,
+    ),
+    check(
+      "ck_fgts_apuracao_responsavel",
+      sql`length(btrim(${table.responsavel})) between 3 and 160`,
+    ),
+    check(
+      "ck_fgts_apuracao_conciliacao",
+      sql`(
+        ${table.status} in ('CONCILIADA', 'GUIA_REGISTRADA', 'PAGA')
+        and ${table.baseS5013} is not null
+        and ${table.valorS5013} is not null
+        and ${table.diferenca} = 0
+        and ${table.conciliadaEm} is not null
+      ) or ${table.status} not in ('CONCILIADA', 'GUIA_REGISTRADA', 'PAGA')`,
+    ),
+  ],
+);
+
+export const itensApuracaoFgts = pgTable(
+  "fgts_apuracao_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
+    apuracaoId: uuid("apuracao_id").notNull(),
+    pessoaId: uuid("pessoa_id"),
+    trabalhadorReferencia: varchar("trabalhador_referencia", { length: 160 }).notNull(),
+    matricula: varchar("matricula", { length: 40 }).notNull(),
+    categoriaEsocial: varchar("categoria_esocial", { length: 3 }).notNull(),
+    tipoValor: varchar("tipo_valor", { length: 40 }).notNull(),
+    baseInterna: numeric("base_interna", { precision: 18, scale: 2 }).notNull(),
+    aliquotaNumerador: integer("aliquota_numerador").notNull(),
+    aliquotaDenominador: integer("aliquota_denominador").notNull(),
+    valorInterno: numeric("valor_interno", { precision: 18, scale: 2 }).notNull(),
+    baseS5003: numeric("base_s5003", { precision: 18, scale: 2 }),
+    valorS5003: numeric("valor_s5003", { precision: 18, scale: 2 }),
+    diferenca: numeric("diferenca", { precision: 18, scale: 2 }),
+    reciboEsocial: varchar("recibo_esocial", { length: 80 }),
+    hashOrigem: varchar("hash_origem", { length: 64 }).notNull(),
+    snapshot: jsonb("snapshot").notNull(),
+    criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("uq_fgts_item_apuracao_chave").on(
+      table.apuracaoId,
+      table.trabalhadorReferencia,
+      table.categoriaEsocial,
+      table.tipoValor,
+    ),
+    index("ix_fgts_item_empresa_matricula").on(table.empresaId, table.matricula),
+    foreignKey({
+      columns: [table.empresaId],
+      foreignColumns: [empresas.id],
+      name: "fk_fgts_item_empresa",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.apuracaoId],
+      foreignColumns: [apuracoesFgts.empresaId, apuracoesFgts.id],
+      name: "fk_fgts_item_empresa_apuracao",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.empresaId, table.pessoaId],
+      foreignColumns: [pessoas.empresaId, pessoas.id],
+      name: "fk_fgts_item_empresa_pessoa",
+    }),
+    check("ck_fgts_item_categoria", sql`${table.categoriaEsocial} ~ '^[0-9]{3}$'`),
+    check(
+      "ck_fgts_item_identificacao",
+      sql`length(btrim(${table.trabalhadorReferencia})) between 1 and 160
+          and length(btrim(${table.matricula})) between 1 and 40
+          and length(btrim(${table.tipoValor})) between 1 and 40`,
+    ),
+    check(
+      "ck_fgts_item_valores",
+      sql`${table.baseInterna} >= 0
+          and ${table.valorInterno} >= 0
+          and ${table.aliquotaNumerador} >= 0
+          and ${table.aliquotaDenominador} > 0
+          and ${table.aliquotaNumerador} <= ${table.aliquotaDenominador}
+          and (${table.baseS5003} is null or ${table.baseS5003} >= 0)
+          and (${table.valorS5003} is null or ${table.valorS5003} >= 0)`,
+    ),
+    check(
+      "ck_fgts_item_totalizador",
+      sql`(${table.baseS5003} is null and ${table.valorS5003} is null and ${table.diferenca} is null)
+          or (${table.baseS5003} is not null and ${table.valorS5003} is not null and ${table.diferenca} is not null)`,
+    ),
+    check("ck_fgts_item_hash", sql`${table.hashOrigem} ~ '^[0-9a-f]{64}$'`),
+    check("ck_fgts_item_snapshot", sql`jsonb_typeof(${table.snapshot}) = 'object'`),
+  ],
+);
+
+export const eventosEsocial = pgTable(
+  "integracao_esocial_evento",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
+    apuracaoFgtsId: uuid("apuracao_fgts_id"),
+    competencia: date("competencia"),
+    ambiente: varchar("ambiente", { length: 20 }).notNull(),
+    provedor: varchar("provedor", { length: 80 }).notNull(),
+    tipo: varchar("tipo", { length: 8 }).notNull(),
+    identificador: varchar("identificador", { length: 80 }).notNull(),
+    versaoLeiaute: varchar("versao_leiaute", { length: 20 }).notNull(),
+    estado: varchar("estado", { length: 20 }).notNull().default("RASCUNHO"),
+    payload: jsonb("payload").notNull(),
+    hashPayload: varchar("hash_payload", { length: 64 }).notNull(),
+    protocolo: varchar("protocolo", { length: 160 }),
+    recibo: varchar("recibo", { length: 160 }),
+    codigoResposta: varchar("codigo_resposta", { length: 40 }),
+    mensagem: text("mensagem"),
+    resposta: jsonb("resposta"),
+    transmitidoEm: timestamp("transmitido_em", { withTimezone: true }),
+    concluidoEm: timestamp("concluido_em", { withTimezone: true }),
+    ...auditoriaBasica,
+  },
+  (table) => [
+    uniqueIndex("uq_esocial_evento_identificador").on(
+      table.empresaId,
+      table.ambiente,
+      table.identificador,
+    ),
+    index("ix_esocial_evento_empresa_estado").on(
+      table.empresaId,
+      table.estado,
+      table.criadoEm,
+    ),
+    index("ix_esocial_evento_apuracao").on(table.apuracaoFgtsId, table.tipo),
+    foreignKey({
+      columns: [table.empresaId],
+      foreignColumns: [empresas.id],
+      name: "fk_esocial_evento_empresa",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.apuracaoFgtsId],
+      foreignColumns: [apuracoesFgts.empresaId, apuracoesFgts.id],
+      name: "fk_esocial_evento_empresa_apuracao",
+    }),
+    check(
+      "ck_esocial_evento_competencia",
+      sql`${table.competencia} is null
+          or ${table.competencia} = date_trunc('month', ${table.competencia})::date`,
+    ),
+    check(
+      "ck_esocial_evento_ambiente",
+      sql`${table.ambiente} in ('PRODUCAO_RESTRITA', 'PRODUCAO')`,
+    ),
+    check(
+      "ck_esocial_evento_tipo",
+      sql`${table.tipo} in (
+        'S-1000', 'S-1005', 'S-1010', 'S-1020', 'S-2200',
+        'S-1200', 'S-1298', 'S-1299', 'S-2299', 'S-2399'
+      )`,
+    ),
+    check(
+      "ck_esocial_evento_estado",
+      sql`${table.estado} in (
+        'RASCUNHO', 'VALIDADO', 'ENFILEIRADO', 'TRANSMITIDO',
+        'PROCESSANDO', 'ACEITO', 'REJEITADO', 'CANCELADO'
+      )`,
+    ),
+    check("ck_esocial_evento_payload", sql`jsonb_typeof(${table.payload}) = 'object'`),
+    check("ck_esocial_evento_hash", sql`${table.hashPayload} ~ '^[0-9a-f]{64}$'`),
+    check(
+      "ck_esocial_evento_resposta",
+      sql`${table.resposta} is null or jsonb_typeof(${table.resposta}) = 'object'`,
+    ),
+    check(
+      "ck_esocial_evento_transmissao",
+      sql`(
+        ${table.estado} in ('TRANSMITIDO', 'PROCESSANDO', 'ACEITO', 'REJEITADO')
+        and ${table.protocolo} is not null
+        and ${table.transmitidoEm} is not null
+      ) or ${table.estado} not in ('TRANSMITIDO', 'PROCESSANDO', 'ACEITO', 'REJEITADO')`,
+    ),
+    check(
+      "ck_esocial_evento_conclusao",
+      sql`(
+        ${table.estado} in ('ACEITO', 'REJEITADO', 'CANCELADO')
+        and ${table.concluidoEm} is not null
+      ) or (
+        ${table.estado} not in ('ACEITO', 'REJEITADO', 'CANCELADO')
+        and ${table.concluidoEm} is null
+      )`,
+    ),
+    check(
+      "ck_esocial_evento_aceite",
+      sql`${table.estado} <> 'ACEITO' or ${table.recibo} is not null`,
+    ),
+  ],
+);
+
+export const guiasFgts = pgTable(
+  "fgts_guia",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
+    apuracaoId: uuid("apuracao_id").notNull(),
+    tipo: varchar("tipo", { length: 24 }).notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("REGISTRADA"),
+    referenciaOficial: varchar("referencia_oficial", { length: 160 }).notNull(),
+    emitidaEm: date("emitida_em").notNull(),
+    vencimento: date("vencimento").notNull(),
+    valorTotal: numeric("valor_total", { precision: 18, scale: 2 }).notNull(),
+    pixCopiaCola: text("pix_copia_cola"),
+    localizadorDocumento: text("localizador_documento").notNull(),
+    hashDocumento: varchar("hash_documento", { length: 64 }).notNull(),
+    pagaEm: timestamp("paga_em", { withTimezone: true }),
+    valorPago: numeric("valor_pago", { precision: 18, scale: 2 }),
+    localizadorComprovante: text("localizador_comprovante"),
+    hashComprovante: varchar("hash_comprovante", { length: 64 }),
+    conteudo: jsonb("conteudo").notNull(),
+    ...auditoriaBasica,
+  },
+  (table) => [
+    uniqueIndex("uq_fgts_guia_referencia").on(
+      table.empresaId,
+      table.referenciaOficial,
+    ),
+    index("ix_fgts_guia_empresa_status").on(
+      table.empresaId,
+      table.status,
+      table.vencimento,
+    ),
+    foreignKey({
+      columns: [table.empresaId],
+      foreignColumns: [empresas.id],
+      name: "fk_fgts_guia_empresa",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.apuracaoId],
+      foreignColumns: [apuracoesFgts.empresaId, apuracoesFgts.id],
+      name: "fk_fgts_guia_empresa_apuracao",
+    }),
+    check(
+      "ck_fgts_guia_tipo",
+      sql`${table.tipo} in ('GFD_MENSAL', 'GFD_RESCISORIA', 'GFD_MISTA')`,
+    ),
+    check(
+      "ck_fgts_guia_status",
+      sql`${table.status} in ('REGISTRADA', 'PAGA', 'VENCIDA', 'CANCELADA')`,
+    ),
+    check("ck_fgts_guia_datas", sql`${table.vencimento} >= ${table.emitidaEm}`),
+    check(
+      "ck_fgts_guia_valores",
+      sql`${table.valorTotal} >= 0
+          and (${table.valorPago} is null or ${table.valorPago} >= 0)`,
+    ),
+    check(
+      "ck_fgts_guia_hashes",
+      sql`${table.hashDocumento} ~ '^[0-9a-f]{64}$'
+          and (${table.hashComprovante} is null or ${table.hashComprovante} ~ '^[0-9a-f]{64}$')`,
+    ),
+    check("ck_fgts_guia_conteudo", sql`jsonb_typeof(${table.conteudo}) = 'object'`),
+    check(
+      "ck_fgts_guia_pagamento",
+      sql`(
+        ${table.status} = 'PAGA'
+        and ${table.pagaEm} is not null
+        and ${table.valorPago} = ${table.valorTotal}
+        and ${table.localizadorComprovante} is not null
+        and ${table.hashComprovante} is not null
+      ) or (
+        ${table.status} <> 'PAGA'
+        and ${table.pagaEm} is null
+        and ${table.valorPago} is null
+        and ${table.localizadorComprovante} is null
+        and ${table.hashComprovante} is null
+      )`,
+    ),
+  ],
+);
+
 export const obrigacoesFolhas = pgTable(
   "obrigacao_fiscal_folha",
   {

@@ -2,7 +2,7 @@
 
 ## Modelo implementado
 
-As migrações Drizzle criam 46 tabelas, agrupadas em:
+As migrações Drizzle criam 50 tabelas, agrupadas em:
 
 - organização e acesso: `empresa`, `usuario`, `usuario_empresa`;
 - pessoas: `pessoa`, `pessoa_endereco`, `pessoa_conta_bancaria`, `dependente`,
@@ -17,6 +17,8 @@ As migrações Drizzle criam 46 tabelas, agrupadas em:
   `folha_homologacao_item`;
 - obrigação: `obrigacao_fiscal`, `obrigacao_fiscal_folha`,
   `obrigacao_fiscal_item`, `obrigacao_fiscal_documento`;
+- FGTS e eSocial: `fgts_apuracao`, `fgts_apuracao_item`,
+  `integracao_esocial_evento`, `fgts_guia`;
 - migração: `importacao_execucao`, `importacao_registro`, `legado_chave`,
   `legado_folha`, `legado_folha_item`, `legado_folha_item_rubrica`,
   `legado_guia_inss`;
@@ -56,6 +58,11 @@ erDiagram
   PRESTADOR_VINCULO ||--o{ CONSOLIDACAO_FISCAL_SIMULACAO_FONTE : compoe
   EMPRESA ||--o{ HOMOLOGACAO_COMPETENCIA : executa
   HOMOLOGACAO_COMPETENCIA ||--|{ HOMOLOGACAO_COMPETENCIA_ITEM : verifica
+  EMPRESA ||--o{ FGTS_APURACAO : apura
+  FGTS_APURACAO ||--|{ FGTS_APURACAO_ITEM : individualiza
+  PESSOA ||--o{ FGTS_APURACAO_ITEM : identifica
+  FGTS_APURACAO ||--o{ INTEGRACAO_ESOCIAL_EVENTO : transmite
+  FGTS_APURACAO ||--o{ FGTS_GUIA : reconcilia
   EMPRESA ||--o{ IMPORTACAO_EXECUCAO : executa
   IMPORTACAO_EXECUCAO ||--o{ IMPORTACAO_REGISTRO : detalha
   IMPORTACAO_EXECUCAO ||--o{ LEGADO_CHAVE : atualiza
@@ -67,7 +74,9 @@ erDiagram
 
 Esse recorte sustenta a cadeia operacional do MVP. O rateio já pode ser simulado,
 versionado e homologado, mas continua propositalmente fora do processamento produtivo
-da Folha até a validação com competências reais.
+da Folha até a validação com competências reais. O núcleo FGTS já preserva apuração
+individual, retornos eSocial e GFD, mas o contrato trabalhista e a transmissão real
+ainda serão ligados após a homologação dos dados do RH.
 
 ## Modelo completo de referência
 
@@ -88,16 +97,14 @@ Consulte:
 7. Migrações aplicadas não são reescritas; correções geram nova migração.
 8. Parcelas previdenciárias precisam de tipo, base, alíquota, código e origem.
 
-## Próximas tabelas prioritárias
+## Próximas extensões prioritárias
 
-- composições de eventos/rubricas;
-- ativação produtiva do agregado fiscal mensal já implementado em modo de simulação;
-- fontes pagadoras concomitantes;
-- lançamentos e memória granular;
-- itens da obrigação fiscal;
-- documentos/evidências;
-- auditoria genérica;
-- tentativas de transmissão e pagamentos.
+- contrato de trabalho separado do prestador autônomo;
+- estabelecimentos, lotações tributárias, cargos e rubricas eSocial;
+- ligação da folha trabalhista aos itens de apuração FGTS;
+- adaptador de transmissão aprovado em produção restrita;
+- importação estruturada de S-5003, S-5013, GFD e comprovante;
+- inclusão do FGTS no fechamento mensal.
 
 ## Migrações
 

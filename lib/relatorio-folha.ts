@@ -5,6 +5,8 @@ export type LinhaRelatorioFolha = {
   descricao: string;
   natureza: string;
   origem: string;
+  incideInss: boolean;
+  incideIrrf: boolean;
   referencia: string | null;
   baseCalculo: string;
   valor: string;
@@ -53,6 +55,21 @@ export function montarResumoRelatorioFolha(itens: ItemRelatorioFolha[]) {
     liquidoCentavos: 0,
   };
   const consolidadas = new Map<string, string>();
+  const rubricas = new Map<
+    string,
+    {
+      codigo: string;
+      descricao: string;
+      natureza: string;
+      origem: string;
+      incideInss: boolean;
+      incideIrrf: boolean;
+      quantidade: number;
+      baseCalculoCentavos: number;
+      valorCentavos: number;
+      ordem: number;
+    }
+  >();
   const ordenados = [...itens]
     .sort(
       (a, b) =>
@@ -111,6 +128,42 @@ export function montarResumoRelatorioFolha(itens: ItemRelatorioFolha[]) {
           `O item de ${item.nome} possui referência incompleta de consolidação.`,
         );
       }
+      for (const linha of item.linhas) {
+        const valorCentavos = paraCentavos(
+          linha.valor,
+          `Rubrica ${linha.codigo} de ${item.nome}`,
+        );
+        if (valorCentavos === 0) continue;
+        const baseCalculoCentavos = paraCentavos(
+          linha.baseCalculo,
+          `Base da rubrica ${linha.codigo} de ${item.nome}`,
+        );
+        const chave = [
+          linha.codigo,
+          linha.descricao,
+          linha.natureza,
+          linha.origem,
+          linha.incideInss ? "INSS" : "SEM_INSS",
+          linha.incideIrrf ? "IRRF" : "SEM_IRRF",
+        ].join("\u0000");
+        const atual = rubricas.get(chave) ?? {
+          codigo: linha.codigo,
+          descricao: linha.descricao,
+          natureza: linha.natureza,
+          origem: linha.origem,
+          incideInss: linha.incideInss,
+          incideIrrf: linha.incideIrrf,
+          quantidade: 0,
+          baseCalculoCentavos: 0,
+          valorCentavos: 0,
+          ordem: linha.ordem,
+        };
+        atual.quantidade += 1;
+        atual.baseCalculoCentavos += baseCalculoCentavos;
+        atual.valorCentavos += valorCentavos;
+        atual.ordem = Math.min(atual.ordem, linha.ordem);
+        rubricas.set(chave, atual);
+      }
       return {
         ...item,
         ...valores,
@@ -134,5 +187,13 @@ export function montarResumoRelatorioFolha(itens: ItemRelatorioFolha[]) {
         simulacaoId,
         hashResultado,
       })),
+    rubricas: [...rubricas.values()].sort(
+      (a, b) =>
+        a.ordem - b.ordem ||
+        a.codigo.localeCompare(b.codigo, "pt-BR") ||
+        a.descricao.localeCompare(b.descricao, "pt-BR") ||
+        Number(b.incideInss) - Number(a.incideInss) ||
+        Number(b.incideIrrf) - Number(a.incideIrrf),
+    ),
   };
 }

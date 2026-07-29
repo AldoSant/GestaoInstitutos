@@ -122,6 +122,8 @@ export default async function RelatorioFolhaPage({
           descricao: String(linha.descricao ?? ""),
           natureza: String(linha.natureza ?? ""),
           origem: String(linha.origem ?? ""),
+          incideInss: linha.incide_inss === true,
+          incideIrrf: linha.incide_irrf === true,
           referencia:
             linha.referencia === null || linha.referencia === undefined
               ? null
@@ -259,6 +261,54 @@ export default async function RelatorioFolhaPage({
                 <td>
                   <strong>{moeda(item.totalLiquido)}</strong>
                 </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <h2 className="print-section-title">Resumo por rubrica</h2>
+        <table className="print-table">
+          <thead>
+            <tr>
+              <th>Código / rubrica</th>
+              <th>Natureza</th>
+              <th>Incidências</th>
+              <th>Qtd.</th>
+              <th>Base</th>
+              <th>Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {relatorio.rubricas.map((rubrica) => (
+              <tr
+                key={[
+                  rubrica.codigo,
+                  rubrica.descricao,
+                  rubrica.natureza,
+                  rubrica.origem,
+                  rubrica.incideInss,
+                  rubrica.incideIrrf,
+                ].join(":")}
+              >
+                <td>
+                  <strong>{rubrica.codigo}</strong>
+                  <small>{rubrica.descricao}</small>
+                </td>
+                <td>
+                  {rubrica.natureza}
+                  <small>{rubrica.origem}</small>
+                </td>
+                <td>
+                  INSS {rubrica.incideInss ? "sim" : "não"} · IRRF{" "}
+                  {rubrica.incideIrrf ? "sim" : "não"}
+                </td>
+                <td>{rubrica.quantidade}</td>
+                <td>
+                  {rubrica.baseCalculoCentavos
+                    ? moedaCentavos(rubrica.baseCalculoCentavos)
+                    : "—"}
+                </td>
+                <td>{moedaCentavos(rubrica.valorCentavos)}</td>
               </tr>
             ))}
           </tbody>

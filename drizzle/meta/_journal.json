@@ -204,6 +204,13 @@
       "when": 1785645600000,
       "tag": "0028_operational-close-and-retification",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1785732000000,
+      "tag": "0029_fgts-digital-foundation",
+      "breakpoints": true
     }
   ]
 }

@@ -16,7 +16,7 @@ Este primeiro incremento contém:
 - parâmetros fiscais de 2026 conferidos em fontes oficiais e documentados;
 - memória individual anonimizada;
 - bloqueio da divergência previdenciária identificada no legado;
-- modelo PostgreSQL com 46 tabelas, integridade relacional e trilha de importação;
+- modelo PostgreSQL com 50 tabelas, integridade relacional e trilha de importação;
 - coletores e importadores idempotentes de Pessoas completas, Atividades, Lotações,
   Termos, Metas e Vínculos do GIW;
 - contratos e importadores de Eventos, Lançamentos, Produtividade, Folhas históricas e
@@ -65,20 +65,29 @@ Este primeiro incremento contém:
   auditada, dossiê CSV e campanha de três competências para execução paralela;
 - retificação formal de obrigação emitida, congelando o original completo por SHA-256
   antes de reabrir fontes, reapurar e registrar novos documentos;
+- fundação do módulo FGTS com bloqueio explícito da categoria `701`, cálculo
+  individual truncado para os cenários iniciais `101`, `103` e `721`, contrato de
+  provedor eSocial substituível e tela de prontidão `/fgts`;
+- decisão documentada de não fabricar uma guia paralela: a GFD pagável continua sendo
+  emitida no FGTS Digital após as remunerações aceitas pelo eSocial;
 - cancelamento auditado de Folhas e obrigações, com tarefas interrompidas, estados
   terminais e invalidação automática das evidências afetadas;
 - cadastro persistente de Eventos/Rubricas e lançamentos recorrentes por Vínculo e
   competência, com validação de natureza, incidências, vigência e sobreposição;
-- migrações Drizzle versionadas até `0028_operational-close-and-retification`;
+- migrações Drizzle versionadas até `0029_fgts-digital-foundation`;
 - Dockerfile e Compose para implantação própria;
 - testes automatizados e pipeline de integração contínua.
 
 Os módulos `/cadastros`, `/prestadores`, `/instrumentos`, `/vinculos`, `/medicoes`,
 `/eventos`, `/folhas`, `/consolidacoes`, `/consolidacoes/simulacoes`,
-`/homologacoes`, `/migracoes`, `/obrigacoes` e `/parametros`
+`/homologacoes`, `/migracoes`, `/fgts`, `/obrigacoes` e `/parametros`
 usam PostgreSQL. O login ainda é
 demonstrativo e nenhuma obrigação é transmitida. Consulte o
 [andamento ponderado do MVP](docs/ANDAMENTO.md).
+
+O alvo trabalhista/FGTS foi separado do fluxo já maduro de prestadores e ainda exige
+contratos de empregados, incidências de rubricas, transmissão e homologação real.
+Consulte [a decisão do FGTS Digital](docs/FGTS_DIGITAL.md).
 
 ## Começando
 
