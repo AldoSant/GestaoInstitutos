@@ -197,6 +197,22 @@ docker compose -f compose.yaml -f compose.vps.yaml run --rm migrate npm run db:b
 docker compose -f compose.yaml -f compose.vps.yaml up -d --build
 ```
 
+Para promover o commit aprovado junto com os 38 snapshots reais já armazenados na
+conta isolada, o administrador pode executar a operação completa e bloqueante:
+
+```bash
+EXPECTED_COMMIT="$(git rev-parse HEAD)" \
+  ./scripts/ops/promover-producao-com-dados.sh
+```
+
+O script exige o `.env` de produção, cria e valida um backup, aplica migrations e
+regras, resolve a única empresa ativa, importa o lote real, comprova idempotência,
+emite a auditoria privada, publica `web` e `worker` e confere a revisão no endpoint de
+saúde. Se houver mais de uma empresa ativa, informe explicitamente `EMPRESA_ID`.
+`GIW_PRIVATE_DIR`, `BACKUP_DIR`, `REPORT_DIR` e `HEALTH_URL` podem ser sobrescritos
+sem alterar o código. Os snapshots continuam fora do Git e são montados somente para
+leitura dentro do container de migração.
+
 Valide `/api/health`, logs, login e uma consulta de leitura após a atualização. O
 endpoint de saúde agora devolve HTTP 503 quando não consegue consultar o PostgreSQL;
 uma resposta HTTP 200 confirma aplicação e banco acessíveis. Compare também o campo

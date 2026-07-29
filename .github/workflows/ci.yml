@@ -64,6 +64,7 @@ jobs:
           docker compose config > /dev/null
           docker compose -f compose.yaml -f compose.vps.yaml config > /dev/null
           sh -n scripts/ops/backup-postgres.sh
+          sh -n scripts/ops/promover-producao-com-dados.sh
           sh -n scripts/ops/verificar-restauracao-postgres.sh
 
       - name: Database migrations
