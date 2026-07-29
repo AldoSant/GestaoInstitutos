@@ -48,7 +48,7 @@ recusa qualquer fechamento inconsistente.
 2. Aplicar as migrações com `npm run db:migrate`.
 3. Cadastrar ou atualizar a empresa-base.
 4. Instalar o Chromium do coletor com `npx playwright install chromium`.
-5. Coletar Pessoas, Atividades, Lotações, Termos, Metas e Vínculos do GIW.
+5. Coletar Pessoas, Atividades, Lotações, Eventos, Termos, Metas e Vínculos do GIW.
 6. Validar o snapshot sem banco.
 7. Executar um dry-run contra o banco de destino.
 8. Conferir contagens e erros.
@@ -98,6 +98,8 @@ Variáveis opcionais:
 - `GIW_RESUME=true`: carrega o arquivo indicado em `GIW_OUTPUT`, avança até a página
   calculada e continua sem reler as fichas já presentes;
 - `GIW_HEADLESS=false`: mostra o navegador para diagnóstico local.
+- `GIW_BROWSER_EXECUTABLE`: usa um Chrome/Edge já instalado quando o Chromium do
+  Playwright não estiver disponível no host.
 
 O coletor entra no GIW, abre Cadastro > Pessoa > Localizar, percorre todas as páginas
 de 100 registros e abre cada ficha em modo de consulta. O snapshot inclui identificação
@@ -140,7 +142,31 @@ Metas e visita os Prestadores associados a cada Meta. São produzidos snapshots 
 para Termos/Metas e Vínculos. Eles preservam códigos internos do GIW, vigências, valores,
 atividade, lotação, contrato, carga horária e incidências.
 
-Os caminhos podem ser alterados com `GIW_OUTPUT_TERMOS` e `GIW_OUTPUT_VINCULOS`.
+Os caminhos podem ser alterados com `GIW_OUTPUT_TERMOS`, `GIW_OUTPUT_VINCULOS` e
+`GIW_OUTPUT_ATIVIDADES_REFERENCIADAS`. A terceira saída preserva também as Atividades
+antigas/inativas ainda usadas pelos Vínculos, mesmo quando elas já não aparecem no
+cadastro atual do GIW. Elas são marcadas como inativas e sem valor/carga presumidos.
+Informe `GIW_ATIVIDADES_BASE` com o snapshot do cadastro atual para que a saída
+suplementar contenha somente chaves realmente ausentes, sem rebaixar uma Atividade
+atual durante a importação.
+
+Da mesma forma, `GIW_PESSOAS_BASE` e `GIW_OUTPUT_PESSOAS_REFERENCIADAS` preservam
+Pessoas históricas que já foram excluídas do localizador atual, mas continuam ligadas
+a Vínculos. Essas fichas contêm somente o ID e o nome ainda exibidos pelo GIW e usam
+`dadosCompletos: false`; nenhuma informação ausente é presumida.
+
+## Coletar Eventos
+
+O coletor de Eventos percorre todas as páginas de Cadastro > Tabelas > Eventos e abre
+cada ficha em consulta para preservar natureza, modo de cálculo, incidências e estado:
+
+```bash
+npm run giw:coletar:eventos
+```
+
+Use `GIW_OUTPUT_EVENTOS` para definir a saída privada. Nenhuma incidência é inferida
+pela descrição da rubrica; INSS e IRRF são lidos diretamente das caixas de seleção do
+GIW.
 
 ## Validar e importar
 
@@ -169,6 +195,33 @@ DATABASE_URL='postgresql://...' npm run giw:importar -- \
 ```
 
 Se existir exatamente uma empresa ativa, `--empresa-id` pode ser omitido.
+
+Para processar toda a cadeia na ordem relacional, repita `--arquivo` para os
+cadastros e use `--diretorio` para a pasta dos 30 snapshots reconciliados:
+
+```bash
+DATABASE_URL='postgresql://...' npm run giw:importar:lote -- \
+  --arquivo .private/importacoes/giw/pessoas.json \
+  --arquivo .private/importacoes/giw/atividades.json \
+  --arquivo .private/importacoes/giw/atividades-referenciadas.json \
+  --arquivo .private/importacoes/giw/lotacoes.json \
+  --arquivo .private/importacoes/giw/termos.json \
+  --arquivo .private/importacoes/giw/vinculos.json \
+  --diretorio .private/importacoes/giw/pdf-historico-reconciliado-v1 \
+  --empresa-id UUID-DA-EMPRESA
+```
+
+O lote valida tudo antes de consultar o banco, confere a integridade das referências e
+ordena Pessoas, Atividades, Lotações, Termos, Vínculos, movimentos, Folhas e GPS.
+Snapshots repetidos, chaves duplicadas, dependências ausentes ou arquivos inválidos
+bloqueiam o lote inteiro. Depois do dry-run, repita com
+`--aplicar --confirmed-complete`; execute mais um dry-run ao final para comprovar que
+todos os registros ficam em `ignorar`.
+
+O identificador de Evento dentro de uma rubrica histórica é evidência textual e não
+uma chave estrangeira: Eventos já inativos podem não aparecer mais no localizador do
+GIW, e sua incidência não é reconstruída por suposição. Lançamentos operacionais, por
+outro lado, exigem Evento coletado e são bloqueados quando a dependência não existe.
 
 Os contratos completos dos dois snapshots históricos estão em:
 
@@ -242,7 +295,14 @@ interrompe a conversão inteira.
 
 O conversor de PDF requer `pdftotext` (pacote `poppler-utils`). A imagem Docker
 `migrate` já contém essa ferramenta. No host, instale o mesmo pacote antes de executar
-o comando diretamente com Node.
+o comando diretamente com Node. Em ambientes sem Poppler, pode ser usado o fallback
+Python com `pdfplumber`, informando o executável em `PDF_PYTHON`; o fallback somente é
+acionado quando `pdftotext` não existe:
+
+```bash
+PDF_PYTHON=/caminho/python npm run giw:converter:historico-pdf -- \
+  --diretorio .private/insumos-consulta
+```
 
 Comece sempre em dry-run. O comando extrai o texto, identifica tipo e competência,
 calcula o SHA-256 e executa a conversão completa sem gravar snapshot. Para uma remessa
@@ -270,15 +330,49 @@ npm run giw:converter:historico-pdf -- \
   --esperados 30 \
   --recebidos 30 \
   --confirmed-complete \
+  --pasta-saida .private/importacoes/giw/pdf-historico-v2 \
   --relatorio .private/importacoes/giw/relatorios/aplicacao-pdfs.json
 ```
 
 `--aplicar` cria snapshots privados; ele ainda não altera o PostgreSQL. Importe cada
 snapshot primeiro em dry-run com `giw:importar` e só então repita com `--aplicar`.
 Os nomes dos snapshots são derivados do SHA-256, evitando colisão entre meses ou
-arquivos homônimos. Arquivos PDF, texto extraído, relatórios, snapshots e dados pessoais
+arquivos homônimos. `--pasta-saida` permite criar uma nova versão imutável do lote sem
+sobrescrever snapshots anteriores. Arquivos PDF, texto extraído, relatórios, snapshots e dados pessoais
 nunca devem entrar no Git. O lote aceita no máximo 200 PDFs, 50 MB por arquivo e
 500 MB no total; a extração usa concorrência limitada para não saturar a VPS.
+
+### Reconciliar PDFs com as Pessoas reais do GIW
+
+Antes de importar os snapshots produzidos dos PDFs, vincule CPF, CNPJ, NIT e nome ao
+`legacyId` efetivamente coletado no cadastro de Pessoas. O comando prioriza documentos
+fortes (CPF/CNPJ na Folha e NIT na GPS), usa nome normalizado somente como alternativa
+exata e reprova ambiguidades. Também associa cada GPS à Folha da mesma Pessoa e
+competência:
+
+```bash
+npm run giw:reconciliar:historico -- \
+  --pessoas .private/importacoes/giw/pessoas.json \
+  --diretorio-snapshots .private/importacoes/giw/pdf-historico-v2 \
+  --relatorio .private/importacoes/giw/relatorios/reconciliacao-v1.json
+```
+
+O primeiro comando é somente diagnóstico. Se o relatório estiver `PRONTA`, grave uma
+nova versão imutável dos snapshots:
+
+```bash
+npm run giw:reconciliar:historico -- \
+  --pessoas .private/importacoes/giw/pessoas.json \
+  --diretorio-snapshots .private/importacoes/giw/pdf-historico-v2 \
+  --relatorio .private/importacoes/giw/relatorios/reconciliacao-aplicada-v1.json \
+  --aplicar \
+  --confirmed-complete \
+  --pasta-saida .private/importacoes/giw/pdf-historico-reconciliado-v1
+```
+
+O comando revalida todos os snapshots resultantes e não grava se existir Pessoa ou GPS
+sem vínculo. A saída deve permanecer sob `.private` e nunca sobrescreve uma versão
+anterior.
 
 ## Mapear movimentos históricos sem alterar o GIW
 
@@ -336,15 +430,15 @@ final. Assim a simulação usa as mesmas consultas e validações da aplicação
 | 2 | Pessoas | 464569402 | empresa | coletor e importador prontos |
 | 3 | Atividades | 464569252 | empresa | coletor e importador prontos |
 | 4 | Lotações | 464569449 | empresa | coletor e importador prontos |
-| 5 | Eventos/rubricas | 8716 | parâmetros | contrato, validação e importador prontos |
+| 5 | Eventos/rubricas | 8716 | parâmetros | coletor, contrato, validação e importador prontos |
 | 6 | Tabela de IRRF | 8733 | regras por vigência | mapeado |
 | 7 | Limites de INSS | 464569398 | regras por vigência | mapeado |
 | 8 | Termos e Metas | 464569250 | empresa | coletor e importador prontos |
 | 9 | Vínculos | 464569258 | pessoa, termo, meta, atividade e lotação | coletor e importador prontos |
-| 10 | Lançamentos de eventos | 464569425 | vínculo e evento | contrato, validação e importador prontos |
-| 11 | Produtividade | 464569461 | vínculo e competência | contrato, validação e importador prontos |
-| 12 | Folhas | 464569390 | todos os anteriores | contrato, persistência e importador prontos; adaptador visual pendente de reconexão |
-| 13 | Emissão de GPS | 464569421 | folha fechada | contrato, persistência e importador prontos; adaptador visual pendente de reconexão |
+| 10 | Lançamentos de eventos | 464569425 | vínculo e evento | estrutura real reconfirmada; contrato, validação e importador prontos |
+| 11 | Produtividade | 464569461 | vínculo e competência | estrutura real reconfirmada; contrato, validação e importador prontos |
+| 12 | Folhas | 464569390 | todos os anteriores | formulário de emissão reconfirmado; PDFs convertidos, persistência e importador prontos |
+| 13 | Emissão de GPS | 464569421 | folha fechada | formulário direto reconfirmado; PDFs convertidos, persistência e importador prontos |
 
 As listagens Webrun usam `basic_query.jsp`, paginação própria e grids com campos
 identificados. IDs de formulário são tratados como adaptadores do legado, nunca como
@@ -383,8 +477,10 @@ idempotente. Eventos preservam natureza, cálculo e incidências. Lançamentos r
 Vínculo e Evento exclusivamente por chave legada. Produtividade materializa a medição
 mensal com memória de percentual, quantidade ou valor, evidência e conferente.
 
-Falta confirmar os seletores no GIW disponível e coletar os registros reais. Regras
-fiscais observadas no legado permanecem separadas das regras normativas confirmadas.
+Os seletores e a estrutura foram reconfirmados no GIW disponível. Lançamentos e
+Produtividade são formulários diretos condicionados por Parceiro/Termo/Meta e ainda
+precisam de um coletor normalizado que percorra essas combinações. Regras fiscais
+observadas no legado permanecem separadas das regras normativas confirmadas.
 
 Critério de saída: eventos históricos explicam proventos, descontos e bases.
 
@@ -396,8 +492,9 @@ As tabelas `legado_folha`, `legado_folha_item`, `legado_folha_item_rubrica` e
 registra checksum e trilha de execução. A tela `/migracoes` reconcilia por competência,
 pessoa, lote e guia.
 
-Falta executar o adaptador visual contra o GIW disponível e importar três competências
-reais para classificar divergências.
+As três competências reais foram convertidas e reconciliadas. Falta aplicar os
+snapshots no PostgreSQL de homologação e executar as competências no motor novo para
+classificar divergências operacionais.
 
 Critério de saída: resultado centavo a centavo ou divergência formalmente classificada.
 

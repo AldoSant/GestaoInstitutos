@@ -2470,6 +2470,7 @@ export const itensFolhaLegado = pgTable(
     matricula: varchar("matricula", { length: 80 }).notNull(),
     nome: varchar("nome", { length: 180 }).notNull(),
     cpf: varchar("cpf", { length: 11 }),
+    cnpj: varchar("cnpj", { length: 14 }),
     totalProventos: numeric("total_proventos", { precision: 18, scale: 2 }).notNull(),
     totalDescontos: numeric("total_descontos", { precision: 18, scale: 2 }).notNull(),
     baseInss: numeric("base_inss", { precision: 18, scale: 2 }).notNull(),
@@ -2494,6 +2495,14 @@ export const itensFolhaLegado = pgTable(
     check(
       "ck_legado_folha_item_cpf",
       sql`${table.cpf} is null or ${table.cpf} ~ '^[0-9]{11}$'`,
+    ),
+    check(
+      "ck_legado_folha_item_cnpj",
+      sql`${table.cnpj} is null or ${table.cnpj} ~ '^[0-9]{14}$'`,
+    ),
+    check(
+      "ck_legado_folha_item_documento",
+      sql`${table.cpf} is null or ${table.cnpj} is null`,
     ),
     check(
       "ck_legado_folha_item_valores",
@@ -2566,6 +2575,9 @@ export const guiasInssLegado = pgTable(
     tipo: varchar("tipo", { length: 30 }).notNull(),
     status: varchar("status", { length: 40 }).notNull(),
     identificador: varchar("identificador", { length: 180 }),
+    pessoaLegacyId: varchar("pessoa_legacy_id", { length: 100 }),
+    beneficiarioNome: varchar("beneficiario_nome", { length: 180 }),
+    lote: varchar("lote", { length: 80 }),
     codigoReceita: varchar("codigo_receita", { length: 40 }),
     vencimento: date("vencimento").notNull(),
     pagamento: date("pagamento"),
@@ -2588,6 +2600,7 @@ export const guiasInssLegado = pgTable(
       table.legacyId,
     ),
     index("ix_legado_guia_competencia").on(table.empresaId, table.competencia),
+    index("ix_legado_guia_pessoa").on(table.empresaId, table.pessoaLegacyId),
     foreignKey({
       columns: [table.empresaId],
       foreignColumns: [empresas.id],

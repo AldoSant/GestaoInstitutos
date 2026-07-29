@@ -9,6 +9,7 @@ async function lerGrid(formId) {
   const formulario = sistema
     .frameLocator(`iframe[src*="formID=${formId}"]`)
     .frameLocator('iframe[name="mainform"]');
+  await formulario.locator('tr[role="listitem"]').first().waitFor();
   const rows = await formulario.locator('tr[role="listitem"]').evaluateAll((elements) =>
     elements.map((row) => ({
       cells: Array.from(row.querySelectorAll("td"), (cell) =>

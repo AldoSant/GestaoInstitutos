@@ -1441,11 +1441,11 @@ async function importarFolhaHistorica(
     const itemInsert = await client.query<{ id: string }>(
       `insert into legado_folha_item
          (empresa_id, folha_legado_id, legacy_id, pessoa_legacy_id,
-          vinculo_legacy_id, matricula, nome, cpf, total_proventos,
+          vinculo_legacy_id, matricula, nome, cpf, cnpj, total_proventos,
           total_descontos, base_inss, valor_inss, base_irrf, valor_irrf,
           total_liquido, snapshot)
        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-               $14, $15, $16)
+               $14, $15, $16, $17)
        returning id`,
       [
         empresaId,
@@ -1456,6 +1456,7 @@ async function importarFolhaHistorica(
         item.matricula,
         item.nome,
         item.cpf,
+        item.cnpj,
         item.totalProventos,
         item.totalDescontos,
         item.baseInss,
@@ -1552,6 +1553,9 @@ async function importarGuiaInssHistorica(
     guia.tipo,
     guia.status,
     guia.identificador,
+    guia.pessoaLegacyId,
+    guia.beneficiarioNome,
+    guia.lote,
     guia.codigoReceita,
     guia.vencimento,
     guia.pagamento,
@@ -1570,10 +1574,12 @@ async function importarGuiaInssHistorica(
     await client.query(
       `update legado_guia_inss
           set legacy_id = $3, competencia = $4, tipo = $5, status = $6,
-              identificador = $7, codigo_receita = $8, vencimento = $9,
-              pagamento = $10, principal = $11, juros = $12, multa = $13,
-              compensacoes = $14, total = $15, folha_legacy_ids = $16,
-              checksum = $17, extraido_em = $18, snapshot = $19,
+              identificador = $7, pessoa_legacy_id = $8,
+              beneficiario_nome = $9, lote = $10, codigo_receita = $11,
+              vencimento = $12, pagamento = $13, principal = $14,
+              juros = $15, multa = $16, compensacoes = $17, total = $18,
+              folha_legacy_ids = $19, checksum = $20, extraido_em = $21,
+              snapshot = $22,
               atualizado_em = now()
         where id = $1 and empresa_id = $2`,
       [destinoId, ...values],
@@ -1583,10 +1589,11 @@ async function importarGuiaInssHistorica(
     const insert = await client.query<{ id: string }>(
       `insert into legado_guia_inss
          (empresa_id, origem, legacy_id, competencia, tipo, status, identificador,
-          codigo_receita, vencimento, pagamento, principal, juros, multa,
-          compensacoes, total, folha_legacy_ids, checksum, extraido_em, snapshot)
+          pessoa_legacy_id, beneficiario_nome, lote, codigo_receita, vencimento,
+          pagamento, principal, juros, multa, compensacoes, total,
+          folha_legacy_ids, checksum, extraido_em, snapshot)
        values ($1, 'GIW', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-               $13, $14, $15, $16, $17, $18)
+               $13, $14, $15, $16, $17, $18, $19, $20, $21)
        returning id`,
       values,
     );

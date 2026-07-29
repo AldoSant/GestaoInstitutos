@@ -77,6 +77,35 @@ test("rejeita resumo do PDF divergente dos itens", () => {
   assert.equal(resultado.issues[0].campo, "resumo.totalProventos");
 });
 
+test("preserva ocorrências distintas da mesma matrícula na mesma Folha", () => {
+  const segundaOcorrencia = `
+0001 - PRESTADOR FICTÍCIO DATA ADMISSÃO: 01/01/2026
+CÓDIGO            EVENTO                         REF           PROVENTO            RETENÇÃO         VALOR LÍQUIDO
+001               RETRIBUIÇÃO                    30 dias         500,00
+BASES DE CÁLCULOS                                               500,00               0,00           500,00
+Retribuição          INSS           IRRF       Dependente IRRF         Sal. Família   Aux. Tributos
+DATA DE CRÉDITO: 31/05/2026
+500,00               0,00           0,00       0x                     0,00           0,00
+`;
+  const resultado = converterTextoPdfFolhaHistorica(
+    texto.replace("RESUMO", `${segundaOcorrencia}\nRESUMO`),
+    {
+      nomeArquivo: "folha-duas-ocorrencias.pdf",
+      extraidoEm: "2026-07-29T00:00:00.000Z",
+      arquivoSha256: "9".repeat(64),
+    },
+  );
+
+  assert.deepEqual(resultado.issues, []);
+  assert.equal(resultado.snapshot?.records[0].itens.length, 2);
+  assert.match(
+    resultado.snapshot?.records[0].itens[1].legacyId ?? "",
+    /:0001:OCORRENCIA:2$/,
+  );
+  assert.equal(resultado.snapshot?.records[0].totalProventos, "1500.00");
+  assert.equal(resultado.snapshot?.records[0].totalLiquido, "1390.00");
+});
+
 const gps = `
 GPS - GUIA DA PREVIDÊNCIA SOCIAL                  3 - CÓDIGO DE PAGAMENTO
                                                    2100
@@ -120,6 +149,41 @@ test("rejeita GPS com acréscimos combinados que não podem ser separados", () =
   );
   assert.equal(resultado.snapshot, null);
   assert.ok(resultado.issues.some((issue) => issue.campo === "acrescimos"));
+});
+
+test("converte página realista com rótulos anteriores ao título e ignora a segunda via", () => {
+  const pagina = `
+3. CÓDIGO DE PAGAMENTO
+1007
+4. COMPETÊNCIA
+04/2026
+GUIA DA PREVIDÊNCIA SOCIAL - GPS 5. IDENTIFICADOR
+16120762028
+6. VALOR DO INSS
+PESSOA FICTÍCIA R$ 308,99
+2. VENCIMENTO
+20/05/2026
+9. VALOR DE OUTRAS ENTIDADES
+R$ 0,00
+10. ATM/ MULTA E JUROS
+R$ 0,00
+11. TOTAL
+R$ 308,99
+cortar nesta linha
+GUIA DA PREVIDÊNCIA SOCIAL - GPS
+segunda via sem campos monetários confiáveis
+`;
+  const resultado = converterTextoPdfGuiasHistoricas(`${pagina}\f${pagina}`, {
+    nomeArquivo: "gps-paginada.pdf",
+    extraidoEm: "2026-07-29T00:00:00.000Z",
+    arquivoSha256: "8".repeat(64),
+  });
+
+  assert.deepEqual(resultado.issues, []);
+  assert.equal(resultado.snapshot?.records.length, 1);
+  assert.equal(resultado.snapshot?.records[0].codigoReceita, "1007");
+  assert.equal(resultado.snapshot?.records[0].competencia, "2026-04-01");
+  assert.equal(resultado.snapshot?.records[0].total, "308.99");
 });
 
 test("gera manifest determinístico ordenado com tipo, competência e SHA-256", () => {

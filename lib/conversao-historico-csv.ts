@@ -57,6 +57,7 @@ const ALIASES_FOLHA = {
   matricula: ["matricula", "matrícula", "registro"],
   nome: ["nome", "prestador", "nome_prestador", "beneficiario"],
   cpf: ["cpf", "cpf_prestador", "documento"],
+  cnpj: ["cnpj", "cnpj_prestador"],
   totalProventos: ["total_proventos", "proventos", "bruto", "total_bruto"],
   totalDescontos: ["total_descontos", "descontos"],
   baseInss: ["base_inss", "base_de_inss"],
@@ -82,6 +83,9 @@ const ALIASES_GUIA = {
   tipo: ["tipo", "tipo_guia"],
   status: ["status", "situacao", "situação"],
   identificador: ["identificador", "numero", "número", "numero_documento"],
+  pessoaLegacyId: ["pessoa_legacy_id", "pessoa_id", "codigo_pessoa"],
+  beneficiarioNome: ["beneficiario_nome", "nome", "beneficiario"],
+  lote: ["lote", "numero_lote"],
   codigoReceita: ["codigo_receita", "código_receita", "receita"],
   vencimento: ["vencimento", "data_vencimento"],
   pagamento: ["pagamento", "data_pagamento"],
@@ -311,9 +315,16 @@ export function converterCsvFolhasHistoricas(
     const matricula = obrigatorio(linha, ALIASES_FOLHA.matricula, "matricula", issues);
     const nome = obrigatorio(linha, ALIASES_FOLHA.nome, "nome", issues);
     const cpf = campo(linha, ALIASES_FOLHA.cpf).replace(/\D/g, "") || null;
+    const cnpj = campo(linha, ALIASES_FOLHA.cnpj).replace(/\D/g, "") || null;
     const pessoaLegacyId =
       campo(linha, ALIASES_FOLHA.pessoaLegacyId) ||
-      (cpf ? `CPF:${cpf}` : matricula ? `MATRICULA:${matricula}` : "");
+      (cpf
+        ? `CPF:${cpf}`
+        : cnpj
+          ? `CNPJ:${cnpj}`
+          : matricula
+            ? `MATRICULA:${matricula}`
+            : "");
     if (!pessoaLegacyId) {
       issues.push({
         linha: linha.numero,
@@ -331,6 +342,7 @@ export function converterCsvFolhasHistoricas(
       matricula,
       nome,
       cpf,
+      cnpj,
       totalProventos: dinheiro(
         linha,
         ALIASES_FOLHA.totalProventos,
@@ -556,6 +568,9 @@ export function converterCsvGuiasHistoricas(
       ).toUpperCase() as GiwGuiaInssHistorica["tipo"],
       status: campo(linha, ALIASES_GUIA.status) || "DESCONHECIDO",
       identificador,
+      pessoaLegacyId: campo(linha, ALIASES_GUIA.pessoaLegacyId) || null,
+      beneficiarioNome: campo(linha, ALIASES_GUIA.beneficiarioNome) || null,
+      lote: campo(linha, ALIASES_GUIA.lote) || null,
       codigoReceita: campo(linha, ALIASES_GUIA.codigoReceita) || null,
       vencimento: obrigatorio(linha, ALIASES_GUIA.vencimento, "vencimento", issues),
       pagamento: campo(linha, ALIASES_GUIA.pagamento) || null,
@@ -611,7 +626,11 @@ export function converterPessoasDoCsvFolhas(
   for (const item of folhas.snapshot.records.flatMap((folha) => folha.itens)) {
     const existente = pessoas.get(item.pessoaLegacyId);
     if (existente) {
-      if (existente.nome !== item.nome || existente.cpf !== item.cpf) {
+      if (
+        existente.nome !== item.nome ||
+        existente.cpf !== item.cpf ||
+        existente.cnpj !== item.cnpj
+      ) {
         issues.push({
           linha: null,
           campo: "pessoa",
@@ -626,9 +645,9 @@ export function converterPessoasDoCsvFolhas(
       legacyId: item.pessoaLegacyId,
       dadosCompletos: false,
       nome: item.nome,
-      tipo: "FISICA",
+      tipo: item.cnpj ? "JURIDICA" : "FISICA",
       cpf: item.cpf,
-      cnpj: null,
+      cnpj: item.cnpj,
       sexo: null,
       nascimento: null,
       rg: null,
@@ -782,9 +801,9 @@ export function converterEventosDoCsvFolhas(
 }
 
 export const MODELO_CSV_FOLHAS_HISTORICAS =
-  "\uFEFFfolha_legacy_id;competencia;folha_numero;termo_legacy_id;meta_legacy_id;folha_status;data_pagamento;item_legacy_id;pessoa_legacy_id;vinculo_legacy_id;matricula;nome;cpf;total_proventos;total_descontos;base_inss;valor_inss;base_irrf;valor_irrf;total_liquido;rubrica_legacy_id;evento_legacy_id;rubrica_codigo;rubrica_descricao;rubrica_natureza;rubrica_referencia;rubrica_base_calculo;rubrica_valor;rubrica_incide_inss;rubrica_incide_irrf\r\n" +
-  'FOLHA-EXEMPLO-1;06/2026;1;TERMO-1;META-1;FECHADA;05/07/2026;ITEM-1;PESSOA-1;VINCULO-1;0001;"Prestador fictício";;1000,00;110,00;1000,00;110,00;890,00;0,00;890,00;RUBRICA-1;EVENTO-1;001;"Retribuição fictícia";PROVENTO;100;1000,00;1000,00;SIM;SIM\r\n';
+  "\uFEFFfolha_legacy_id;competencia;folha_numero;termo_legacy_id;meta_legacy_id;folha_status;data_pagamento;item_legacy_id;pessoa_legacy_id;vinculo_legacy_id;matricula;nome;cpf;cnpj;total_proventos;total_descontos;base_inss;valor_inss;base_irrf;valor_irrf;total_liquido;rubrica_legacy_id;evento_legacy_id;rubrica_codigo;rubrica_descricao;rubrica_natureza;rubrica_referencia;rubrica_base_calculo;rubrica_valor;rubrica_incide_inss;rubrica_incide_irrf\r\n" +
+  'FOLHA-EXEMPLO-1;06/2026;1;TERMO-1;META-1;FECHADA;05/07/2026;ITEM-1;PESSOA-1;VINCULO-1;0001;"Prestador fictício";;;1000,00;110,00;1000,00;110,00;890,00;0,00;890,00;RUBRICA-1;EVENTO-1;001;"Retribuição fictícia";PROVENTO;100;1000,00;1000,00;SIM;SIM\r\n';
 
 export const MODELO_CSV_GUIAS_HISTORICAS =
-  "\uFEFFguia_legacy_id;competencia;tipo;status;identificador;codigo_receita;vencimento;pagamento;principal;juros;multa;compensacoes;total;folha_legacy_ids\r\n" +
-  "GUIA-EXEMPLO-1;06/2026;GPS;EMITIDA;GPS-001;2100;20/07/2026;;110,00;0,00;0,00;0,00;110,00;FOLHA-EXEMPLO-1\r\n";
+  "\uFEFFguia_legacy_id;competencia;tipo;status;identificador;pessoa_legacy_id;beneficiario_nome;lote;codigo_receita;vencimento;pagamento;principal;juros;multa;compensacoes;total;folha_legacy_ids\r\n" +
+  'GUIA-EXEMPLO-1;06/2026;GPS;EMITIDA;GPS-001;PESSOA-1;"Prestador fictício";1;2100;20/07/2026;;110,00;0,00;0,00;0,00;110,00;FOLHA-EXEMPLO-1\r\n';

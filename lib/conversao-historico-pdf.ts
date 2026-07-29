@@ -155,6 +155,7 @@ export function converterTextoPdfFolhaHistorica(
 
   const linhas = texto.split(/\r?\n/);
   const itens: GiwFolhaItemHistorico[] = [];
+  const ocorrenciasPorMatricula = new Map<string, number>();
   let itemAtual: GiwFolhaItemHistorico | null = null;
   let dataPagamento: string | null = null;
   let colunas: { provento: number; retencao: number; liquido: number } | null = null;
@@ -163,18 +164,24 @@ export function converterTextoPdfFolhaHistorica(
     const linha = linhas[indice];
     if (/^\s*RESUMO\s*$/i.test(linha)) break;
     const cabecalho = linha.match(
-      /^\s*(\d+)\s+-\s+(.+?)\s{2,}DATA (ADMISS[ÃA]O|PAGAMENTO):\s*(.*)$/i,
+      /^\s*(\d+)\s+-\s+(.+?)\s+DATA (ADMISS[ÃA]O|PAGAMENTO):\s*(.*)$/i,
     );
     if (cabecalho) {
       const matricula = cabecalho[1];
       const folhaId = `PDF:${competenciaIso ?? "SEM-COMPETENCIA"}:${lote}:${meta}`;
+      const ocorrencia = (ocorrenciasPorMatricula.get(matricula) ?? 0) + 1;
+      ocorrenciasPorMatricula.set(matricula, ocorrencia);
+      const itemLegacyId = ocorrencia === 1
+        ? `${folhaId}:${matricula}`
+        : `${folhaId}:${matricula}:OCORRENCIA:${ocorrencia}`;
       itemAtual = {
-        legacyId: `${folhaId}:${matricula}`,
+        legacyId: itemLegacyId,
         pessoaLegacyId: `MATRICULA:${matricula}`,
         vinculoLegacyId: null,
         matricula,
         nome: cabecalho[2].trim(),
         cpf: null,
+        cnpj: null,
         totalProventos: "0.00",
         totalDescontos: "0.00",
         baseInss: "0.00",
@@ -195,7 +202,14 @@ export function converterTextoPdfFolhaHistorica(
     const cpf = linha.match(/\bCPF:\s*([\d.-]+)/i)?.[1].replace(/\D/g, "");
     if (cpf?.length === 11) {
       itemAtual.cpf = cpf;
+      itemAtual.cnpj = null;
       itemAtual.pessoaLegacyId = `CPF:${cpf}`;
+    }
+    const cnpj = linha.match(/\bCNPJ:\s*([\d./-]+)/i)?.[1].replace(/\D/g, "");
+    if (cnpj?.length === 14) {
+      itemAtual.cnpj = cnpj;
+      itemAtual.cpf = null;
+      itemAtual.pessoaLegacyId = `CNPJ:${cnpj}`;
     }
     if (/C[ÓO]DIGO\s+EVENTO\s+REF\s+PROVENTO\s+RETEN[ÇC][ÃA]O/i.test(linha)) {
       colunas = {
@@ -367,10 +381,10 @@ function trechoDepoisDoRotulo(secao: string, rotulo: string) {
   );
   if (indice < 0) return "";
   const coluna = normalizarBusca(linhas[indice]).indexOf(rotuloNormalizado);
-  return linhas
-    .slice(indice, indice + 4)
-    .map((linha) => linha.slice(Math.max(0, coluna - 24)))
-    .join(" ");
+  return [
+    linhas[indice].slice(Math.max(0, coluna - 24)),
+    ...linhas.slice(indice + 1, indice + 4),
+  ].join(" ");
 }
 
 function dinheiroOuNulo(texto: string) {
@@ -386,6 +400,28 @@ function dataBrasileira(texto: string) {
 function competenciaGps(texto: string) {
   const match = texto.match(/\b(\d{2})\/(\d{4})\b/);
   return match ? `${match[2]}-${match[1]}-01` : null;
+}
+
+function beneficiarioGps(secao: string) {
+  const linhas = secao.split(/\r?\n/);
+  const indice = linhas.findIndex((linha) =>
+    normalizarBusca(linha).includes("NOME OU RAZAO SOCIAL")
+  );
+  if (indice < 0) return null;
+  for (const linha of linhas.slice(indice + 1, indice + 6)) {
+    const candidato = linha
+      .replace(/R\$\s*\d{1,3}(?:\.\d{3})*,\d{2}.*$/i, "")
+      .trim();
+    if (
+      candidato &&
+      /[A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ]{3}/i.test(candidato) &&
+      !/^\d+\./.test(candidato) &&
+      !/VALOR\s+DO\s+INSS/i.test(candidato)
+    ) {
+      return candidato;
+    }
+  }
+  return null;
 }
 
 function classificarDocumentoPdf(texto: string): Pick<ItemManifestPdf, "documentType" | "competence"> {
@@ -463,21 +499,34 @@ export function converterTextoPdfGuiasHistoricas(
   texto: string,
   opcoes: OpcoesConversaoPdf,
 ): ResultadoConversaoPdf<GiwSnapshotGuiasInssHistoricas> {
-  const titulo = /GUIA\s+DA\s+PREVID[ÊE]NCIA\s+SOCIAL/gi;
-  const inicios: number[] = [];
-  let match: RegExpExecArray | null;
-  while ((match = titulo.exec(texto))) inicios.push(match.index);
-  if (inicios.length === 0) {
+  if (!/GUIA\s+DA\s+PREVID[ÊE]NCIA\s+SOCIAL/i.test(texto)) {
     return {
       snapshot: null,
       issues: [{ pagina: 1, campo: "documento", mensagem: "não é uma GPS reconhecida" }],
     };
   }
 
+  const paginas = texto
+    .split("\f")
+    .map((pagina) => pagina.trim())
+    .filter(Boolean);
+  let candidatos: string[];
+  if (paginas.length > 1) {
+    candidatos = paginas.map((pagina) => {
+      const corte = pagina.search(/cortar\s+nesta\s+linha/i);
+      return corte >= 0 ? pagina.slice(0, corte) : pagina;
+    });
+  } else {
+    const titulo = /GUIA\s+DA\s+PREVID[ÊE]NCIA\s+SOCIAL/gi;
+    const inicios: number[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = titulo.exec(texto))) inicios.push(match.index);
+    candidatos = inicios.map((inicio, indice) =>
+      texto.slice(inicio, inicios[indice + 1] ?? texto.length)
+    );
+  }
+
   const issues: ProblemaConversaoPdf[] = [];
-  const candidatos = inicios.map((inicio, indice) =>
-    texto.slice(inicio, inicios[indice + 1] ?? texto.length)
-  );
   const records = candidatos.flatMap((secao, indice) => {
     const competencia = competenciaGps(trechoDepoisDoRotulo(secao, "COMPETÊNCIA"));
     const identificador =
@@ -487,6 +536,8 @@ export function converterTextoPdfGuiasHistoricas(
     const codigoReceita =
       trechoDepoisDoRotulo(secao, "CÓDIGO DE PAGAMENTO").match(/\b\d{3,4}\b/)?.[0] ??
       null;
+    const beneficiarioNome = beneficiarioGps(secao);
+    const lote = secao.match(/\bLote:\s*([A-Z0-9./-]+)/i)?.[1] ?? null;
     const vencimento = dataBrasileira(trechoDepoisDoRotulo(secao, "VENCIMENTO"));
     const valorInss = dinheiroOuNulo(trechoDepoisDoRotulo(secao, "VALOR DO INSS"));
     const outrasEntidades =
@@ -498,7 +549,7 @@ export function converterTextoPdfGuiasHistoricas(
     // Algumas vias repetem somente os campos cadastrais, sem qualquer valor.
     // Elas não são registros autônomos e a via monetária completa é preservada.
     if (valorInss === null && acrescimos === null && total === null) return [];
-    const preenchidos = [
+    const obrigatorios = {
       competencia,
       identificador,
       codigoReceita,
@@ -506,18 +557,21 @@ export function converterTextoPdfGuiasHistoricas(
       valorInss,
       acrescimos,
       total,
-    ].filter(Boolean).length;
-    if (preenchidos < 7) {
+    };
+    const faltantes = Object.entries(obrigatorios)
+      .filter(([, valor]) => !valor)
+      .map(([campo]) => campo);
+    if (faltantes.length > 0) {
       issues.push({
-        pagina: Math.floor(indice / 2) + 1,
+        pagina: indice + 1,
         campo: "gps",
-        mensagem: "cópia preenchida parcialmente",
+        mensagem: `cópia preenchida parcialmente: ${faltantes.join(", ")}`,
       });
       return [];
     }
     if (inteiroMonetario(acrescimos!) !== 0) {
       issues.push({
-        pagina: Math.floor(indice / 2) + 1,
+        pagina: indice + 1,
         campo: "acrescimos",
         mensagem: "GPS combina multa e juros; o modelo exige valores separados",
       });
@@ -527,18 +581,21 @@ export function converterTextoPdfGuiasHistoricas(
       inteiroMonetario(valorInss!) + inteiroMonetario(outrasEntidades);
     if (principalCentavos !== inteiroMonetario(total!)) {
       issues.push({
-        pagina: Math.floor(indice / 2) + 1,
+        pagina: indice + 1,
         campo: "total",
         mensagem: "não fecha com os componentes da GPS",
       });
       return [];
     }
     return [{
-      legacyId: `GPS:${competencia}:${identificador}`,
+      legacyId: `GPS:${competencia}:${identificador}:LOTE:${lote ?? "SEM-LOTE"}`,
       competencia: competencia!,
       tipo: "GPS" as const,
       status: "EMITIDA",
       identificador,
+      pessoaLegacyId: null,
+      beneficiarioNome,
+      lote,
       codigoReceita,
       vencimento: vencimento!,
       pagamento: null,

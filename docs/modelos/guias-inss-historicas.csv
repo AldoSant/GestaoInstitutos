@@ -1,2 +1,2 @@
-guia_legacy_id;competencia;tipo;status;identificador;codigo_receita;vencimento;pagamento;principal;juros;multa;compensacoes;total;folha_legacy_ids
-GUIA-EXEMPLO-1;06/2026;GPS;EMITIDA;GPS-001;2100;20/07/2026;;110,00;0,00;0,00;0,00;110,00;FOLHA-EXEMPLO-1
+guia_legacy_id;competencia;tipo;status;identificador;pessoa_legacy_id;beneficiario_nome;lote;codigo_receita;vencimento;pagamento;principal;juros;multa;compensacoes;total;folha_legacy_ids
+GUIA-EXEMPLO-1;06/2026;GPS;EMITIDA;GPS-001;PESSOA-1;"Prestador exclusivamente fictício";1;2100;20/07/2026;;110,00;0,00;0,00;0,00;110,00;FOLHA-EXEMPLO-1

@@ -29,7 +29,7 @@ const formularios = [
   {
     entity: "folhas_historicas",
     formId: "464569390",
-    menu: /^folhas?$/i,
+    menu: /^folha(?:s| de pagamento)?$/i,
     section: "movimentacao",
   },
   {
@@ -88,19 +88,37 @@ async function clicarMenu(menu, form) {
   await links.click();
 }
 
+async function abrirSubmenuTabelas(menu) {
+  const submenu = menu.locator("#MenuLateralGamma-submenu-1745586");
+  const className = await submenu.getAttribute("class");
+  if (!className?.includes("show")) {
+    await menu.locator('a[href="#MenuLateralGamma-submenu-1745586"]').click();
+  }
+}
+
 async function localizarFormulario(sistema, formId) {
   const janela = sistema.locator(`iframe[src*="formID=${formId}"]`);
   await janela.waitFor();
-  return sistema
+  const formulario = sistema
     .frameLocator(`iframe[src*="formID=${formId}"]`)
     .frameLocator('iframe[name="mainform"]');
+  await formulario.locator("body").waitFor();
+  return formulario;
 }
 
 async function abrirLocalizador(formulario) {
-  const tab = formulario.getByRole("tab", { name: /localizar/i });
-  if ((await tab.count()) === 1) await tab.click();
   const consulta = formulario.frameLocator('iframe[src^="basic_query.jsp"]');
-  await consulta.locator("body").waitFor();
+  if ((await formulario.locator('iframe[src^="basic_query.jsp"]').count()) === 1) {
+    await consulta.locator("#results-table").waitFor();
+    await page.waitForTimeout(1_000);
+    return consulta;
+  }
+  const tab = formulario.getByRole("tab", { name: /localizar/i });
+  if ((await tab.count()) === 0) return null;
+  if ((await tab.count()) !== 1) throw new Error("A aba Localizar é ambígua.");
+  await tab.click();
+  await consulta.locator("#results-table").waitFor();
+  await page.waitForTimeout(1_000);
   return consulta;
 }
 
@@ -208,15 +226,16 @@ async function proximaPagina(consulta) {
 }
 
 const state = await estadoInicial();
-const { browser, sistema, menu } = await abrirSessaoGiw();
+const { browser, page, sistema, menu } = await abrirSessaoGiw();
 try {
   for (const form of formularios) {
     if (state.forms[form.entity]?.completed) continue;
-    if (form.section === "cadastro") await abrirMenuCadastro(menu);
-    else await abrirMenuMovimentacao(menu);
+    if (form.section === "cadastro") {
+      await abrirMenuCadastro(menu);
+      if (form.entity === "eventos") await abrirSubmenuTabelas(menu);
+    } else await abrirMenuMovimentacao(menu);
     await clicarMenu(menu, form);
     const formulario = await localizarFormulario(sistema, form.formId);
-    const consulta = await abrirLocalizador(formulario);
     const formState = state.forms[form.entity] ?? {
       formId: form.formId,
       completed: false,
@@ -224,6 +243,13 @@ try {
       details: [],
     };
     formState.structure = await descreverFormulario(formulario);
+    const consulta = await abrirLocalizador(formulario);
+    if (!consulta) {
+      formState.completed = true;
+      state.forms[form.entity] = formState;
+      await checkpoint(state);
+      continue;
+    }
     let pageNumber = formState.pages.length + 1;
     for (let skip = 1; skip < pageNumber; skip += 1) {
       if (!(await proximaPagina(consulta))) {
@@ -232,7 +258,10 @@ try {
     }
     while (pageNumber <= limitePaginas) {
       const pageData = await lerPagina(consulta);
-      if (pageData.rows.length === 0) break;
+      if (pageData.rows.length === 0) {
+        formState.completed = true;
+        break;
+      }
       formState.pages.push({ number: pageNumber, ...pageData });
       state.forms[form.entity] = formState;
       await checkpoint(state);
@@ -245,7 +274,10 @@ try {
         );
         for (let index = 0; index < max; index += 1) {
           await rows.nth(index).dblclick();
-          await formulario.locator("input, select, textarea").first().waitFor();
+          await formulario
+            .locator("input:visible, select:visible, textarea:visible")
+            .first()
+            .waitFor();
           formState.details.push(await descreverFormulario(formulario));
           const localizar = formulario.getByRole("tab", { name: /localizar/i });
           if ((await localizar.count()) === 1) await localizar.click();

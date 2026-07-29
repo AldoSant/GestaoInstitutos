@@ -13,7 +13,11 @@ export async function abrirSessaoGiw() {
     throw new Error("Configure GIW_USUARIO e GIW_SENHA somente no ambiente local.");
   }
 
-  const browser = await chromium.launch({ headless: process.env.GIW_HEADLESS !== "false" });
+  const executablePath = process.env.GIW_BROWSER_EXECUTABLE?.trim();
+  const browser = await chromium.launch({
+    headless: process.env.GIW_HEADLESS !== "false",
+    ...(executablePath ? { executablePath } : {}),
+  });
   try {
     const page = await browser.newPage();
     page.setDefaultTimeout(20_000);

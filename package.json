@@ -25,9 +25,12 @@
     "worker:validar-regra": "tsx scripts/worker/enfileirar-validacao.ts",
     "giw:coletar:pessoas": "node scripts/giw/coletar-pessoas.mjs",
     "giw:coletar:cadastros": "node scripts/giw/coletar-cadastros-base.mjs",
+    "giw:coletar:eventos": "node scripts/giw/coletar-eventos.mjs",
     "giw:coletar:instrumentos": "node scripts/giw/coletar-instrumentos.mjs",
     "giw:mapear:historico": "node scripts/giw/mapear-historico.mjs",
     "giw:inventariar:insumos": "tsx scripts/importacao/inventariar-insumos.ts",
+    "giw:importar:lote": "tsx scripts/importacao/importar-lote.ts",
+    "giw:reconciliar:historico": "tsx scripts/importacao/reconciliar-historico.ts",
     "giw:converter:historico": "tsx scripts/importacao/converter-historico-csv.ts",
     "giw:converter:historico-pdf": "tsx scripts/importacao/converter-historico-pdf.ts",
     "giw:importar": "tsx scripts/importacao/importar.ts"

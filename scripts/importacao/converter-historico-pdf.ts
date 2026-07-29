@@ -13,6 +13,7 @@ import {
   relative,
   resolve,
 } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import {
   analisarLotePdfHistorico,
@@ -26,6 +27,10 @@ const LIMITE_TOTAL = 500 * 1024 * 1024;
 const LIMITE_DOCUMENTOS = 200;
 const CONCORRENCIA_EXTRACAO = 3;
 const DIRETORIOS_IGNORADOS = new Set([".git", ".next", "node_modules"]);
+const EXTRATOR_PYTHON = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "extrair-texto-pdf.py",
+);
 
 type ArquivoPdf = {
   caminho: string;
@@ -123,11 +128,23 @@ async function extrairPdf(arquivo: ArquivoPdf): Promise<EntradaPreflightPdf> {
   if (conteudo.subarray(0, 5).toString() !== "%PDF-") {
     throw new Error("Há arquivo com extensão .pdf, mas sem assinatura PDF válida.");
   }
-  const { stdout: texto } = await executarArquivo(
-    "pdftotext",
-    ["-layout", "-nopgbrk", arquivo.caminho, "-"],
-    { encoding: "utf8", maxBuffer: 20 * 1024 * 1024 },
-  );
+  let texto: string;
+  try {
+    ({ stdout: texto } = await executarArquivo(
+      "pdftotext",
+      ["-layout", arquivo.caminho, "-"],
+      { encoding: "utf8", maxBuffer: 20 * 1024 * 1024 },
+    ));
+  } catch (error) {
+    const codigo = (error as NodeJS.ErrnoException).code;
+    const python = process.env.PDF_PYTHON?.trim();
+    if (codigo !== "ENOENT" || !python) throw error;
+    ({ stdout: texto } = await executarArquivo(
+      python,
+      [EXTRATOR_PYTHON, arquivo.caminho],
+      { encoding: "utf8", maxBuffer: 20 * 1024 * 1024 },
+    ));
+  }
   return {
     nomeArquivo: arquivo.nomeArquivo,
     conteudo,
@@ -168,6 +185,7 @@ async function executar() {
     "--recebidos",
   );
   const saidaInformada = valorDepois(args, "--saida");
+  const pastaSaidaInformada = valorDepois(args, "--pasta-saida");
   const relatorioInformado = valorDepois(args, "--relatorio");
 
   if (caminhosExplicitos.length === 0 && diretorios.length === 0) {
@@ -196,6 +214,9 @@ async function executar() {
   }
   if (modo !== "dry-run" && arquivos.length > 1 && saidaInformada) {
     throw new Error("--saida só pode ser usado com um único PDF.");
+  }
+  if (saidaInformada && pastaSaidaInformada) {
+    throw new Error("--saida e --pasta-saida não podem ser usados juntos.");
   }
 
   const entradas = await mapearComLimite(
@@ -239,7 +260,8 @@ async function executar() {
     const destino = arquivos.length === 1 && saidaInformada
       ? resolve(saidaInformada)
       : resolve(
-        `.private/importacoes/giw/pdf-historico/documento-${hash.slice(0, 16)}-historico.json`,
+        pastaSaidaInformada ?? ".private/importacoes/giw/pdf-historico",
+        `documento-${hash.slice(0, 16)}-historico.json`,
       );
     await gravarJsonPrivado(destino, result.snapshot);
   }

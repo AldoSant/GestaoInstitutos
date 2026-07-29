@@ -20,6 +20,7 @@ export type GiwFolhaItemHistorico = {
   matricula: string;
   nome: string;
   cpf: string | null;
+  cnpj: string | null;
   totalProventos: string;
   totalDescontos: string;
   baseInss: string;
@@ -54,6 +55,9 @@ export type GiwGuiaInssHistorica = {
   tipo: "GPS" | "DARF_PREVIDENCIARIO" | "DCTFWEB";
   status: string;
   identificador: string | null;
+  pessoaLegacyId: string | null;
+  beneficiarioNome: string | null;
+  lote: string | null;
   codigoReceita: string | null;
   vencimento: string;
   pagamento: string | null;
@@ -284,6 +288,7 @@ function normalizarItemFolha(
   const matricula = texto(value.matricula);
   const nome = texto(value.nome);
   const cpf = digitos(value.cpf);
+  const cnpj = digitos(value.cnpj);
   const campos = [
     "totalProventos",
     "totalDescontos",
@@ -302,6 +307,12 @@ function normalizarItemFolha(
   if (!matricula) problema(issues, record, `${prefix}.matricula`, "obrigatório");
   if (!nome) problema(issues, record, `${prefix}.nome`, "obrigatório");
   if (cpf && cpf.length !== 11) problema(issues, record, `${prefix}.cpf`, "deve ter 11 dígitos");
+  if (cnpj && cnpj.length !== 14) {
+    problema(issues, record, `${prefix}.cnpj`, "deve ter 14 dígitos");
+  }
+  if (cpf && cnpj) {
+    problema(issues, record, `${prefix}.documento`, "CPF e CNPJ são mutuamente exclusivos");
+  }
   for (const field of campos) {
     if (valores[field] === null || centavos(valores[field] ?? "0") < 0) {
       problema(issues, record, `${prefix}.${field}`, "valor não negativo obrigatório");
@@ -354,6 +365,7 @@ function normalizarItemFolha(
     matricula,
     nome,
     cpf,
+    cnpj,
     totalProventos: valores.totalProventos!,
     totalDescontos: valores.totalDescontos!,
     baseInss: valores.baseInss!,
@@ -564,6 +576,9 @@ export function validarSnapshotGuiasInssHistoricas(
         tipo: tipo as GiwGuiaInssHistorica["tipo"],
         status,
         identificador: texto(raw.identificador) || null,
+        pessoaLegacyId: texto(raw.pessoaLegacyId) || null,
+        beneficiarioNome: texto(raw.beneficiarioNome) || null,
+        lote: texto(raw.lote) || null,
         codigoReceita: texto(raw.codigoReceita) || null,
         vencimento,
         pagamento,

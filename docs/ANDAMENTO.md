@@ -2,25 +2,44 @@
 
 ## Visão geral
 
-**Estimativa do MVP ampliado: 71% concluído. Prontidão operacional com dados reais:
-aproximadamente 58%.**
+**Estimativa do MVP ampliado: 72% concluído. Prontidão operacional com dados reais:
+aproximadamente 63%.**
 
-O núcleo anterior — folha de prestadores e obrigação previdenciária — permanece em
-93%. Em 28/07/2026 o alvo foi ampliado para incluir folha trabalhista, transmissão ao
+O núcleo anterior — folha de prestadores e obrigação previdenciária — está em
+94%. Em 28/07/2026 o alvo foi ampliado para incluir folha trabalhista, transmissão ao
 eSocial e GFD oficial. Prestador `701` não pode ser convertido silenciosamente em
 empregado com FGTS; por isso o escopo novo é medido separadamente e depende das
 amostras reais do RH.
 
 | Componente do escopo ampliado | Peso | Maturidade | Contribuição |
 |---|---:|---:|---:|
-| Núcleo de prestadores, INSS e migração | 65% | 93% | 60,5% |
+| Núcleo de prestadores, INSS e migração | 65% | 94% | 61,1% |
 | Folha trabalhista, eSocial e FGTS Digital | 25% | 34% | 8,5% |
-| Operação real, homologação e corte | 10% | 20% | 2,0% |
-| **MVP ampliado** | **100%** |  | **71,0%** |
+| Operação real, homologação e corte | 10% | 24% | 2,4% |
+| **MVP ampliado** | **100%** |  | **72,0%** |
 
-A prontidão operacional é menor porque exige restaurar backup, carregar os 30 arquivos,
-classificar vínculos, reconciliar três competências, operar eSocial/FGTS Digital e obter
-aceite do RH. Código implementado sem essa prova não é contado como operação concluída.
+A prontidão operacional é menor porque ainda exige carregar os snapshots reconciliados
+em uma homologação PostgreSQL, classificar vínculos, executar as três competências no
+motor novo, operar eSocial/FGTS Digital e obter aceite do RH. Código implementado sem
+essa prova não é contado como operação concluída.
+
+## Migração real confirmada em 29/07/2026
+
+- remessa de 30 PDFs inventariada por SHA-256: 15 Folhas e 15 conjuntos de GPS;
+- 15 Folhas e 169 GPS convertidas em snapshots privados e revalidadas individualmente;
+- competências abril, maio e junho de 2026 fecham Folha × GPS centavo a centavo;
+- 1.071 Pessoas completas coletadas do GIW, sem ID legado duplicado;
+- 82 de 82 Pessoas das Folhas e 59 de 59 beneficiários de GPS reconciliados por
+  CPF/CNPJ/NIT, sem depender de aproximação por nome;
+- todas as 169 GPS associadas à respectiva Folha da mesma Pessoa e competência;
+- 14 Atividades atuais, 20 Lotações, 10 Eventos atuais, 3 Termos, 16 Metas e 321
+  Vínculos coletados; dois passes integrais reproduziram os mesmos 321 registros;
+- 27 Atividades antigas e 1 Pessoa histórica, ainda referenciadas pelos Vínculos mas
+  ausentes dos localizadores atuais, preservadas em snapshots suplementares;
+- estrutura real de Eventos, Lançamentos, Produtividade, Folha e GPS mapeada novamente
+  no GIW; formulários diretos e formulários com localizador são tratados separadamente;
+- 30 snapshots reconciliados estão prontos para dry-run transacional assim que a
+  homologação PostgreSQL descartável estiver disponível.
 
 O percentual mede capacidade operacional validada, e não quantidade de telas ou linhas
 de código. Uma etapa só avança quando existe persistência, validação, teste e caminho de
@@ -30,12 +49,12 @@ homologação. Interfaces demonstrativas contam apenas como descoberta de fluxo.
 |---|---:|---:|---|
 | Plataforma, banco, deploy e CI | 15% | 14% | Pool, concorrência, auditoria, fila e worker operacional implementados; falta comprovar restauração periódica na VPS, ampliar monitoramento e identificar o usuário autenticado. |
 | Descoberta, regras e modelo relacional | 10% | 8% | Fluxo principal e modelo identificados. Regime geral e imunidade beneficente agora possuem cenários distintos e versionados; contratos, CEBAS e amostras reais ainda precisam ampliar a evidência. |
-| Migração e cadastros-base | 15% | 14% | Pessoas, cadastros, contratos, Eventos, Lançamentos, Produtividade e o acervo histórico de Folhas/guias possuem contratos e importação idempotente; falta executar os adaptadores contra o GIW novamente disponível. |
-| Termos, metas e vínculos | 15% | 14% | Coleta/importação e CRUD da cadeia implementados; falta executar e reconciliar os dados reais de todos os anos. |
+| Migração e cadastros-base | 15% | 14,5% | Pessoas e cadastros-base reais foram coletados; 30 PDFs foram convertidos e 100% das Pessoas/beneficiários reconciliados. Falta o dry-run transacional e a carga em homologação. |
+| Termos, metas e vínculos | 15% | 14,5% | Termos, Metas e 321 Vínculos de 2026 foram coletados em dois passes idênticos; Atividades e Pessoas históricas órfãs foram preservadas. Faltam os demais anos e a aplicação em homologação. |
 | Folha auditável | 20% | 20% | Processamento, memória, hash canônico, revisão, medição, aprovação do RH, fechamento e reabertura estão operacionais. O rateio multi-lote homologado possui consumo produtivo delimitado por empresa e competência, revalidação de fontes e cobertura integral antes do fechamento; permanece desligado por padrão até a homologação real. |
 | Obrigação previdenciária | 15% | 14% | Segurado e patronal são apurados conforme o enquadramento congelado. Apuração parcial é recusada; revisão e hash das fontes são revalidados. Totalizador, recibo e DARF possuem máquina de estados, CSV e dossiê imprimível com fechamento monetário; falta integração oficial e homologação real. |
 | Homologação, paralelo e corte | 10% | 9% | Painel real, oito gates, comparação CSV, acervo histórico, casos multi-lote, simulações, relatórios, pagamentos e retificação formal estão operacionais. Faltam executar os meses reais, treinar e efetuar o corte. |
-| **Total** | **100%** | **93%** | |
+| **Total do núcleo anterior** | **100%** | **94%** | |
 
 ## Nova frente prioritária: FGTS Digital
 
@@ -162,11 +181,9 @@ homologação. Interfaces demonstrativas contam apenas como descoberta de fluxo.
    rateio, Folhas e obrigação por Pessoa.
 3. Ativar o consumo produtivo apenas para a empresa e a competência aprovadas, ensaiar
    fechamento, reabertura e regressão e então avançar a competência inicial.
-4. Revalidar os seletores históricos quando o GIW voltar, coletar Folhas/guias e
-   concluir a campanha de três competências reais no painel e nos dossiês já implementados.
-   Se o portal continuar fora do ar, inventariar a remessa recebida, executar o preflight
-   em lote de PDFs, usar os conversores CSV para Folhas e guias e obter os demais
-   cadastros por exportação assistida.
+4. Disponibilizar a homologação PostgreSQL descartável, aplicar a migração `0030`,
+   importar Pessoas/cadastros/instrumentos e os 30 snapshots reconciliados em dry-run,
+   repetir com aplicação e comprovar idempotência.
 5. Homologar o enquadramento real da entidade e reconciliar com eSocial/DCTFWeb reais.
 6. Três competências reais em paralelo, com diferenças explicadas.
 7. Backup/restauração, acesso, auditoria e corte controlado do GIW.
