@@ -21,7 +21,10 @@ cp .env.example .env
 Defina no `.env`:
 
 - `POSTGRES_PASSWORD`: senha exclusiva e forte;
+- `ADMIN_LOGIN`: identificador do administrador temporário;
+- `ADMIN_PASSWORD`: senha com ao menos 12 caracteres;
 - `AUTH_SECRET`: pelo menos 32 bytes aleatórios;
+- `APP_COMMIT_SHA`: revisão publicada, obtida por `git rev-parse --short=12 HEAD`;
 - demais variáveis conforme o ambiente.
 
 Mantenha `FOLHA_CONSOLIDADA_PRODUTIVA=false` até a homologação real do rateio
@@ -31,10 +34,15 @@ O `.env` nunca deve ser versionado.
 
 ## Subida
 
+Na VPS que publica a aplicação em `/gestao-institutos`, use sempre os dois arquivos
+Compose. O overlay mantém o PostgreSQL somente na rede Docker e publica a aplicação
+apenas em `127.0.0.1:3001`, para consumo do proxy reverso:
+
 ```bash
-docker compose pull
-docker compose up -d --build
-docker compose ps
+export APP_COMMIT_SHA="$(git rev-parse --short=12 HEAD)"
+docker compose -f compose.yaml -f compose.vps.yaml pull
+docker compose -f compose.yaml -f compose.vps.yaml up -d --build
+docker compose -f compose.yaml -f compose.vps.yaml ps
 ```
 
 A porta do PostgreSQL está vinculada a `127.0.0.1` no Compose. Não publique a porta 5432 na internet.
@@ -142,7 +150,10 @@ Em produção madura, a migração deve ser uma etapa única e controlada do pip
 
 ## Proxy e HTTPS
 
-Encaminhe o domínio para `127.0.0.1:3000`. Habilite HTTPS, redirecionamento de HTTP e limites de tamanho/tempo adequados. Não exponha diretamente o contêiner de aplicação sem proxy e firewall.
+Na configuração padrão, encaminhe o domínio para `127.0.0.1:3000`. Com
+`compose.vps.yaml`, encaminhe exclusivamente o caminho `/gestao-institutos` para
+`127.0.0.1:3001`. Habilite HTTPS, redirecionamento de HTTP e limites de tamanho/tempo
+adequados. Não exponha diretamente o contêiner de aplicação sem proxy e firewall.
 
 ## Backup mínimo
 
@@ -179,15 +190,18 @@ gerenciador de tarefas da VPS.
 
 ```bash
 git pull --ff-only
-docker compose build migrate web worker
-docker compose run --rm migrate
-docker compose run --rm migrate npm run db:bootstrap:regras
-docker compose up -d --build
+export APP_COMMIT_SHA="$(git rev-parse --short=12 HEAD)"
+docker compose -f compose.yaml -f compose.vps.yaml build migrate web worker
+docker compose -f compose.yaml -f compose.vps.yaml run --rm migrate
+docker compose -f compose.yaml -f compose.vps.yaml run --rm migrate npm run db:bootstrap:regras
+docker compose -f compose.yaml -f compose.vps.yaml up -d --build
 ```
 
 Valide `/api/health`, logs, login e uma consulta de leitura após a atualização. O
 endpoint de saúde agora devolve HTTP 503 quando não consegue consultar o PostgreSQL;
-uma resposta HTTP 200 confirma aplicação e banco acessíveis.
+uma resposta HTTP 200 confirma aplicação e banco acessíveis. Compare também o campo
+`revision` da resposta com `git rev-parse --short=12 HEAD`; `unknown` significa que o
+procedimento de publicação não registrou a revisão e deve ser corrigido.
 
 ## Antes de ampliar o acesso além da equipe interna
 

@@ -66,34 +66,43 @@ async function executar() {
     receivedDocumentCount: numero(indiceRecebidos),
   });
   console.log(JSON.stringify(manifest, null, 2));
+
+  const resultados = entradas.map((entrada) => ({
+    entrada,
+    resultado: converterTextoPdfHistorico(entrada.texto, {
+      nomeArquivo: entrada.nomeArquivo,
+      extraidoEm,
+      arquivoSha256: sha256Pdf(entrada.conteudo),
+    }),
+  }));
+  for (const { entrada, resultado } of resultados) {
+    if (!resultado.snapshot) {
+      throw new Error(
+        `${entrada.nomeArquivo} rejeitado com ${resultado.issues.length} problema(s): ` +
+          resultado.issues.map((item) => `${item.campo}: ${item.mensagem}`).join("; "),
+      );
+    }
+    console.log(
+      `${entrada.nomeArquivo}: ${resultado.snapshot.records.length} registro(s) ` +
+        `de ${resultado.snapshot.entity} validados.`,
+    );
+  }
   if (modo === "dry-run") return;
 
-  for (const entrada of entradas) {
+  for (const { entrada, resultado } of resultados) {
+    if (!resultado.snapshot) {
+      throw new Error("Resultado PDF inválido após a validação.");
+    }
     const destino = arquivos.length === 1 && indiceSaida >= 0
       ? saida
       : resolve(`.private/importacoes/giw/${basename(entrada.caminho, extname(entrada.caminho))}-historico.json`);
     if (!emPrivate(destino)) throw new Error("A saída PDF deve ficar em uma pasta .private.");
-    const resultado = converterTextoPdfHistorico(entrada.texto, {
-      nomeArquivo: entrada.nomeArquivo,
-      extraidoEm,
-      arquivoSha256: sha256Pdf(entrada.conteudo),
-    });
-    if (!resultado.snapshot) {
-      throw new Error(
-        `PDF rejeitado com ${resultado.issues.length} problema(s): ` +
-          resultado.issues.map((item) => `${item.campo}: ${item.mensagem}`).join("; "),
-      );
-    }
     await mkdir(dirname(destino), { recursive: true });
     await writeFile(destino, `${JSON.stringify(resultado.snapshot, null, 2)}\n`, {
       encoding: "utf8",
       flag: "wx",
       mode: 0o600,
     });
-    console.log(
-      `Snapshot privado válido: ${resultado.snapshot.records.length} registro(s) ` +
-        `de ${resultado.snapshot.entity}.`,
-    );
     console.log(`Gravado em ${destino}`);
   }
 }

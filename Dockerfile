@@ -13,6 +13,7 @@ COPY . .
 RUN npm run build
 
 FROM dependencies AS migrator
+RUN apk add --no-cache poppler-utils
 COPY drizzle ./drizzle
 COPY db ./db
 COPY lib ./lib

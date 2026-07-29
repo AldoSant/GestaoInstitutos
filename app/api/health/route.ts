@@ -8,6 +8,7 @@ export async function GET() {
   const base = {
     service: "gestao-institutos",
     version: process.env.npm_package_version ?? "0.1.0",
+    revision: process.env.APP_COMMIT_SHA ?? "unknown",
   };
 
   try {

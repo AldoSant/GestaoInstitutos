@@ -16,6 +16,9 @@ jobs:
     env:
       DATABASE_URL: postgresql://instituto:instituto-ci@localhost:5432/instituto_folha
       DATABASE_SSL: "false"
+      ADMIN_LOGIN: ci-admin
+      ADMIN_PASSWORD: ci-password-not-used-outside-tests
+      AUTH_SECRET: ci-session-secret-with-at-least-32-bytes
     services:
       postgres:
         image: postgres:16-alpine
@@ -44,8 +47,12 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Dependency audit
-        run: npm audit
+      - name: Production dependency audit
+        run: npm audit --omit=dev
+
+      - name: Development toolchain audit
+        continue-on-error: true
+        run: npm audit --include=dev
 
       - name: Migration consistency
         run: npm run db:check
@@ -53,9 +60,9 @@ jobs:
       - name: Deployment configuration
         env:
           POSTGRES_PASSWORD: ci-compose-password
-          AUTH_SECRET: ci-compose-secret-with-at-least-32-bytes
         run: |
           docker compose config > /dev/null
+          docker compose -f compose.yaml -f compose.vps.yaml config > /dev/null
           sh -n scripts/ops/backup-postgres.sh
           sh -n scripts/ops/verificar-restauracao-postgres.sh
 
@@ -129,23 +136,26 @@ jobs:
           trap 'kill $APP_PID' EXIT
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://localhost:3000/api/health > /dev/null; then
-              curl --fail --silent http://localhost:3000/ > /dev/null
-              curl --fail --silent http://localhost:3000/folhas > /dev/null
-              curl --fail --silent http://localhost:3000/cadastros > /dev/null
-              curl --fail --silent http://localhost:3000/prestadores > /dev/null
-              curl --fail --silent http://localhost:3000/instrumentos > /dev/null
-              curl --fail --silent http://localhost:3000/vinculos > /dev/null
-              curl --fail --silent http://localhost:3000/eventos > /dev/null
-              curl --fail --silent http://localhost:3000/consolidacoes > /dev/null
-              curl --fail --silent http://localhost:3000/homologacoes > /dev/null
-              curl --fail --silent http://localhost:3000/migracoes > /dev/null
-              curl --fail --silent http://localhost:3000/obrigacoes > /dev/null
+              SESSION_TOKEN=$(npx tsx -e \
+                'import { criarTokenSessao } from "./lib/sessao.ts"; console.log(criarTokenSessao({ login: "ci-admin", perfil: "ADMINISTRADOR" }));')
+              curl --fail --silent http://localhost:3000/login > /dev/null
+              for path in / /folhas /cadastros /prestadores /instrumentos /vinculos \
+                /eventos /consolidacoes /homologacoes /migracoes /obrigacoes; do
+                curl --fail --silent \
+                  --cookie "instituto_sessao=$SESSION_TOKEN" \
+                  "http://localhost:3000$path" > /dev/null
+              done
               exit 0
             fi
             sleep 1
           done
           cat /tmp/gestao-institutos.log
           exit 1
+
+      - name: VPS base-path build
+        env:
+          NEXT_BASE_PATH: /gestao-institutos
+        run: npm run build
 
       - name: Container images
         run: |

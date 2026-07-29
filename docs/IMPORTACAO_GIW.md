@@ -218,6 +218,39 @@ sem acentos. O limite é de 50 MB e 100.000 linhas. Arquivo vazio, coluna obriga
 ausente, CPF inválido, rubrica duplicada, item divergente ou total sem fechamento
 interrompe a conversão inteira.
 
+## Converter PDFs históricos de Folha e GPS
+
+O conversor de PDF requer `pdftotext` (pacote `poppler-utils`). A imagem Docker
+`migrate` já contém essa ferramenta. No host, instale o mesmo pacote antes de executar
+o comando diretamente com Node.
+
+Comece sempre em dry-run. O comando extrai o texto, identifica tipo e competência,
+calcula o SHA-256 e executa a conversão completa sem gravar snapshot:
+
+```bash
+npm run giw:converter:historico-pdf -- \
+  --arquivo .private/recebidos/FOLHA_PAGAMENTO.pdf \
+  --arquivo .private/recebidos/GPS.pdf
+```
+
+Qualquer campo incompleto ou total divergente reprova a remessa inteira. Depois de
+conferir o manifest, grave os snapshots somente em `.private`, declarando a quantidade
+esperada e confirmando que a remessa está completa:
+
+```bash
+npm run giw:converter:historico-pdf -- \
+  --arquivo .private/recebidos/FOLHA_PAGAMENTO.pdf \
+  --arquivo .private/recebidos/GPS.pdf \
+  --aplicar \
+  --esperados 2 \
+  --recebidos 2 \
+  --confirmed-complete
+```
+
+`--aplicar` cria snapshots privados; ele ainda não altera o PostgreSQL. Importe cada
+snapshot primeiro em dry-run com `giw:importar` e só então repita com `--aplicar`.
+Arquivos PDF, texto extraído, snapshots e dados pessoais nunca devem entrar no Git.
+
 ## Mapear movimentos históricos sem alterar o GIW
 
 Quando o endereço do legado estiver respondendo, execute:
