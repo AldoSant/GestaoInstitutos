@@ -250,6 +250,13 @@ td small { margin-top: 3px; color: #89979b; font-size: 9px; }
 .demo-identity strong { font-size: 11px; }
 .demo-identity small { margin-top: 2px; color: var(--muted); font-size: 9px; }
 .security-note { display: block; margin-top: 12px; color: #859397; text-align: center; font-size: 9px; }
+.login-form { margin-top: 22px; display: grid; gap: 14px; }
+.login-form label { display: grid; gap: 6px; color: var(--ink); font-size: 10px; font-weight: 800; }
+.login-form input { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: inherit; }
+.login-form input:focus { outline: 2px solid #9bd4cd; outline-offset: 1px; }
+.form-error { margin-top: 14px !important; padding: 10px 12px; border-radius: 8px; color: #8c2929 !important; background: #fff0f0; }
+.logout-button { width: 100%; border: 0; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.sidebar-bottom form { margin: 0; }
 .empty-state { min-height: 400px; display: grid; place-items: center; align-content: center; text-align: center; border: 1px dashed #bdcece; border-radius: 14px; background: #fff; }
 .empty-state svg { color: var(--teal); }
 .empty-state h2 { margin: 13px 0 5px; font-family: Georgia, "Times New Roman", serif; }

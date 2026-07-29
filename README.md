@@ -75,14 +75,17 @@ Este primeiro incremento contém:
 - cadastro persistente de Eventos/Rubricas e lançamentos recorrentes por Vínculo e
   competência, com validação de natureza, incidências, vigência e sobreposição;
 - migrações Drizzle versionadas até `0029_fgts-digital-foundation`;
+- autenticação de administrador único com credenciais exclusivas do ambiente,
+  sessão assinada e proteção centralizada das rotas;
 - Dockerfile e Compose para implantação própria;
 - testes automatizados e pipeline de integração contínua.
 
 Os módulos `/cadastros`, `/prestadores`, `/instrumentos`, `/vinculos`, `/medicoes`,
 `/eventos`, `/folhas`, `/consolidacoes`, `/consolidacoes/simulacoes`,
 `/homologacoes`, `/migracoes`, `/fgts`, `/obrigacoes` e `/parametros`
-usam PostgreSQL. O login ainda é
-demonstrativo e nenhuma obrigação é transmitida. Consulte o
+usam PostgreSQL. A autenticação não consulta nem armazena credenciais nesse banco;
+ela usa o administrador único configurado no servidor. Nenhuma obrigação é
+transmitida. Consulte o
 [andamento ponderado do MVP](docs/ANDAMENTO.md).
 
 O alvo trabalhista/FGTS foi separado do fluxo já maduro de prestadores e ainda exige
@@ -121,7 +124,9 @@ npm run db:generate
 npm run db:migrate
 ```
 
-Nunca envie o arquivo `.env` ao Git.
+Nunca envie o arquivo `.env` ao Git. Defina `ADMIN_LOGIN`, `ADMIN_PASSWORD` e um
+`AUTH_SECRET` aleatório com pelo menos 32 bytes. Essas variáveis são obrigatórias
+para autenticar e assinar a sessão; não reutilize senhas do banco.
 
 ### Docker
 
@@ -129,7 +134,8 @@ Nunca envie o arquivo `.env` ao Git.
 docker compose up --build
 ```
 
-Antes de usar em servidor, defina valores fortes para `POSTGRES_PASSWORD` e `AUTH_SECRET`.
+Antes de usar em servidor, defina valores fortes e exclusivos para
+`POSTGRES_PASSWORD`, `ADMIN_PASSWORD` e `AUTH_SECRET`, além de `ADMIN_LOGIN`.
 
 ## Documentação
 

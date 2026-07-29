@@ -29,4 +29,12 @@ O CI executa `npm audit`. Atualizações devem preservar testes e build; não us
 
 ## Estado atual
 
-O login exibido é apenas demonstrativo. Não use esta versão com dados reais ou na internet até autenticação, autorização, proteção de sessão, auditoria e endurecimento da infraestrutura estarem implementados e revisados.
+O acesso web usa um administrador único configurado por `ADMIN_LOGIN` e
+`ADMIN_PASSWORD`, sem credenciais no banco. `AUTH_SECRET` (mínimo de 32 bytes)
+assina sessões de oito horas em cookie `HttpOnly`, `SameSite=Lax` e `Secure` em
+produção. Todas as páginas, rotas e Server Actions passam pela proteção central,
+exceto `/login` e `/api/health`; chamadas não HTML sem sessão recebem `401`.
+
+Esta autenticação simples não substitui autorização granular, MFA, limitação de
+tentativas, auditoria de acesso e endurecimento da infraestrutura antes de uma
+exposição ampla na internet.

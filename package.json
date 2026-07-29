@@ -28,6 +28,7 @@
     "giw:coletar:instrumentos": "node scripts/giw/coletar-instrumentos.mjs",
     "giw:mapear:historico": "node scripts/giw/mapear-historico.mjs",
     "giw:converter:historico": "tsx scripts/importacao/converter-historico-csv.ts",
+    "giw:converter:historico-pdf": "tsx scripts/importacao/converter-historico-pdf.ts",
     "giw:importar": "tsx scripts/importacao/importar.ts"
   },
   "dependencies": {

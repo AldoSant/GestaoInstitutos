@@ -1,0 +1,65 @@
+services:
+  database:
+    # The public compose file is suitable for a standalone local install.
+    # On this VPS, PostgreSQL must remain reachable only on Docker's internal network.
+    ports: !reset []
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: instituto_folha
+      POSTGRES_USER: instituto
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD obrigatoria}
+    volumes:
+      - gestao_institutos_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U instituto -d instituto_folha"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    # Replace the standalone local binding with the Caddy-only listener.
+    ports: !override
+      - "127.0.0.1:3001:3000"
+    build:
+      context: .
+      args:
+        NEXT_BASE_PATH: /gestao-institutos
+    restart: unless-stopped
+    environment:
+      DATABASE_HOST: database
+      DATABASE_PORT: "5432"
+      DATABASE_USER: instituto
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD obrigatoria}
+      DATABASE_NAME: instituto_folha
+      DATABASE_SSL: "false"
+      ADMIN_LOGIN: ${ADMIN_LOGIN:?ADMIN_LOGIN obrigatorio}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD obrigatoria}
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET obrigatoria}
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/gestao-institutos/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  migrate:
+    build:
+      context: .
+      target: migrator
+    profiles: ["tools"]
+    environment:
+      DATABASE_HOST: database
+      DATABASE_PORT: "5432"
+      DATABASE_USER: instituto
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD obrigatoria}
+      DATABASE_NAME: instituto_folha
+      DATABASE_SSL: "false"
+    depends_on:
+      database:
+        condition: service_healthy
+
+volumes:
+  gestao_institutos_postgres_data:

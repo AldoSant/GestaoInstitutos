@@ -5,6 +5,8 @@ RUN npm ci
 
 FROM node:22-alpine AS builder
 WORKDIR /app
+ARG NEXT_BASE_PATH
+ENV NEXT_BASE_PATH=$NEXT_BASE_PATH
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
@@ -15,6 +17,7 @@ COPY drizzle ./drizzle
 COPY db ./db
 COPY lib ./lib
 COPY scripts/db ./scripts/db
+COPY scripts/importacao ./scripts/importacao
 COPY drizzle.config.ts tsconfig.json ./
 CMD ["npm", "run", "db:migrate"]
 

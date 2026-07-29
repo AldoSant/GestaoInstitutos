@@ -26,6 +26,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { sair } from "@/app/login/actions";
 
 const navegacao = [
   { href: "/", label: "Visão geral", icon: Gauge },
@@ -105,7 +106,7 @@ export function AppShell({
         <NavLinks />
         <div className="sidebar-bottom">
           <Link href="/ajuda" className="nav-link"><CircleHelp size={19} /><span>Ajuda</span></Link>
-          <Link href="/login" className="nav-link"><LogOut size={19} /><span>Sair da demonstração</span></Link>
+          <form action={sair}><button type="submit" className="nav-link logout-button"><LogOut size={19} /><span>Sair</span></button></form>
           <div className="operator">
             <span className="avatar">AD</span>
             <span><strong>Administrador</strong><small>Ambiente local</small></span>

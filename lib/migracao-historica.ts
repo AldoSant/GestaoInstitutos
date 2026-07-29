@@ -70,7 +70,7 @@ type GiwSource<FormId extends string> = {
   formId: FormId;
   extractedAt: string;
   baseUrl?: string;
-  captureMethod?: "WEBRUN" | "CSV_FORNECIDO";
+  captureMethod?: "WEBRUN" | "CSV_FORNECIDO" | "PDF_FORNECIDO";
   sourceFileName?: string;
   sourceFileSha256?: string;
 };
@@ -190,7 +190,10 @@ function validarCabecalho(
     problema(issues, null, "source.extractedAt", "data/hora inválida");
   }
   const captureMethod = texto(value.source.captureMethod);
-  if (captureMethod && !["WEBRUN", "CSV_FORNECIDO"].includes(captureMethod)) {
+  if (
+    captureMethod &&
+    !["WEBRUN", "CSV_FORNECIDO", "PDF_FORNECIDO"].includes(captureMethod)
+  ) {
     problema(issues, null, "source.captureMethod", "método de captura inválido");
   }
   const sourceFileSha256 = texto(value.source.sourceFileSha256).toLowerCase();
@@ -476,7 +479,11 @@ export function validarSnapshotFolhasHistoricas(
         formId: "464569390",
         extractedAt: header.extractedAt,
         baseUrl: header.baseUrl,
-        captureMethod: header.captureMethod as "WEBRUN" | "CSV_FORNECIDO" | undefined,
+        captureMethod: header.captureMethod as
+          | "WEBRUN"
+          | "CSV_FORNECIDO"
+          | "PDF_FORNECIDO"
+          | undefined,
         sourceFileName: header.sourceFileName,
         sourceFileSha256: header.sourceFileSha256,
       },
@@ -578,7 +585,11 @@ export function validarSnapshotGuiasInssHistoricas(
         formId: "464569421",
         extractedAt: header.extractedAt,
         baseUrl: header.baseUrl,
-        captureMethod: header.captureMethod as "WEBRUN" | "CSV_FORNECIDO" | undefined,
+        captureMethod: header.captureMethod as
+          | "WEBRUN"
+          | "CSV_FORNECIDO"
+          | "PDF_FORNECIDO"
+          | undefined,
         sourceFileName: header.sourceFileName,
         sourceFileSha256: header.sourceFileSha256,
       },

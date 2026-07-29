@@ -160,7 +160,7 @@ export type GiwSnapshotPessoas = {
     formId: "464569402";
     extractedAt: string;
     baseUrl?: string;
-    captureMethod?: "WEBRUN" | "CSV_FORNECIDO";
+    captureMethod?: "WEBRUN" | "CSV_FORNECIDO" | "PDF_FORNECIDO";
     sourceFileName?: string;
     sourceFileSha256?: string;
   };
@@ -515,7 +515,10 @@ export function validarSnapshotPessoas(value: unknown): ValidationResult {
     });
   }
   const captureMethod = String(value.source.captureMethod ?? "").trim();
-  if (captureMethod && !["WEBRUN", "CSV_FORNECIDO"].includes(captureMethod)) {
+  if (
+    captureMethod &&
+    !["WEBRUN", "CSV_FORNECIDO", "PDF_FORNECIDO"].includes(captureMethod)
+  ) {
     issues.push({
       record: null,
       field: "source.captureMethod",
@@ -545,7 +548,9 @@ export function validarSnapshotPessoas(value: unknown): ValidationResult {
         baseUrl:
           typeof value.source.baseUrl === "string" ? value.source.baseUrl : undefined,
         captureMethod:
-          captureMethod === "WEBRUN" || captureMethod === "CSV_FORNECIDO"
+          captureMethod === "WEBRUN" ||
+          captureMethod === "CSV_FORNECIDO" ||
+          captureMethod === "PDF_FORNECIDO"
             ? captureMethod
             : undefined,
         sourceFileName:

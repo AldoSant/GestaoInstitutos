@@ -25,7 +25,9 @@ async function lerVinculos(metaWindow, termoLegacyId, metaLegacyId) {
   const vinculos = [];
 
   for (let index = 0; index < total; index += 1) {
-    await linhas.nth(index).click();
+    const primeiraCelula = linhas.nth(index).locator("td").first();
+    await primeiraCelula.click();
+    await primeiraCelula.press("Enter");
     await formulario.locator('a[href="#tab0"][aria-selected="true"]').waitFor();
     const valor = async (selector) => formulario.locator(selector).inputValue();
     const sim = async (selector) => (await valor(selector)).toLowerCase() === "s";
@@ -67,13 +69,17 @@ try {
   await formulario.locator('a[href="#tab3"]').click();
   const localizador = formulario.frameLocator("#tab3 iframe");
   const linhas = localizador.locator("tbody tr").filter({ has: localizador.locator("td") });
+  await linhas.first().waitFor();
   const total = await linhas.count();
   if (total === 0) throw new Error("O GIW não retornou Termos para o ano selecionado.");
 
   const termos = [];
   const vinculos = [];
   for (let index = 0; index < total; index += 1) {
-    await linhas.nth(index).click();
+    console.log(`GIW: lendo Termo ${index + 1} de ${total}.`);
+    const primeiraCelulaTermo = linhas.nth(index).locator("td").first();
+    await primeiraCelulaTermo.click();
+    await primeiraCelulaTermo.press("Enter");
     await formulario.locator('a[href="#tab0"][aria-selected="true"]').waitFor();
 
     const valor = async (selector) => formulario.locator(selector).inputValue();
