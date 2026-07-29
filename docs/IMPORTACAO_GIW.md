@@ -17,6 +17,26 @@ o layout Webrun.
 Dados reais nunca são versionados. O coletor grava em `.private/importacoes/giw`, pasta
 ignorada pelo Git. Usuário e senha são lidos exclusivamente de variáveis de ambiente.
 
+## Receber e inventariar uma remessa
+
+Antes de converter qualquer dado, inventarie a pasta recebida. O comando percorre
+subpastas sem seguir links simbólicos, classifica os formatos, calcula SHA-256,
+identifica duplicidades e confere a quantidade declarada:
+
+```bash
+npm run giw:inventariar:insumos -- \
+  --diretorio .private/insumos-consulta \
+  --esperados 30 \
+  --confirmed-complete \
+  --saida .private/importacoes/giw/manifestos/remessa-30-arquivos.json
+```
+
+O terminal mostra apenas contagens agregadas. Nomes, caminhos, hashes e metadados
+individuais ficam no manifesto, cuja saída é aceita somente dentro de `.private`. O
+inventário não interpreta nem importa dados; ele estabelece a cadeia de custódia da
+remessa e separa arquivos processáveis de documentos que ainda exigem classificação
+manual.
+
 Quando o GIW estiver indisponível, Folhas e guias recebidas em CSV podem seguir o mesmo
 pipeline de validação e importação. O conversor registra o nome e o SHA-256 do arquivo
 recebido no snapshot, agrupa várias rubricas da mesma pessoa sem duplicar os totais e
@@ -125,7 +145,7 @@ Os caminhos podem ser alterados com `GIW_OUTPUT_TERMOS` e `GIW_OUTPUT_VINCULOS`.
 ## Validar e importar
 
 Validação estrutural, sem consultar o banco, funciona para qualquer uma das entidades
-entidades suportadas:
+suportadas:
 
 ```bash
 npm run giw:importar -- --arquivo .private/importacoes/giw/pessoas-ARQUIVO.json
@@ -225,31 +245,40 @@ O conversor de PDF requer `pdftotext` (pacote `poppler-utils`). A imagem Docker
 o comando diretamente com Node.
 
 Comece sempre em dry-run. O comando extrai o texto, identifica tipo e competência,
-calcula o SHA-256 e executa a conversão completa sem gravar snapshot:
+calcula o SHA-256 e executa a conversão completa sem gravar snapshot. Para uma remessa
+inteira, prefira `--diretorio`; o relatório detalhado é privado e o terminal exibe
+somente totais:
 
 ```bash
 npm run giw:converter:historico-pdf -- \
-  --arquivo .private/recebidos/FOLHA_PAGAMENTO.pdf \
-  --arquivo .private/recebidos/GPS.pdf
+  --diretorio .private/insumos-consulta \
+  --esperados 30 \
+  --recebidos 30 \
+  --relatorio .private/importacoes/giw/relatorios/preflight-pdfs.json
 ```
 
-Qualquer campo incompleto ou total divergente reprova a remessa inteira. Depois de
-conferir o manifest, grave os snapshots somente em `.private`, declarando a quantidade
-esperada e confirmando que a remessa está completa:
+Também é possível repetir `--arquivo` para selecionar documentos avulsos. Qualquer
+campo incompleto, tipo desconhecido ou total divergente reprova a remessa inteira, mas
+o relatório preserva todas as pendências encontradas. Depois de conferir o preflight,
+grave os snapshots somente em `.private`, declarando a quantidade esperada e
+confirmando que a remessa está completa:
 
 ```bash
 npm run giw:converter:historico-pdf -- \
-  --arquivo .private/recebidos/FOLHA_PAGAMENTO.pdf \
-  --arquivo .private/recebidos/GPS.pdf \
+  --diretorio .private/insumos-consulta \
   --aplicar \
-  --esperados 2 \
-  --recebidos 2 \
-  --confirmed-complete
+  --esperados 30 \
+  --recebidos 30 \
+  --confirmed-complete \
+  --relatorio .private/importacoes/giw/relatorios/aplicacao-pdfs.json
 ```
 
 `--aplicar` cria snapshots privados; ele ainda não altera o PostgreSQL. Importe cada
 snapshot primeiro em dry-run com `giw:importar` e só então repita com `--aplicar`.
-Arquivos PDF, texto extraído, snapshots e dados pessoais nunca devem entrar no Git.
+Os nomes dos snapshots são derivados do SHA-256, evitando colisão entre meses ou
+arquivos homônimos. Arquivos PDF, texto extraído, relatórios, snapshots e dados pessoais
+nunca devem entrar no Git. O lote aceita no máximo 200 PDFs, 50 MB por arquivo e
+500 MB no total; a extração usa concorrência limitada para não saturar a VPS.
 
 ## Mapear movimentos históricos sem alterar o GIW
 
@@ -390,4 +419,6 @@ diferenças, aprovar o corte e manter plano de retorno.
   acessível para confirmar os seletores do adaptador normalizado;
 - o conversor CSV permite avançar com Folhas e guias fornecidas, mas não substitui os
   cadastros completos de Pessoas, Termos, Metas, Vínculos, Eventos e Produtividade;
+- o inventário reconhece PDFs, CSVs e JSONs, mas planilhas e documentos de escritório
+  precisam de adaptador específico antes da importação;
 - o importador pressupõe que as migrações novas já foram aplicadas.

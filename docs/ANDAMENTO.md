@@ -2,14 +2,25 @@
 
 ## Visão geral
 
-**Estimativa do núcleo anterior, folha de prestadores + obrigação previdenciária:
-93% concluído.**
+**Estimativa do MVP ampliado: 71% concluído. Prontidão operacional com dados reais:
+aproximadamente 58%.**
 
-> Em 28/07/2026 o alvo do MVP foi ampliado para incluir folha trabalhista,
-> transmissão ao eSocial e GFD oficial. Os 93% não representam esse novo alvo. O
-> percentual total será recalibrado depois de classificar uma Folha/GFD real, pois
-> prestador `701` não pode ser convertido silenciosamente em empregado com FGTS.
-> A fundação técnica do novo módulo já está implementada e testada.
+O núcleo anterior — folha de prestadores e obrigação previdenciária — permanece em
+93%. Em 28/07/2026 o alvo foi ampliado para incluir folha trabalhista, transmissão ao
+eSocial e GFD oficial. Prestador `701` não pode ser convertido silenciosamente em
+empregado com FGTS; por isso o escopo novo é medido separadamente e depende das
+amostras reais do RH.
+
+| Componente do escopo ampliado | Peso | Maturidade | Contribuição |
+|---|---:|---:|---:|
+| Núcleo de prestadores, INSS e migração | 65% | 93% | 60,5% |
+| Folha trabalhista, eSocial e FGTS Digital | 25% | 34% | 8,5% |
+| Operação real, homologação e corte | 10% | 20% | 2,0% |
+| **MVP ampliado** | **100%** |  | **71,0%** |
+
+A prontidão operacional é menor porque exige restaurar backup, carregar os 30 arquivos,
+classificar vínculos, reconciliar três competências, operar eSocial/FGTS Digital e obter
+aceite do RH. Código implementado sem essa prova não é contado como operação concluída.
 
 O percentual mede capacidade operacional validada, e não quantidade de telas ou linhas
 de código. Uma etapa só avança quando existe persistência, validação, teste e caminho de
@@ -50,6 +61,10 @@ homologação. Interfaces demonstrativas contam apenas como descoberta de fluxo.
   guias previdenciárias, mantendo o acervo separado da Folha oficial;
 - conversão de CSVs fornecidos de Folhas e guias em snapshots privados, com modelos,
   agrupamento de rubricas, SHA-256 da fonte e recusa de totais divergentes;
+- inventário auditável de remessas com quantidade esperada, formatos, tamanhos,
+  SHA-256 e duplicidades, mantendo os detalhes exclusivamente em `.private`;
+- preflight em lote de uma pasta de PDFs, com concorrência limitada, relatório privado
+  de todas as pendências e bloqueio integral antes de gerar qualquer snapshot;
 - derivação deduplicada de Pessoas a partir das Folhas fornecidas, sem marcar como
   completos os campos cadastrais que não existirem no relatório;
 - derivação conservadora de Eventos a partir das rubricas históricas, bloqueando
@@ -149,8 +164,9 @@ homologação. Interfaces demonstrativas contam apenas como descoberta de fluxo.
    fechamento, reabertura e regressão e então avançar a competência inicial.
 4. Revalidar os seletores históricos quando o GIW voltar, coletar Folhas/guias e
    concluir a campanha de três competências reais no painel e nos dossiês já implementados.
-   Se o portal continuar fora do ar, usar os conversores CSV já disponíveis para Folhas
-   e guias e obter os demais cadastros por exportação assistida.
+   Se o portal continuar fora do ar, inventariar a remessa recebida, executar o preflight
+   em lote de PDFs, usar os conversores CSV para Folhas e guias e obter os demais
+   cadastros por exportação assistida.
 5. Homologar o enquadramento real da entidade e reconciliar com eSocial/DCTFWeb reais.
 6. Três competências reais em paralelo, com diferenças explicadas.
 7. Backup/restauração, acesso, auditoria e corte controlado do GIW.

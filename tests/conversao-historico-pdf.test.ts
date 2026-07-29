@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  analisarLotePdfHistorico,
   criarManifestPreflightPdf,
   converterTextoPdfFolhaHistorica,
   converterTextoPdfGuiasHistoricas,
@@ -173,4 +174,57 @@ test("rejeita apply com remessa incompleta ou não confirmada", () => {
     }),
     /contagens esperada e recebida iguais/,
   );
+});
+
+test("analisa lote completo e produz relatório agregado determinístico", () => {
+  const resultado = analisarLotePdfHistorico([
+    { nomeArquivo: "folha.pdf", conteudo: pdf("folha-lote"), texto },
+    { nomeArquivo: "gps.pdf", conteudo: pdf("gps-lote"), texto: gps },
+  ], {
+    extraidoEm: "2026-07-29T12:00:00.000Z",
+    expectedDocumentCount: 2,
+    receivedDocumentCount: 2,
+  });
+
+  assert.deepEqual(resultado.report.summary, {
+    validDocumentCount: 2,
+    invalidDocumentCount: 0,
+    issueCount: 0,
+    recordCount: 2,
+    byDocumentType: {
+      FOLHA_PAGAMENTO: 1,
+      GUIA_PREVIDENCIA_SOCIAL: 1,
+      DESCONHECIDO: 0,
+    },
+    competences: ["2026-05-01"],
+  });
+  assert.equal(resultado.report.generatedAt, "2026-07-29T12:00:00.000Z");
+  assert.deepEqual(
+    resultado.report.documents.map(({ filename, status, entity }) => ({
+      filename,
+      status,
+      entity,
+    })),
+    [
+      { filename: "folha.pdf", status: "VALIDO", entity: "folhas_historicas" },
+      { filename: "gps.pdf", status: "VALIDO", entity: "guias_inss_historicas" },
+    ],
+  );
+});
+
+test("relatório de lote preserva todas as pendências sem incluir snapshots", () => {
+  const resultado = analisarLotePdfHistorico([
+    {
+      nomeArquivo: "nao-reconhecido.pdf",
+      conteudo: pdf("desconhecido"),
+      texto: "documento sem leiaute reconhecido",
+    },
+  ], { extraidoEm: "2026-07-29T12:00:00.000Z" });
+
+  assert.equal(resultado.report.summary.validDocumentCount, 0);
+  assert.equal(resultado.report.summary.invalidDocumentCount, 1);
+  assert.equal(resultado.report.summary.issueCount, 1);
+  assert.equal(resultado.report.documents[0].status, "INVALIDO");
+  assert.equal(resultado.report.documents[0].issues[0].campo, "documento");
+  assert.equal("snapshot" in resultado.report.documents[0], false);
 });

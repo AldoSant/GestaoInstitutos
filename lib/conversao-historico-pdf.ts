@@ -53,6 +53,41 @@ export type ManifestPreflightPdf = {
   documents: ItemManifestPdf[];
 };
 
+export type ItemRelatorioPreflightPdf = ItemManifestPdf & {
+  status: "VALIDO" | "INVALIDO";
+  entity: "folhas_historicas" | "guias_inss_historicas" | null;
+  recordCount: number;
+  issues: ProblemaConversaoPdf[];
+};
+
+export type RelatorioPreflightPdf = {
+  schemaVersion: "1.0";
+  generatedAt: string;
+  mode: ManifestPreflightPdf["mode"];
+  expectedDocumentCount: number | null;
+  receivedDocumentCount: number;
+  summary: {
+    validDocumentCount: number;
+    invalidDocumentCount: number;
+    issueCount: number;
+    recordCount: number;
+    byDocumentType: Record<ItemManifestPdf["documentType"], number>;
+    competences: string[];
+  };
+  documents: ItemRelatorioPreflightPdf[];
+};
+
+export type ResultadoPreflightPdf = {
+  manifest: ManifestPreflightPdf;
+  report: RelatorioPreflightPdf;
+  results: Array<{
+    input: EntradaPreflightPdf;
+    result: ResultadoConversaoPdf<
+      GiwSnapshotFolhasHistoricas | GiwSnapshotGuiasInssHistoricas
+    >;
+  }>;
+};
+
 function dinheiro(texto: string) {
   const match = texto.match(/\d{1,3}(?:\.\d{3})*,\d{2}/);
   return match ? match[0].replace(/\./g, "").replace(",", ".") : "0.00";
@@ -565,6 +600,78 @@ export function converterTextoPdfHistorico(
     return converterTextoPdfFolhaHistorica(texto, opcoes);
   }
   return converterTextoPdfGuiasHistoricas(texto, opcoes);
+}
+
+export function analisarLotePdfHistorico(
+  entradas: EntradaPreflightPdf[],
+  opcoes: OpcoesPreflightPdf & { extraidoEm?: string } = {},
+): ResultadoPreflightPdf {
+  const generatedAt = opcoes.extraidoEm?.trim() || new Date().toISOString();
+  const manifest = criarManifestPreflightPdf(entradas, opcoes);
+  const results = entradas.map((input) => ({
+    input,
+    result: converterTextoPdfHistorico(input.texto, {
+      nomeArquivo: input.nomeArquivo,
+      extraidoEm: generatedAt,
+      arquivoSha256: sha256Pdf(input.conteudo),
+    }),
+  }));
+  const resultByHash = new Map(
+    results.map((item) => [sha256Pdf(item.input.conteudo), item.result]),
+  );
+  const documents = manifest.documents.map((document): ItemRelatorioPreflightPdf => {
+    const result = resultByHash.get(document.sha256);
+    if (!result) {
+      throw new Error(`Resultado ausente para o SHA-256 ${document.sha256}.`);
+    }
+    return {
+      ...document,
+      status: result.snapshot ? "VALIDO" : "INVALIDO",
+      entity: result.snapshot?.entity ?? null,
+      recordCount: result.snapshot?.records.length ?? 0,
+      issues: result.issues,
+    };
+  });
+  const validDocuments = documents.filter((document) => document.status === "VALIDO");
+  const byDocumentType: RelatorioPreflightPdf["summary"]["byDocumentType"] = {
+    FOLHA_PAGAMENTO: 0,
+    GUIA_PREVIDENCIA_SOCIAL: 0,
+    DESCONHECIDO: 0,
+  };
+  for (const document of documents) byDocumentType[document.documentType] += 1;
+
+  return {
+    manifest,
+    report: {
+      schemaVersion: "1.0",
+      generatedAt,
+      mode: manifest.mode,
+      expectedDocumentCount: manifest.expectedDocumentCount,
+      receivedDocumentCount: manifest.receivedDocumentCount,
+      summary: {
+        validDocumentCount: validDocuments.length,
+        invalidDocumentCount: documents.length - validDocuments.length,
+        issueCount: documents.reduce(
+          (total, document) => total + document.issues.length,
+          0,
+        ),
+        recordCount: documents.reduce(
+          (total, document) => total + document.recordCount,
+          0,
+        ),
+        byDocumentType,
+        competences: [
+          ...new Set(
+            documents.flatMap((document) =>
+              document.competence ? [document.competence] : []
+            ),
+          ),
+        ].sort(),
+      },
+      documents,
+    },
+    results,
+  };
 }
 
 export function sha256Pdf(conteudo: Uint8Array) {
