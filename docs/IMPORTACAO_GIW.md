@@ -218,6 +218,31 @@ bloqueiam o lote inteiro. Depois do dry-run, repita com
 `--aplicar --confirmed-complete`; execute mais um dry-run ao final para comprovar que
 todos os registros ficam em `ignorar`.
 
+Finalize sempre com a auditoria de pós-migração, usando exatamente o mesmo conjunto de
+arquivos. Ela é somente leitura e reprova a carga se encontrar migration SQL ausente,
+chave ou destino faltando, checksum divergente, snapshot histórico alterado, execução
+com erro, segunda execução não idempotente, referência órfã ou total financeiro
+divergente. Competências e chaves anteriores que não pertencem ao lote são preservadas
+como avisos, sem serem confundidas com perda de dados:
+
+```bash
+DATABASE_URL='postgresql://...' npm run giw:auditar:migracao -- \
+  --arquivo .private/importacoes/giw/pessoas.json \
+  --arquivo .private/importacoes/giw/atividades.json \
+  --arquivo .private/importacoes/giw/atividades-referenciadas.json \
+  --arquivo .private/importacoes/giw/lotacoes.json \
+  --arquivo .private/importacoes/giw/termos.json \
+  --arquivo .private/importacoes/giw/vinculos.json \
+  --diretorio .private/importacoes/giw/pdf-historico-reconciliado-v1 \
+  --empresa-id UUID-DA-EMPRESA \
+  --relatorio .private/importacoes/giw/relatorios/auditoria-banco.json
+```
+
+O relatório só recebe `status: "APROVADA"` quando existem, para cada snapshot, uma
+execução `APLICAR` concluída e um `DRY_RUN` posterior com 100% dos registros ignorados.
+O arquivo contém apenas identificadores técnicos, contagens, totais e pendências; não
+replica os dados pessoais dos snapshots.
+
 O identificador de Evento dentro de uma rubrica histórica é evidência textual e não
 uma chave estrangeira: Eventos já inativos podem não aparecer mais no localizador do
 GIW, e sua incidência não é reconstruída por suposição. Lançamentos operacionais, por

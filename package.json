@@ -29,6 +29,7 @@
     "giw:coletar:instrumentos": "node scripts/giw/coletar-instrumentos.mjs",
     "giw:mapear:historico": "node scripts/giw/mapear-historico.mjs",
     "giw:inventariar:insumos": "tsx scripts/importacao/inventariar-insumos.ts",
+    "giw:auditar:migracao": "tsx scripts/importacao/auditar-migracao.ts",
     "giw:importar:lote": "tsx scripts/importacao/importar-lote.ts",
     "giw:reconciliar:historico": "tsx scripts/importacao/reconciliar-historico.ts",
     "giw:converter:historico": "tsx scripts/importacao/converter-historico-csv.ts",
