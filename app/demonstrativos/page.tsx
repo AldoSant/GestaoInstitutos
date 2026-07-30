@@ -8,6 +8,7 @@ import {
   Download,
   FileCheck2,
   FileClock,
+  FileText,
   LockKeyhole,
   Plus,
   ReceiptText,
@@ -421,12 +422,20 @@ export default async function DemonstrativosPage({
               </>
             )}
             {demonstrativo && (
-              <Link
-                className="button secondary"
-                href={`/demonstrativos/exportar?competencia=${competencia}`}
-              >
-                <Download size={15} /> Exportar CSV
-              </Link>
+              <>
+                <Link
+                  className="button secondary"
+                  href={`/demonstrativos/${demonstrativo.id}/relatorio`}
+                >
+                  <FileText size={15} /> Dossiê / PDF
+                </Link>
+                <Link
+                  className="button secondary"
+                  href={`/demonstrativos/exportar?competencia=${competencia}`}
+                >
+                  <Download size={15} /> Exportar CSV
+                </Link>
+              </>
             )}
           </div>
         </div>
@@ -601,7 +610,13 @@ export default async function DemonstrativosPage({
                   {dados.revisoes.map((item) => (
                     <tr key={item.id}>
                       <td>
-                        <strong>v{item.revisao_origem} → v{item.revisao_destino}</strong>
+                        <Link
+                          href={`/demonstrativos/${demonstrativo.id}/relatorio?revisao=${item.revisao_origem}`}
+                        >
+                          <strong>
+                            v{item.revisao_origem} → v{item.revisao_destino}
+                          </strong>
+                        </Link>
                         <small>
                           {new Intl.DateTimeFormat("pt-BR", {
                             dateStyle: "short",

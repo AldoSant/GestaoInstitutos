@@ -36,6 +36,18 @@ export default function AjudaPage() {
             </Link>
             .
           </li>
+          <li>
+            Abra o{" "}
+            <Link className="text-link" href="/demonstrativos">
+              Demonstrativo mensal
+            </Link>
+            , confira pagamentos PF/PJ, retenções e guias, registre a decisão
+            e feche a competência.
+          </li>
+          <li>
+            Use <strong>Dossiê / PDF</strong> para imprimir a revisão atual ou
+            consultar um fechamento anterior preservado.
+          </li>
         </ol>
 
         <h3>Quando o sistema bloquear uma etapa</h3>
@@ -43,6 +55,8 @@ export default function AjudaPage() {
           Leia a pendência apresentada e abra o cadastro indicado. Depois da
           correção, volte à competência e processe novamente. Uma folha fechada
           só pode ser reaberta com justificativa.
+          Um demonstrativo fechado abre uma nova revisão sem apagar pagamentos,
+          aprovação, guias ou hash da versão anterior.
         </p>
 
         <h3>Documentos oficiais</h3>

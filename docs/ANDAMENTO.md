@@ -20,7 +20,9 @@ imutável por revisão/hash; o fechamento recalcula pagamentos, retenções, obr
 documentos e recusa fonte alterada. A migração `0036` preserva integralmente cada
 fechamento antes de abrir uma nova revisão, com motivo, responsável, aprovação e
 snapshot imutável. Atualizações comuns de PF e guias não incrementam mais a revisão.
-O CSV operacional preserva as três naturezas.
+O CSV operacional preserva as três naturezas. O dossiê A4 recompõe a revisão atual
+ou um fechamento histórico, verifica novamente o SHA-256 e permite impressão ou
+salvamento como PDF sem confundir o relatório interno com a guia oficial.
 
 ## Visão geral
 

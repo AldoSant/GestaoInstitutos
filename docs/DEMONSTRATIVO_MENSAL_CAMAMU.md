@@ -98,9 +98,10 @@ Concluídos:
 - nova revisão formal com motivo e responsável, snapshot integral imutável do
   fechamento anterior e avanço explícito da versão;
 - atualização de PF e guias sem criar uma revisão formal silenciosa.
+- dossiê A4 imprimível da revisão atual ou de qualquer fechamento histórico,
+  com pagamentos, retenções, guias, documentos e dupla verificação do SHA-256.
 
 Próximos:
 
-1. Relatório PDF imprimível do demonstrativo.
-2. Classificador assistido dos registros GIW, com fila de pendências.
-3. Matriz fiscal por serviço, regime, município e documento, somente após homologação.
+1. Classificador assistido dos registros GIW, com fila de pendências.
+2. Matriz fiscal por serviço, regime, município e documento, somente após homologação.

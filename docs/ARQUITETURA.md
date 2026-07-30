@@ -67,6 +67,9 @@ obrigações/guias. A Folha não é ampliada para representar PJ e a guia não �
 como beneficiário. Totais são conferidos por restrições diferidas no banco e o
 conteúdo torna-se imutável no fechamento. Consulte
 [Demonstrativo mensal de Camamu](DEMONSTRATIVO_MENSAL_CAMAMU.md).
+Cada retificação congela a composição anterior, a aprovação e o fechamento em
+snapshot imutável. O dossiê imprimível recalcula o hash tanto da revisão atual quanto
+das versões históricas.
 
 ### Medições mensais
 

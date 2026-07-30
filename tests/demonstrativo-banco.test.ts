@@ -4,6 +4,7 @@ import test from "node:test";
 import pg from "pg";
 import {
   abrirNovaRevisaoDemonstrativo,
+  carregarRelatorioDemonstrativo,
   fecharDemonstrativo,
   materializarDemonstrativoFolhas,
   registrarConferenciaDemonstrativo,
@@ -333,6 +334,15 @@ test(
         historico.rows[0].snapshot_anterior.conferencia.resultado,
         "APROVADA",
       );
+      const relatorioHistorico = await carregarRelatorioDemonstrativo({
+        empresaId,
+        demonstrativoId: resultado.demonstrativoId,
+        revisao: 1,
+        client,
+      });
+      assert.equal(relatorioHistorico.demonstrativo.status, "FECHADO");
+      assert.equal(relatorioHistorico.integridadeValida, true);
+      assert.equal(relatorioHistorico.hashCalculado, conferencia.hash);
       await client.query("savepoint historico_revisao");
       await assert.rejects(
         client.query(
@@ -358,6 +368,13 @@ test(
         2,
         "Atualizar as fontes não pode criar uma revisão formal silenciosa.",
       );
+      const relatorioAtual = await carregarRelatorioDemonstrativo({
+        empresaId,
+        demonstrativoId: resultado.demonstrativoId,
+        client,
+      });
+      assert.equal(relatorioAtual.demonstrativo.revisao, 2);
+      assert.equal(relatorioAtual.integridadeValida, true);
       await client.query("rollback");
     } finally {
       client.release();

@@ -917,3 +917,143 @@ export async function carregarDemonstrativo(
     revisoes: revisoes.rows,
   };
 }
+
+export async function carregarRelatorioDemonstrativo({
+  empresaId,
+  demonstrativoId,
+  revisao,
+  client: clientInformado,
+}: {
+  empresaId: string;
+  demonstrativoId: string;
+  revisao?: number;
+  client?: PoolClient;
+}) {
+  validarId(empresaId, "Empresa");
+  validarId(demonstrativoId, "Demonstrativo");
+  if (
+    revisao !== undefined &&
+    (!Number.isSafeInteger(revisao) || revisao <= 0)
+  ) {
+    throw new Error("Revisão inválida.");
+  }
+  const client = clientInformado ?? (await getPool().connect());
+  try {
+    const atual = await client.query<{
+      id: string;
+      competencia: string;
+      numero: number;
+      revisao: number;
+      status: string;
+      hash_resultado: string | null;
+      fechado_em: Date | null;
+      fechado_por: string | null;
+    }>(
+      `select id, competencia::text, numero, revisao, status,
+              hash_resultado, fechado_em, fechado_por
+         from demonstrativo_mensal
+        where id = $1 and empresa_id = $2`,
+      [demonstrativoId, empresaId],
+    );
+    if (!atual.rows[0]) throw new Error("Demonstrativo não encontrado.");
+    const revisoes = await client.query<{
+      revisao_origem: number;
+      revisao_destino: number;
+      hash_resultado: string;
+      motivo: string;
+      responsavel: string;
+      criado_em: Date;
+    }>(
+      `select revisao_origem, revisao_destino, hash_resultado,
+              motivo, responsavel, criado_em
+         from demonstrativo_revisao_historico
+        where empresa_id = $1 and demonstrativo_id = $2
+        order by revisao_origem desc`,
+      [empresaId, demonstrativoId],
+    );
+    if (revisao !== undefined && revisao !== atual.rows[0].revisao) {
+      const historico = await client.query<{
+        revisao_origem: number;
+        revisao_destino: number;
+        hash_resultado: string;
+        motivo: string;
+        responsavel: string;
+        criado_em: Date;
+        snapshot_anterior: {
+          conteudo?: Record<string, unknown>;
+          fechamento?: {
+            fechadoEm?: string | null;
+            fechadoPor?: string | null;
+            hashResultado?: string;
+          };
+          conferencia?: Record<string, unknown>;
+        };
+      }>(
+        `select revisao_origem, revisao_destino, hash_resultado,
+                motivo, responsavel, criado_em, snapshot_anterior
+           from demonstrativo_revisao_historico
+          where empresa_id = $1 and demonstrativo_id = $2
+            and revisao_origem = $3`,
+        [empresaId, demonstrativoId, revisao],
+      );
+      const registro = historico.rows[0];
+      const conteudo = registro?.snapshot_anterior?.conteudo;
+      if (!registro || !conteudo) {
+        throw new Error("Revisão histórica não encontrada.");
+      }
+      const hashCalculado = hashJson(conteudo);
+      return {
+        demonstrativo: {
+          ...atual.rows[0],
+          revisao: registro.revisao_origem,
+          status: "FECHADO",
+          hash_resultado: registro.hash_resultado,
+          fechado_em:
+            registro.snapshot_anterior.fechamento?.fechadoEm ?? null,
+          fechado_por:
+            registro.snapshot_anterior.fechamento?.fechadoPor ?? null,
+        },
+        conteudo,
+        conferencia: registro.snapshot_anterior.conferencia ?? null,
+        hashCalculado,
+        integridadeValida: hashCalculado === registro.hash_resultado,
+        historico: {
+          motivo: registro.motivo,
+          responsavel: registro.responsavel,
+          criadoEm: registro.criado_em,
+          revisaoDestino: registro.revisao_destino,
+        },
+        revisoes: revisoes.rows,
+      };
+    }
+    const conteudo = await conteudoHashDemonstrativo(
+      client,
+      empresaId,
+      demonstrativoId,
+    );
+    const conferencia = await client.query(
+      `select revisao, hash_resultado, resultado, conferente,
+              confirmou_pagamentos, confirmou_retencoes, confirmou_guias,
+              observacao, criado_em
+         from demonstrativo_conferencia
+        where empresa_id = $1 and demonstrativo_id = $2
+          and revisao = $3
+        order by criado_em desc, id desc
+        limit 1`,
+      [empresaId, demonstrativoId, atual.rows[0].revisao],
+    );
+    return {
+      demonstrativo: atual.rows[0],
+      conteudo: conteudo.snapshot,
+      conferencia: conferencia.rows[0] ?? null,
+      hashCalculado: conteudo.hash,
+      integridadeValida:
+        atual.rows[0].hash_resultado === null ||
+        atual.rows[0].hash_resultado === conteudo.hash,
+      historico: null,
+      revisoes: revisoes.rows,
+    };
+  } finally {
+    if (!clientInformado) client.release();
+  }
+}

@@ -595,6 +595,7 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
   text-transform: uppercase;
 }
 .print-table td:not(:first-child) { white-space: nowrap; }
+.print-table td.wrap-cell { white-space: normal; overflow-wrap: anywhere; }
 .print-table small { margin-top: 2px; display: block; color: #617074; }
 .print-activity { margin: 18px 0 8px; font-size: 10px; }
 .signature-grid {
