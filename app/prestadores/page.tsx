@@ -118,7 +118,7 @@ export default async function PrestadoresPage({
       (!item.prestadorId || item.prestadorId === prestadorEditado?.id) &&
       (item.ativo || item.id === prestadorEditado?.pessoaId),
   );
-  const pessoasDisponiveis =
+  const pessoasDisponiveisSemOrdem =
     prestadorEditado &&
     !pessoasElegiveis.some((item) => item.id === prestadorEditado.pessoaId)
       ? [
@@ -134,6 +134,11 @@ export default async function PrestadoresPage({
           ...pessoasElegiveis,
         ]
       : pessoasElegiveis;
+  const pessoasDisponiveis = [...pessoasDisponiveisSemOrdem].sort((a, b) => {
+    if (a.id === prestadorEditado?.pessoaId) return -1;
+    if (b.id === prestadorEditado?.pessoaId) return 1;
+    return a.nome.localeCompare(b.nome, "pt-BR");
+  });
 
   return (
     <AppShell
@@ -165,6 +170,7 @@ export default async function PrestadoresPage({
             placeholder="Nome, documento, matrícula ou NIT"
           />
           {busca && <Link href="/prestadores" aria-label="Limpar busca"><X size={15} /></Link>}
+          <button type="submit" aria-label="Buscar prestadores"><Search size={15} /></button>
         </form>
       </section>
 
@@ -190,7 +196,7 @@ export default async function PrestadoresPage({
         </div>
         <form action={salvarPrestador} className="crud-form prestador-form">
           <input type="hidden" name="id" value={prestadorEditado?.id ?? ""} />
-          <label className="field-wide"><span>Pessoa</span><select name="pessoaId" required defaultValue={prestadorEditado?.pessoaId ?? ""}><option value="" disabled>Selecione uma pessoa</option>{pessoasDisponiveis.map((item) => <option key={item.id} value={item.id}>{item.nome} · {item.tipo === "FISICA" ? "PF" : "PJ"}{item.ativo ? "" : " · inativa"}</option>)}</select></label>
+          <label className="field-wide"><span>Pessoa</span><select key={prestadorEditado?.id ?? "novo"} name="pessoaId" required defaultValue={prestadorEditado?.pessoaId ?? ""}>{!prestadorEditado && <option value="" disabled>Selecione uma pessoa</option>}{pessoasDisponiveis.map((item) => <option key={item.id} value={item.id}>{item.nome} · {item.tipo === "FISICA" ? "PF" : "PJ"}{item.ativo ? "" : " · inativa"}</option>)}</select></label>
           <label><span>Matrícula</span><input name="matricula" required maxLength={40} defaultValue={prestadorEditado?.matricula ?? ""} /></label>
           <label><span>NIT / PIS / PASEP</span><input name="nitPisPasep" inputMode="numeric" maxLength={20} defaultValue={prestadorEditado?.nitPisPasep ?? ""} /></label>
           <label><span>Categoria eSocial (obrigatória na Folha)</span><input name="categoriaContribuinte" maxLength={30} placeholder="Ex.: 701" defaultValue={prestadorEditado?.categoriaContribuinte ?? ""} /></label>

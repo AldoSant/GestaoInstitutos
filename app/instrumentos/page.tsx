@@ -132,6 +132,7 @@ export default async function InstrumentosPage({
           <label className="sr-only" htmlFor="busca-instrumentos">Buscar termos e metas</label>
           <input id="busca-instrumentos" name="busca" type="search" defaultValue={busca} placeholder="Número, descrição, modalidade ou meta" />
           {busca && <Link href="/instrumentos" aria-label="Limpar busca"><X size={15} /></Link>}
+          <button type="submit" aria-label="Buscar instrumentos"><Search size={15} /></button>
         </form>
       </section>
 

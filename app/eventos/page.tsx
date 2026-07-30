@@ -140,6 +140,7 @@ export default async function EventosPage({
           <label className="sr-only" htmlFor="busca-eventos">Buscar Eventos</label>
           <input id="busca-eventos" name="busca" type="search" defaultValue={busca} placeholder="Evento, prestador, termo ou meta" />
           {busca && <Link href="/eventos" aria-label="Limpar busca"><X size={15} /></Link>}
+          <button type="submit" aria-label="Buscar eventos"><Search size={15} /></button>
         </form>
       </section>
 

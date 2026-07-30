@@ -211,6 +211,8 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
 .detail-summary .locked span { color: var(--teal-dark); }
 .search-field { height: 36px; min-width: 250px; padding: 0 11px; display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 8px; color: #819095; background: #fff; }
 .search-field input { min-width: 0; width: 100%; border: 0; outline: 0; color: var(--ink); font-size: 11px; background: transparent; }
+.search-field button { width: 28px; height: 28px; padding: 0; display: inline-grid; place-items: center; flex: 0 0 auto; border: 0; border-radius: 6px; color: var(--teal); background: transparent; cursor: pointer; }
+.search-field button:hover, .search-field button:focus-visible { color: #fff; background: var(--teal); outline: 0; }
 .cadastro-filters { width: min(650px, 55vw); height: auto; min-height: 40px; padding: 4px 6px 4px 11px; }
 .cadastro-filters select { max-width: 105px; border: 0; border-left: 1px solid var(--line); padding-left: 9px; outline: 0; background: #fff; color: var(--ink); font-size: 11px; }
 .cadastro-filters .button { height: 31px; }
