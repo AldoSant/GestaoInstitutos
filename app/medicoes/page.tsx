@@ -1,5 +1,6 @@
 import { Calculator, CheckCircle2, Gauge, Scale } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { caminhoAplicacao } from "@/lib/base-path";
 import { StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { carregarMedicoesMensais } from "@/db/medicoes";
@@ -81,7 +82,7 @@ export default async function MedicoesPage({
           <h2>Produtividade e valores proporcionais</h2>
           <p>Escolha a fórmula documentada no relatório mensal. Nenhuma proporção é presumida.</p>
         </div>
-        <form action="/medicoes" method="get" className="search-field">
+        <form action={caminhoAplicacao("/medicoes")} method="get" className="search-field">
           <label htmlFor="competencia-medicao">Competência</label>
           <input id="competencia-medicao" name="competencia" type="month" defaultValue={competencia} />
           <button className="button secondary" type="submit">Carregar</button>

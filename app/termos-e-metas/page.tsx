@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { caminhoAplicacao } from "@/lib/base-path";
 import { ModalShell } from "@/components/modal-shell";
 import { StatusBadge } from "@/components/ui";
 import { carregarInstrumentos } from "@/db/instrumentos";
@@ -172,7 +173,7 @@ export default async function InstrumentosPage({
           <h2>Instrumentos e seus objetos</h2>
           <p>Metas pertencem a um Termo e não podem ser usadas fora dele.</p>
         </div>
-        <form action="/termos-e-metas" method="get" className="search-field">
+        <form action={caminhoAplicacao("/termos-e-metas")} method="get" className="search-field">
           <Search size={17} />
           <label className="sr-only" htmlFor="busca-instrumentos">Buscar termos e metas</label>
           <input id="busca-instrumentos" name="busca" type="search" defaultValue={busca} placeholder="Número, descrição, modalidade ou meta" />

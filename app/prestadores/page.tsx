@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { caminhoAplicacao } from "@/lib/base-path";
 import { ModalShell } from "@/components/modal-shell";
 import { StatusBadge } from "@/components/ui";
 import { carregarOutrasFontes } from "@/db/outras-fontes";
@@ -191,7 +192,7 @@ export default async function PrestadoresPage({
           <h2>Prestadores da organização</h2>
           <p>Cada pessoa pode possuir um único cadastro de prestador por organização.</p>
         </div>
-        <form action="/prestadores" method="get" className="search-field">
+        <form action={caminhoAplicacao("/prestadores")} method="get" className="search-field">
           <Search size={17} />
           <label className="sr-only" htmlFor="busca-prestadores">Buscar prestadores</label>
           <input
