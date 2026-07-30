@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { randomInt, randomUUID } from "node:crypto";
 import test from "node:test";
 import pg from "pg";
-import { materializarDemonstrativoFolhas } from "../db/demonstrativos";
+import {
+  fecharDemonstrativo,
+  materializarDemonstrativoFolhas,
+  registrarConferenciaDemonstrativo,
+} from "../db/demonstrativos";
 
 const { Pool } = pg;
 const databaseUrl = process.env.DATABASE_URL;
@@ -217,6 +221,48 @@ test(
         descontos_comuns: "30.00",
         itens_retencao: 2,
       });
+      const conferencia = await registrarConferenciaDemonstrativo({
+        empresaId,
+        demonstrativoId: resultado.demonstrativoId,
+        resultado: "APROVADA",
+        conferente: "Gerente do RH",
+        confirmouPagamentos: true,
+        confirmouRetencoes: true,
+        confirmouGuias: true,
+        observacao: "Competência sintética conferida.",
+        client,
+      });
+      assert.match(conferencia.hash, /^[0-9a-f]{64}$/u);
+      const fechamento = await fecharDemonstrativo({
+        empresaId,
+        demonstrativoId: resultado.demonstrativoId,
+        responsavel: "Gerente do RH",
+        client,
+      });
+      assert.equal(fechamento.hash, conferencia.hash);
+      const fechado = await client.query<{
+        status: string;
+        fechado_por: string;
+        hash_resultado: string;
+      }>(
+        `select status, fechado_por, hash_resultado
+           from demonstrativo_mensal where id = $1`,
+        [resultado.demonstrativoId],
+      );
+      assert.deepEqual(fechado.rows[0], {
+        status: "FECHADO",
+        fechado_por: "Gerente do RH",
+        hash_resultado: conferencia.hash,
+      });
+      await client.query("savepoint demonstrativo_fechado");
+      await assert.rejects(
+        client.query(
+          `update pagamento_prestador set observacao = 'alteração' where demonstrativo_id = $1`,
+          [resultado.demonstrativoId],
+        ),
+        /Demonstrativo fechado é imutável/,
+      );
+      await client.query("rollback to savepoint demonstrativo_fechado");
       await client.query("rollback");
     } finally {
       client.release();

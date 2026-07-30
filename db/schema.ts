@@ -2507,6 +2507,67 @@ export const demonstrativosMensais = pgTable(
   ],
 );
 
+export const conferenciasDemonstrativos = pgTable(
+  "demonstrativo_conferencia",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
+    demonstrativoId: uuid("demonstrativo_id")
+      .notNull()
+      .references(() => demonstrativosMensais.id, { onDelete: "cascade" }),
+    revisao: integer("revisao").notNull(),
+    hashResultado: varchar("hash_resultado", { length: 64 }).notNull(),
+    resultado: varchar("resultado", { length: 16 }).notNull(),
+    conferente: varchar("conferente", { length: 160 }).notNull(),
+    confirmouPagamentos: boolean("confirmou_pagamentos").notNull(),
+    confirmouRetencoes: boolean("confirmou_retencoes").notNull(),
+    confirmouGuias: boolean("confirmou_guias").notNull(),
+    observacao: text("observacao").notNull().default(""),
+    criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("ix_demonstrativo_conferencia_hash").on(
+      table.demonstrativoId,
+      table.hashResultado,
+      table.criadoEm,
+    ),
+    foreignKey({
+      columns: [table.empresaId],
+      foreignColumns: [empresas.id],
+      name: "fk_demonstrativo_conferencia_empresa",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.demonstrativoId],
+      foreignColumns: [demonstrativosMensais.empresaId, demonstrativosMensais.id],
+      name: "fk_demonstrativo_conferencia_empresa_demonstrativo",
+    }).onDelete("cascade"),
+    check(
+      "ck_demonstrativo_conferencia_resultado",
+      sql`${table.resultado} in ('APROVADA', 'REJEITADA')`,
+    ),
+    check("ck_demonstrativo_conferencia_revisao", sql`${table.revisao} > 0`),
+    check(
+      "ck_demonstrativo_conferencia_hash",
+      sql`${table.hashResultado} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "ck_demonstrativo_conferencia_conferente",
+      sql`length(btrim(${table.conferente})) between 3 and 160`,
+    ),
+    check(
+      "ck_demonstrativo_conferencia_aprovacao",
+      sql`${table.resultado} <> 'APROVADA' or (
+        ${table.confirmouPagamentos} and ${table.confirmouRetencoes}
+        and ${table.confirmouGuias}
+      )`,
+    ),
+    check(
+      "ck_demonstrativo_conferencia_rejeicao",
+      sql`${table.resultado} <> 'REJEITADA' or length(btrim(${table.observacao})) >= 10`,
+    ),
+  ],
+);
+
 export const pagamentosPrestadores = pgTable(
   "pagamento_prestador",
   {

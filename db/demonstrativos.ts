@@ -1,6 +1,8 @@
 import { getPool } from "./index";
 import { decimalParaInteiro } from "@/lib/dinheiro";
 import { numeroDecimalBrasileiro } from "@/lib/importacao-giw";
+import { normalizarConferenciaDemonstrativo } from "@/lib/conferencia-demonstrativo";
+import { hashJson } from "@/lib/json-canonico";
 import type { PoolClient } from "pg";
 
 const UUID =
@@ -382,13 +384,279 @@ export async function excluirPagamentoPj({
   }
 }
 
+async function conteudoHashDemonstrativo(
+  client: PoolClient,
+  empresaId: string,
+  demonstrativoId: string,
+) {
+  const [cabecalho, pagamentos, retencoes, obrigacoes, documentos] =
+    await Promise.all([
+      client.query(
+        `select empresa_id, competencia::text, numero, revisao,
+                total_bruto::text, total_retencoes::text, total_liquido::text
+           from demonstrativo_mensal
+          where id = $1 and empresa_id = $2`,
+        [demonstrativoId, empresaId],
+      ),
+      client.query(
+        `select tipo_pessoa, origem, prestador_id, vinculo_id, folha_item_id,
+                documento_referencia, documento_hash, beneficiario_snapshot,
+                valor_bruto::text, total_retencoes::text, valor_liquido::text
+           from pagamento_prestador
+          where demonstrativo_id = $1 and empresa_id = $2
+          order by origem, coalesce(folha_item_id::text, ''),
+                   coalesce(prestador_id::text, ''),
+                   coalesce(documento_referencia, ''), valor_bruto, id`,
+        [demonstrativoId, empresaId],
+      ),
+      client.query(
+        `select p.origem pagamento_origem, p.folha_item_id,
+                p.prestador_id, p.documento_referencia,
+                r.tributo, r.codigo_receita, r.base_calculo::text,
+                r.aliquota::text, r.valor::text, r.origem,
+                r.regra_calculo_id, r.evidencia_referencia,
+                r.evidencia_hash, r.snapshot
+           from pagamento_retencao r
+           join pagamento_prestador p on p.id = r.pagamento_id
+          where p.demonstrativo_id = $1 and p.empresa_id = $2
+          order by p.origem, coalesce(p.folha_item_id::text, ''),
+                   coalesce(p.prestador_id::text, ''),
+                   coalesce(p.documento_referencia, ''),
+                   r.tributo, coalesce(r.codigo_receita, ''), r.valor, r.id`,
+        [demonstrativoId, empresaId],
+      ),
+      client.query(
+        `select o.id, o.tipo, o.status, o.principal::text, o.juros::text,
+                o.multa::text, o.total::text, o.valor_declarado::text,
+                o.diferenca::text
+           from demonstrativo_obrigacao rel
+           join obrigacao_fiscal o on o.id = rel.obrigacao_id
+          where rel.demonstrativo_id = $1 and rel.empresa_id = $2
+          order by o.tipo, o.id`,
+        [demonstrativoId, empresaId],
+      ),
+      client.query(
+        `select o.id obrigacao_id, o.tipo obrigacao_tipo,
+                doc.tipo, doc.referencia, doc.valor_total::text,
+                doc.emitido_em::text, doc.hash_sha256, doc.verificado,
+                doc.conteudo
+           from demonstrativo_obrigacao rel
+           join obrigacao_fiscal o on o.id = rel.obrigacao_id
+           join obrigacao_fiscal_documento doc on doc.obrigacao_id = o.id
+          where rel.demonstrativo_id = $1 and rel.empresa_id = $2
+          order by o.tipo, o.id, doc.tipo, doc.referencia, doc.id`,
+        [demonstrativoId, empresaId],
+      ),
+    ]);
+  if (!cabecalho.rows[0]) throw new Error("Demonstrativo não encontrado.");
+  if (pagamentos.rowCount === 0) {
+    throw new Error("O demonstrativo não possui pagamentos para conferência.");
+  }
+  return {
+    hash: hashJson({
+      demonstrativo: cabecalho.rows[0],
+      pagamentos: pagamentos.rows,
+      retencoes: retencoes.rows,
+      obrigacoes: obrigacoes.rows,
+      documentos: documentos.rows,
+    }),
+    pagamentos: pagamentos.rowCount ?? 0,
+    retencoes: retencoes.rowCount ?? 0,
+    guias: obrigacoes.rowCount ?? 0,
+  };
+}
+
+export async function registrarConferenciaDemonstrativo({
+  empresaId,
+  demonstrativoId,
+  resultado,
+  conferente,
+  confirmouPagamentos,
+  confirmouRetencoes,
+  confirmouGuias,
+  observacao,
+  client: clientInformado,
+}: {
+  empresaId: string;
+  demonstrativoId: string;
+  resultado: unknown;
+  conferente: unknown;
+  confirmouPagamentos: unknown;
+  confirmouRetencoes: unknown;
+  confirmouGuias: unknown;
+  observacao: unknown;
+  client?: PoolClient;
+}) {
+  validarId(empresaId, "Empresa");
+  validarId(demonstrativoId, "Demonstrativo");
+  const decisao = normalizarConferenciaDemonstrativo({
+    resultado,
+    conferente,
+    confirmouPagamentos,
+    confirmouRetencoes,
+    confirmouGuias,
+    observacao,
+  });
+  const client = clientInformado ?? (await getPool().connect());
+  const controlaTransacao = clientInformado === undefined;
+  try {
+    if (controlaTransacao) await client.query("begin");
+    const atual = await client.query<{
+      revisao: number;
+      status: string;
+    }>(
+      `select revisao, status
+         from demonstrativo_mensal
+        where id = $1 and empresa_id = $2
+        for update`,
+      [demonstrativoId, empresaId],
+    );
+    if (
+      !atual.rows[0] ||
+      !["RASCUNHO", "EM_CONFERENCIA"].includes(atual.rows[0].status)
+    ) {
+      throw new Error("Somente um demonstrativo aberto pode receber conferência.");
+    }
+    const conteudo = await conteudoHashDemonstrativo(
+      client,
+      empresaId,
+      demonstrativoId,
+    );
+    const inserida = await client.query(
+      `insert into demonstrativo_conferencia (
+         empresa_id, demonstrativo_id, revisao, hash_resultado, resultado,
+         conferente, confirmou_pagamentos, confirmou_retencoes,
+         confirmou_guias, observacao
+       ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       returning id, revisao, hash_resultado, resultado, conferente,
+                 confirmou_pagamentos, confirmou_retencoes, confirmou_guias,
+                 observacao, criado_em`,
+      [
+        empresaId,
+        demonstrativoId,
+        atual.rows[0].revisao,
+        conteudo.hash,
+        decisao.resultado,
+        decisao.conferente,
+        decisao.confirmouPagamentos,
+        decisao.confirmouRetencoes,
+        decisao.confirmouGuias,
+        decisao.observacao,
+      ],
+    );
+    await client.query(
+      `update demonstrativo_mensal
+          set status = 'EM_CONFERENCIA', hash_resultado = $2,
+              atualizado_em = now()
+        where id = $1`,
+      [demonstrativoId, conteudo.hash],
+    );
+    if (controlaTransacao) await client.query("commit");
+    return { ...inserida.rows[0], ...conteudo };
+  } catch (error) {
+    if (controlaTransacao) await client.query("rollback");
+    throw error;
+  } finally {
+    if (controlaTransacao) client.release();
+  }
+}
+
+export async function fecharDemonstrativo({
+  empresaId,
+  demonstrativoId,
+  responsavel,
+  client: clientInformado,
+}: {
+  empresaId: string;
+  demonstrativoId: string;
+  responsavel: string;
+  client?: PoolClient;
+}) {
+  validarId(empresaId, "Empresa");
+  validarId(demonstrativoId, "Demonstrativo");
+  const ator = responsavel.trim();
+  if (ator.length < 3 || ator.length > 160) {
+    throw new Error("Informe o responsável pelo fechamento.");
+  }
+  const client = clientInformado ?? (await getPool().connect());
+  const controlaTransacao = clientInformado === undefined;
+  try {
+    if (controlaTransacao) await client.query("begin");
+    const atual = await client.query<{
+      revisao: number;
+      status: string;
+      hash_resultado: string | null;
+    }>(
+      `select revisao, status, hash_resultado
+         from demonstrativo_mensal
+        where id = $1 and empresa_id = $2
+        for update`,
+      [demonstrativoId, empresaId],
+    );
+    const demonstrativo = atual.rows[0];
+    if (!demonstrativo || demonstrativo.status !== "EM_CONFERENCIA") {
+      throw new Error(
+        "O demonstrativo precisa estar em conferência antes do fechamento.",
+      );
+    }
+    const conteudo = await conteudoHashDemonstrativo(
+      client,
+      empresaId,
+      demonstrativoId,
+    );
+    if (conteudo.hash !== demonstrativo.hash_resultado) {
+      throw new Error(
+        "Pagamentos, retenções ou guias mudaram após a conferência. Registre nova decisão.",
+      );
+    }
+    const conferencia = await client.query<{ resultado: string }>(
+      `select resultado
+         from demonstrativo_conferencia
+        where empresa_id = $1 and demonstrativo_id = $2
+          and revisao = $3 and hash_resultado = $4
+        order by criado_em desc, id desc
+        limit 1`,
+      [
+        empresaId,
+        demonstrativoId,
+        demonstrativo.revisao,
+        conteudo.hash,
+      ],
+    );
+    if (conferencia.rows[0]?.resultado !== "APROVADA") {
+      throw new Error("A revisão atual ainda não possui aprovação válida.");
+    }
+    await client.query(
+      `update demonstrativo_mensal
+          set status = 'FECHADO', fechado_em = now(), fechado_por = $2,
+              hash_resultado = $3, atualizado_em = now()
+        where id = $1`,
+      [demonstrativoId, ator, conteudo.hash],
+    );
+    if (controlaTransacao) await client.query("commit");
+    return { demonstrativoId, hash: conteudo.hash };
+  } catch (error) {
+    if (controlaTransacao) await client.query("rollback");
+    throw error;
+  } finally {
+    if (controlaTransacao) client.release();
+  }
+}
+
 export async function carregarDemonstrativo(
   empresaId: string,
   competencia: string,
 ) {
   validarId(empresaId, "Empresa");
   const mes = competenciaData(competencia);
-  const [demonstrativo, pagamentos, guias, prestadoresPj, pendencias] =
+  const [
+    demonstrativo,
+    pagamentos,
+    guias,
+    prestadoresPj,
+    pendencias,
+    conferencias,
+  ] =
     await Promise.all([
       getPool().query(
         `select id, competencia::text, numero, revisao, status,
@@ -457,6 +725,19 @@ export async function carregarDemonstrativo(
           where empresa_id = $1 and status = 'PENDENTE'`,
         [empresaId],
       ),
+      getPool().query(
+        `select c.id, c.revisao, c.hash_resultado, c.resultado,
+                c.conferente, c.confirmou_pagamentos,
+                c.confirmou_retencoes, c.confirmou_guias,
+                c.observacao, c.criado_em
+           from demonstrativo_conferencia c
+           join demonstrativo_mensal d on d.id = c.demonstrativo_id
+          where d.empresa_id = $1 and d.competencia = $2::date
+            and d.status <> 'CANCELADO'
+          order by c.criado_em desc, c.id desc
+          limit 30`,
+        [empresaId, mes],
+      ),
     ]);
   return {
     demonstrativo: demonstrativo.rows[0] ?? null,
@@ -464,5 +745,6 @@ export async function carregarDemonstrativo(
     guias: guias.rows,
     prestadoresPj: prestadoresPj.rows,
     pendencias: pendencias.rows[0]?.total ?? 0,
+    conferencias: conferencias.rows,
   };
 }

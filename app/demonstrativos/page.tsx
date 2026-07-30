@@ -3,8 +3,11 @@ import {
   AlertTriangle,
   Building2,
   Calculator,
+  ClipboardCheck,
   Database,
+  Download,
   FileCheck2,
+  LockKeyhole,
   Plus,
   ReceiptText,
   RefreshCw,
@@ -20,6 +23,8 @@ import { caminhoAplicacao } from "@/lib/base-path";
 import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 import {
   gerarRascunhoDemonstrativo,
+  conferirDemonstrativo,
+  concluirDemonstrativo,
   removerPagamentoPj,
   salvarPagamentoPj,
 } from "./actions";
@@ -31,6 +36,8 @@ type SearchParams = Promise<{
   novo?: string | string[];
   erro?: string | string[];
   sucesso?: string | string[];
+  conferir?: string | string[];
+  fechar?: string | string[];
 }>;
 
 type Retencao = {
@@ -68,6 +75,8 @@ export default async function DemonstrativosPage({
   const erro = primeiro(params.erro);
   const sucesso = primeiro(params.sucesso);
   const novoPj = primeiro(params.novo) === "pj";
+  const abrirConferencia = primeiro(params.conferir) === "1";
+  const abrirFechamento = primeiro(params.fechar) === "1";
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
   let dados: Awaited<ReturnType<typeof carregarDemonstrativo>>;
   try {
@@ -98,6 +107,12 @@ export default async function DemonstrativosPage({
   ).length;
   const pagamentosPj = dados.pagamentos.length - pagamentosPf;
   const fecharModal = `/demonstrativos?${new URLSearchParams({ competencia }).toString()}`;
+  const conferenciaAtual = dados.conferencias[0];
+  const podeFechar =
+    demonstrativo?.status === "EM_CONFERENCIA" &&
+    conferenciaAtual?.resultado === "APROVADA" &&
+    conferenciaAtual.hash_resultado === demonstrativo.hash_resultado &&
+    conferenciaAtual.revisao === demonstrativo.revisao;
 
   return (
     <AppShell
@@ -182,6 +197,84 @@ export default async function DemonstrativosPage({
               disabled={dados.prestadoresPj.length === 0}
             >
               Registrar pagamento
+            </button>
+            <Link className="button secondary" href={fecharModal}>Cancelar</Link>
+          </form>
+        </ModalShell>
+      )}
+
+      {abrirConferencia && demonstrativo && !fechado && (
+        <ModalShell
+          title="Conferir demonstrativo"
+          description="A decisão ficará vinculada à revisão e ao hash exato de pagamentos, retenções, guias e documentos."
+          closeHref={fecharModal}
+        >
+          <form action={conferirDemonstrativo} className="crud-form">
+            <input type="hidden" name="competencia" value={competencia} />
+            <input type="hidden" name="demonstrativoId" value={demonstrativo.id} />
+            <label>
+              <span>Decisão</span>
+              <select name="resultado" required defaultValue="APROVADA">
+                <option value="APROVADA">Aprovar</option>
+                <option value="REJEITADA">Rejeitar</option>
+              </select>
+            </label>
+            <label>
+              <span>Responsável pela conferência</span>
+              <input name="conferente" required minLength={3} maxLength={160} />
+            </label>
+            <label className="checkbox-field field-wide">
+              <input name="confirmouPagamentos" type="checkbox" />
+              <span>Conferi beneficiários, documentos e valores dos pagamentos</span>
+            </label>
+            <label className="checkbox-field field-wide">
+              <input name="confirmouRetencoes" type="checkbox" />
+              <span>Conferi tributos e retenções com suas evidências</span>
+            </label>
+            <label className="checkbox-field field-wide">
+              <input name="confirmouGuias" type="checkbox" />
+              <span>Conferi obrigações, guias e documentos da competência</span>
+            </label>
+            <label className="field-wide">
+              <span>Observação ou motivo da rejeição</span>
+              <textarea name="observacao" maxLength={2000} rows={4} />
+            </label>
+            <button className="button primary" type="submit">
+              <ClipboardCheck size={16} /> Registrar decisão
+            </button>
+            <Link className="button secondary" href={fecharModal}>Cancelar</Link>
+          </form>
+        </ModalShell>
+      )}
+
+      {abrirFechamento && demonstrativo && podeFechar && (
+        <ModalShell
+          title="Fechar demonstrativo"
+          description="O conteúdo será bloqueado no hash aprovado. Correções posteriores exigirão uma nova revisão."
+          closeHref={fecharModal}
+        >
+          <form action={concluirDemonstrativo} className="crud-form">
+            <input type="hidden" name="competencia" value={competencia} />
+            <input type="hidden" name="demonstrativoId" value={demonstrativo.id} />
+            <label className="field-wide">
+              <span>Responsável pelo fechamento</span>
+              <input
+                name="responsavel"
+                required
+                minLength={3}
+                maxLength={160}
+                defaultValue={conferenciaAtual.conferente}
+              />
+            </label>
+            <div className="alert-box warning field-wide">
+              <LockKeyhole size={19} />
+              <div>
+                <strong>Ação de fechamento</strong>
+                <p>Pagamentos e retenções não poderão ser alterados silenciosamente.</p>
+              </div>
+            </div>
+            <button className="button primary" type="submit">
+              <LockKeyhole size={16} /> Confirmar fechamento
             </button>
             <Link className="button secondary" href={fecharModal}>Cancelar</Link>
           </form>
@@ -275,6 +368,14 @@ export default async function DemonstrativosPage({
                 </Link>
               </>
             )}
+            {demonstrativo && (
+              <Link
+                className="button secondary"
+                href={`/demonstrativos/exportar?competencia=${competencia}`}
+              >
+                <Download size={15} /> Exportar CSV
+              </Link>
+            )}
           </div>
         </div>
         <div className="table-wrap">
@@ -344,6 +445,86 @@ export default async function DemonstrativosPage({
           </table>
         </div>
       </section>
+
+      {demonstrativo && (
+        <section className="panel cadastro-section">
+          <div className="panel-header">
+            <div>
+              <span className="section-kicker">Decisão e integridade</span>
+              <h2>Conferência do demonstrativo</h2>
+              <p>
+                Revisão {demonstrativo.revisao}
+                {demonstrativo.hash_resultado
+                  ? ` · hash ${demonstrativo.hash_resultado.slice(0, 12)}…`
+                  : " · aguardando primeira conferência"}
+              </p>
+            </div>
+            <div className="row-actions">
+              {!fechado && (
+                <Link
+                  className="button secondary"
+                  href={`/demonstrativos?${new URLSearchParams({
+                    competencia,
+                    conferir: "1",
+                  }).toString()}`}
+                >
+                  <ClipboardCheck size={15} /> Registrar conferência
+                </Link>
+              )}
+              {podeFechar && (
+                <Link
+                  className="button primary"
+                  href={`/demonstrativos?${new URLSearchParams({
+                    competencia,
+                    fechar: "1",
+                  }).toString()}`}
+                >
+                  <LockKeyhole size={15} /> Fechar demonstrativo
+                </Link>
+              )}
+            </div>
+          </div>
+          {conferenciaAtual ? (
+            <div className="summary-strip">
+              <span>
+                <StatusBadge tone={conferenciaAtual.resultado === "APROVADA" ? "success" : "danger"}>
+                  {conferenciaAtual.resultado === "APROVADA" ? "Aprovada" : "Rejeitada"}
+                </StatusBadge>
+                {" "}por {conferenciaAtual.conferente}
+              </span>
+              <span>
+                {new Intl.DateTimeFormat("pt-BR", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                }).format(new Date(conferenciaAtual.criado_em))}
+              </span>
+            </div>
+          ) : (
+            <div className="alert-box warning">
+              <AlertTriangle size={19} />
+              <div><strong>Conferência pendente</strong><p>Revise os três blocos antes do fechamento.</p></div>
+            </div>
+          )}
+          {dados.conferencias.length > 0 && (
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Revisão</th><th>Decisão</th><th>Responsável</th><th>Checklist</th><th>Observação</th></tr></thead>
+                <tbody>
+                  {dados.conferencias.map((item) => (
+                    <tr key={item.id}>
+                      <td>v{item.revisao}<small>{item.hash_resultado.slice(0, 12)}…</small></td>
+                      <td><StatusBadge tone={item.resultado === "APROVADA" ? "success" : "danger"}>{item.resultado}</StatusBadge></td>
+                      <td>{item.conferente}</td>
+                      <td>{item.confirmou_pagamentos && item.confirmou_retencoes && item.confirmou_guias ? "3 de 3" : "Parcial"}</td>
+                      <td>{item.observacao || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="panel cadastro-section">
         <div className="panel-header">

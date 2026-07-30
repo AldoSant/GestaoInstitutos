@@ -6,7 +6,9 @@ import { resolverEmpresaAtiva } from "@/db/cadastros";
 import {
   adicionarPagamentoPj,
   excluirPagamentoPj,
+  fecharDemonstrativo,
   materializarDemonstrativoFolhas,
+  registrarConferenciaDemonstrativo,
 } from "@/db/demonstrativos";
 
 function destino(
@@ -123,6 +125,81 @@ export async function removerPagamentoPj(formData: FormData) {
           error instanceof Error
             ? error.message
             : "Não foi possível remover o pagamento.",
+      }),
+    );
+  }
+}
+
+export async function conferirDemonstrativo(formData: FormData) {
+  const competencia = String(formData.get("competencia") ?? "");
+  try {
+    const empresa = await resolverEmpresaAtiva();
+    const conferencia = await registrarConferenciaDemonstrativo({
+      empresaId: empresa.id,
+      demonstrativoId: String(formData.get("demonstrativoId") ?? ""),
+      resultado: formData.get("resultado"),
+      conferente: formData.get("conferente"),
+      confirmouPagamentos: formData.get("confirmouPagamentos"),
+      confirmouRetencoes: formData.get("confirmouRetencoes"),
+      confirmouGuias: formData.get("confirmouGuias"),
+      observacao: formData.get("observacao"),
+    });
+    revalidatePath("/demonstrativos");
+    redirect(
+      destino(competencia, {
+        sucesso: `Conferência ${String(conferencia.resultado).toLowerCase()} no hash ${conferencia.hash.slice(0, 12)}.`,
+      }),
+    );
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      String(error.digest).startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+    redirect(
+      destino(competencia, {
+        erro:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível registrar a conferência.",
+      }),
+    );
+  }
+}
+
+export async function concluirDemonstrativo(formData: FormData) {
+  const competencia = String(formData.get("competencia") ?? "");
+  try {
+    const empresa = await resolverEmpresaAtiva();
+    const resultado = await fecharDemonstrativo({
+      empresaId: empresa.id,
+      demonstrativoId: String(formData.get("demonstrativoId") ?? ""),
+      responsavel: String(formData.get("responsavel") ?? ""),
+    });
+    revalidatePath("/demonstrativos");
+    redirect(
+      destino(competencia, {
+        sucesso: `Demonstrativo fechado no hash ${resultado.hash.slice(0, 12)}.`,
+      }),
+    );
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      String(error.digest).startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+    redirect(
+      destino(competencia, {
+        erro:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível fechar o demonstrativo.",
       }),
     );
   }

@@ -34,7 +34,7 @@ test(
           where table_schema = 'public'
             and table_type = 'BASE TABLE'`,
       );
-      assert.equal(Number(tabelas.rows[0].total), 55);
+      assert.equal(Number(tabelas.rows[0].total), 56);
 
       const restricoes = await client.query<{ conname: string }>(
         `select conname
@@ -248,10 +248,17 @@ test(
             'ck_pagamento_retencao_matriz',
             'fk_demonstrativo_obrigacao_obrigacao',
             'ck_classificacao_legado_natureza',
-            'ck_classificacao_legado_decisao'
+            'ck_classificacao_legado_decisao',
+            'fk_demonstrativo_conferencia_empresa_demonstrativo',
+            'ck_demonstrativo_conferencia_resultado',
+            'ck_demonstrativo_conferencia_revisao',
+            'ck_demonstrativo_conferencia_hash',
+            'ck_demonstrativo_conferencia_conferente',
+            'ck_demonstrativo_conferencia_aprovacao',
+            'ck_demonstrativo_conferencia_rejeicao'
           )`,
       );
-      assert.equal(restricoes.rowCount, 209);
+      assert.equal(restricoes.rowCount, 216);
 
       const gatilhos = await client.query<{ tgname: string }>(
         `select tgname
@@ -306,10 +313,11 @@ test(
               'ct_demonstrativo_pagamentos_total',
               'ct_demonstrativo_total_pagamentos',
               'tr_pagamento_demonstrativo_fechado',
-              'tr_retencao_demonstrativo_fechado'
+              'tr_retencao_demonstrativo_fechado',
+              'tr_proteger_demonstrativo_conferencia'
             )`,
       );
-      assert.equal(gatilhos.rowCount, 49);
+      assert.equal(gatilhos.rowCount, 50);
 
       const auditoriaImportacao = await client.query<{
         dry_runs: number;
