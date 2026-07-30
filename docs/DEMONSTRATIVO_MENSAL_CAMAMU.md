@@ -91,10 +91,13 @@ Concluídos:
 - cadastro em modal de pagamento PJ com documento e retenções informadas;
 - tela mensal com separação visível entre pagamentos, retenções e guias;
 - prova em PostgreSQL de que descontos comuns da Folha não viram retenções fiscais.
+- conferência imutável vinculada à revisão e ao SHA-256 do conteúdo;
+- fechamento que recalcula o hash e recusa qualquer fonte alterada;
+- exportação CSV separando pagamento, retenções e guia, com proteção para planilhas.
 
 Próximos:
 
-1. Conferência formal, fechamento com hash e nova revisão.
-2. Exportação CSV/PDF do demonstrativo.
+1. Nova revisão formal de um demonstrativo já fechado.
+2. Relatório PDF imprimível do demonstrativo.
 3. Classificador assistido dos registros GIW, com fila de pendências.
 4. Matriz fiscal por serviço, regime, município e documento, somente após homologação.

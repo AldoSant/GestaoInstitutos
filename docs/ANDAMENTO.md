@@ -15,7 +15,9 @@ registrada em
 O fluxo `/demonstrativos` já materializa pagamentos PF de Folhas fechadas, preserva
 descontos não tributários no snapshot, cria INSS/IRRF como retenções, vincula as guias
 da competência e permite registrar PJ por documento em modal. A prova transacional
-foi executada no PostgreSQL 16 descartável.
+foi executada no PostgreSQL 16 descartável. A migração `0035` acrescenta conferência
+imutável por revisão/hash; o fechamento recalcula pagamentos, retenções, obrigações e
+documentos e recusa fonte alterada. O CSV operacional preserva as três naturezas.
 
 ## Visão geral
 
