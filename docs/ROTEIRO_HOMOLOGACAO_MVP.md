@@ -21,6 +21,8 @@ valida proxy, caminho-base, ambiente e revisão efetivamente implantada.
 
 O CI também audita as telas críticas contra WCAG 2.0 e 2.1 nos níveis A e AA.
 Violações classificadas como sérias ou críticas bloqueiam a publicação.
+Uma jornada adicional em viewport de celular confere o menu, os módulos principais
+e a ausência de estouro horizontal da página.
 
 ## Jornada automatizada
 
