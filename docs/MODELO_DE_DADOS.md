@@ -2,7 +2,7 @@
 
 ## Modelo implementado
 
-As migrações Drizzle criam 50 tabelas, agrupadas em:
+As migrações Drizzle criam 55 tabelas, agrupadas em:
 
 - organização e acesso: `empresa`, `usuario`, `usuario_empresa`;
 - pessoas: `pessoa`, `pessoa_endereco`, `pessoa_conta_bancaria`, `dependente`,
@@ -17,6 +17,9 @@ As migrações Drizzle criam 50 tabelas, agrupadas em:
   `folha_homologacao_item`;
 - obrigação: `obrigacao_fiscal`, `obrigacao_fiscal_folha`,
   `obrigacao_fiscal_item`, `obrigacao_fiscal_documento`;
+- demonstrativo financeiro: `demonstrativo_mensal`, `pagamento_prestador`,
+  `pagamento_retencao`, `demonstrativo_obrigacao`,
+  `classificacao_operacional_legado`;
 - FGTS e eSocial: `fgts_apuracao`, `fgts_apuracao_item`,
   `integracao_esocial_evento`, `fgts_guia`;
 - migração: `importacao_execucao`, `importacao_registro`, `legado_chave`,
@@ -70,9 +73,17 @@ erDiagram
   LEGADO_FOLHA ||--|{ LEGADO_FOLHA_ITEM : detalha
   LEGADO_FOLHA_ITEM ||--o{ LEGADO_FOLHA_ITEM_RUBRICA : explica
   EMPRESA ||--o{ LEGADO_GUIA_INSS : preserva
+  EMPRESA ||--o{ DEMONSTRATIVO_MENSAL : consolida
+  DEMONSTRATIVO_MENSAL ||--o{ PAGAMENTO_PRESTADOR : apresenta
+  PRESTADOR o|--o{ PAGAMENTO_PRESTADOR : recebe
+  PAGAMENTO_PRESTADOR ||--o{ PAGAMENTO_RETENCAO : sofre
+  DEMONSTRATIVO_MENSAL ||--o{ DEMONSTRATIVO_OBRIGACAO : inclui
+  OBRIGACAO_FISCAL ||--o{ DEMONSTRATIVO_OBRIGACAO : recolhe
 ```
 
-Esse recorte sustenta a cadeia operacional do MVP. O rateio já pode ser simulado,
+Esse recorte sustenta a cadeia operacional do MVP. A Folha PF, o pagamento ao
+prestador, a retenção e a guia possuem limites próprios; o detalhamento está em
+[Demonstrativo mensal de Camamu](DEMONSTRATIVO_MENSAL_CAMAMU.md). O rateio já pode ser simulado,
 versionado e homologado, mas continua propositalmente fora do processamento produtivo
 da Folha até a validação com competências reais. O núcleo FGTS já preserva apuração
 individual, retornos eSocial e GFD, mas o contrato trabalhista e a transmissão real

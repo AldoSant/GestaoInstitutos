@@ -34,7 +34,7 @@ test(
           where table_schema = 'public'
             and table_type = 'BASE TABLE'`,
       );
-      assert.equal(Number(tabelas.rows[0].total), 50);
+      assert.equal(Number(tabelas.rows[0].total), 55);
 
       const restricoes = await client.query<{ conname: string }>(
         `select conname
@@ -236,10 +236,22 @@ test(
             'ck_fgts_guia_valores',
             'ck_fgts_guia_hashes',
             'ck_fgts_guia_conteudo',
-            'ck_fgts_guia_pagamento'
+            'ck_fgts_guia_pagamento',
+            'ck_demonstrativo_competencia',
+            'ck_demonstrativo_totais',
+            'ck_demonstrativo_fechamento',
+            'fk_pagamento_empresa_demonstrativo',
+            'ck_pagamento_tipo_origem',
+            'ck_pagamento_beneficiario',
+            'ck_pagamento_valores',
+            'fk_pagamento_retencao_empresa_pagamento',
+            'ck_pagamento_retencao_matriz',
+            'fk_demonstrativo_obrigacao_obrigacao',
+            'ck_classificacao_legado_natureza',
+            'ck_classificacao_legado_decisao'
           )`,
       );
-      assert.equal(restricoes.rowCount, 197);
+      assert.equal(restricoes.rowCount, 209);
 
       const gatilhos = await client.query<{ tgname: string }>(
         `select tgname
@@ -288,10 +300,16 @@ test(
               'tr_auditar_fgts_apuracao',
               'tr_auditar_fgts_apuracao_item',
               'tr_auditar_evento_esocial',
-              'tr_auditar_guia_fgts'
+              'tr_auditar_guia_fgts',
+              'ct_pagamento_retencoes_total',
+              'ct_pagamento_total_retencoes',
+              'ct_demonstrativo_pagamentos_total',
+              'ct_demonstrativo_total_pagamentos',
+              'tr_pagamento_demonstrativo_fechado',
+              'tr_retencao_demonstrativo_fechado'
             )`,
       );
-      assert.equal(gatilhos.rowCount, 43);
+      assert.equal(gatilhos.rowCount, 49);
 
       const auditoriaImportacao = await client.query<{
         dry_runs: number;

@@ -33,7 +33,7 @@ test("consultas nativas preservam o prefixo público", async ({ page }) => {
   const consultas = [
     ["cadastros", "#busca-cadastros"],
     ["eventos", "#busca-eventos"],
-    ["instrumentos", "#busca-instrumentos"],
+    ["termos-e-metas", "#busca-instrumentos"],
     ["medicoes", "#competencia-medicao"],
     ["prestadores", "#busca-prestadores"],
     ["vinculos", "#busca-vinculos"],
