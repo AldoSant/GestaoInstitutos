@@ -77,7 +77,7 @@ export default async function ParametrosPage({
 
   if (!regra) {
     return (
-      <AppShell title="Parâmetros" eyebrow="Regras e vigências">
+      <AppShell title="Parâmetros fiscais" eyebrow="Regras e vigências">
         <section className="empty-state">
           <ShieldCheck size={34} />
           <h2>Nenhuma regra fiscal cadastrada</h2>
@@ -93,7 +93,7 @@ export default async function ParametrosPage({
   const { inss, irrf } = regra.parametros;
   return (
     <AppShell
-      title="Parâmetros"
+      title="Parâmetros fiscais"
       eyebrow="Regras e vigências"
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
     >

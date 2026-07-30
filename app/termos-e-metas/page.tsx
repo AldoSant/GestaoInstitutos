@@ -112,7 +112,7 @@ export default async function InstrumentosPage({
     (item) => item.ativo || item.id === metaEditada?.termoId,
   );
   const modalTipo = editarTipo || novo;
-  const fecharModal = modalTipo === "meta" ? "/instrumentos#metas" : "/instrumentos#termos";
+  const fecharModal = modalTipo === "meta" ? "/termos-e-metas#metas" : "/termos-e-metas#termos";
 
   return (
     <AppShell
@@ -172,11 +172,11 @@ export default async function InstrumentosPage({
           <h2>Instrumentos e seus objetos</h2>
           <p>Metas pertencem a um Termo e não podem ser usadas fora dele.</p>
         </div>
-        <form action="/instrumentos" method="get" className="search-field">
+        <form action="/termos-e-metas" method="get" className="search-field">
           <Search size={17} />
           <label className="sr-only" htmlFor="busca-instrumentos">Buscar termos e metas</label>
           <input id="busca-instrumentos" name="busca" type="search" defaultValue={busca} placeholder="Número, descrição, modalidade ou meta" />
-          {busca && <Link href="/instrumentos" aria-label="Limpar busca"><X size={15} /></Link>}
+          {busca && <Link href="/termos-e-metas" aria-label="Limpar busca"><X size={15} /></Link>}
           <button type="submit" aria-label="Buscar instrumentos"><Search size={15} /></button>
         </form>
       </section>
@@ -188,17 +188,17 @@ export default async function InstrumentosPage({
       </section>
 
       <section className="panel cadastro-section" id="termos">
-        <div className="panel-header"><div><span className="section-kicker">Instrumento</span><h2>Termos cadastrados</h2><p>Número, modalidade, vigência e limite financeiro.</p></div><div className="row-actions"><StatusBadge tone="info">{dados.termos.length} exibidos</StatusBadge><Link className="button primary" href="/instrumentos?novo=termo#termos"><Plus size={16} /> Novo termo</Link></div></div>
+        <div className="panel-header"><div><span className="section-kicker">Instrumento</span><h2>Termos cadastrados</h2><p>Número, modalidade, vigência e limite financeiro.</p></div><div className="row-actions"><StatusBadge tone="info">{dados.termos.length} exibidos</StatusBadge><Link className="button primary" href="/termos-e-metas?novo=termo#termos"><Plus size={16} /> Novo termo</Link></div></div>
         <div className="table-wrap"><table><thead><tr><th>Número</th><th>Descrição</th><th>Modalidade</th><th>Vigência</th><th>Valor global</th><th>Metas</th><th>Vínculos</th><th>Situação</th><th>Ações</th></tr></thead><tbody>
-          {dados.termos.map((item) => <tr key={item.id}><td><strong>{item.numero}</strong></td><td>{item.descricao}</td><td>{item.modalidade}</td><td>{data(item.inicio)} a {data(item.fim)}</td><td>{moeda(item.valorGlobal)}</td><td>{item.metasAtivas} ativas<small>{item.totalMetas} no total</small></td><td>{item.totalVinculos}</td><td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativo" : "Inativo"}</StatusBadge></td><td><div className="row-actions"><Link className="row-text-action" href={`/instrumentos?editar=termo:${item.id}#termos`}><Pencil size={13} /> Editar</Link><AcaoSituacao entidade="termo" id={item.id} ativo={item.ativo} /></div></td></tr>)}
+          {dados.termos.map((item) => <tr key={item.id}><td><strong>{item.numero}</strong></td><td>{item.descricao}</td><td>{item.modalidade}</td><td>{data(item.inicio)} a {data(item.fim)}</td><td>{moeda(item.valorGlobal)}</td><td>{item.metasAtivas} ativas<small>{item.totalMetas} no total</small></td><td>{item.totalVinculos}</td><td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativo" : "Inativo"}</StatusBadge></td><td><div className="row-actions"><Link className="row-text-action" href={`/termos-e-metas?editar=termo:${item.id}#termos`}><Pencil size={13} /> Editar</Link><AcaoSituacao entidade="termo" id={item.id} ativo={item.ativo} /></div></td></tr>)}
           {dados.termos.length === 0 && <tr><td colSpan={9} className="empty-cell">Nenhum termo encontrado.</td></tr>}
         </tbody></table></div>
       </section>
 
       <section className="panel cadastro-section" id="metas">
-        <div className="panel-header"><div><span className="section-kicker">Objeto e orçamento</span><h2>Metas cadastradas</h2><p>A meta será selecionada no vínculo do prestador.</p></div><div className="row-actions"><StatusBadge tone="info">{dados.metas.length} exibidas</StatusBadge><Link className="button primary" href="/instrumentos?novo=meta#metas"><Plus size={16} /> Nova meta</Link></div></div>
+        <div className="panel-header"><div><span className="section-kicker">Objeto e orçamento</span><h2>Metas cadastradas</h2><p>A meta será selecionada no vínculo do prestador.</p></div><div className="row-actions"><StatusBadge tone="info">{dados.metas.length} exibidas</StatusBadge><Link className="button primary" href="/termos-e-metas?novo=meta#metas"><Plus size={16} /> Nova meta</Link></div></div>
         <div className="table-wrap"><table><thead><tr><th>Termo</th><th>Código</th><th>Descrição</th><th>Cálculo</th><th>Valor previsto</th><th>Vínculos</th><th>Situação</th><th>Ações</th></tr></thead><tbody>
-          {dados.metas.map((item) => <tr key={item.id}><td><strong>{item.termoNumero}</strong><small>{item.termoDescricao}</small></td><td>{item.codigo}</td><td>{item.descricao}</td><td>{item.tipoCalculo ?? "Não informado"}</td><td>{item.valorPrevisto ? moeda(item.valorPrevisto) : "—"}</td><td>{item.totalVinculos}</td><td><StatusBadge tone={item.ativo && item.termoAtivo ? "success" : "neutral"}>{item.ativo && item.termoAtivo ? "Ativa" : "Inativa"}</StatusBadge></td><td><div className="row-actions"><Link className="row-text-action" href={`/instrumentos?editar=meta:${item.id}#metas`}><Pencil size={13} /> Editar</Link><AcaoSituacao entidade="meta" id={item.id} ativo={item.ativo} /></div></td></tr>)}
+          {dados.metas.map((item) => <tr key={item.id}><td><strong>{item.termoNumero}</strong><small>{item.termoDescricao}</small></td><td>{item.codigo}</td><td>{item.descricao}</td><td>{item.tipoCalculo ?? "Não informado"}</td><td>{item.valorPrevisto ? moeda(item.valorPrevisto) : "—"}</td><td>{item.totalVinculos}</td><td><StatusBadge tone={item.ativo && item.termoAtivo ? "success" : "neutral"}>{item.ativo && item.termoAtivo ? "Ativa" : "Inativa"}</StatusBadge></td><td><div className="row-actions"><Link className="row-text-action" href={`/termos-e-metas?editar=meta:${item.id}#metas`}><Pencil size={13} /> Editar</Link><AcaoSituacao entidade="meta" id={item.id} ativo={item.ativo} /></div></td></tr>)}
           {dados.metas.length === 0 && <tr><td colSpan={8} className="empty-cell">Nenhuma meta encontrada.</td></tr>}
         </tbody></table></div>
         <div className="summary-strip"><span><CircleDollarSign size={13} /> O valor global pertence ao Termo; a distribuição por meta poderá evoluir com a importação do plano de trabalho.</span></div>

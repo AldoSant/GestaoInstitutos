@@ -1,8 +1,6 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  ClipboardCheck,
-  GitMerge,
   History,
   Settings2,
   ShieldCheck,
@@ -10,10 +8,11 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { exigirAdministrador } from "@/lib/autorizacao";
+import { ROTAS } from "@/lib/rotas";
 
 const modulos = [
   {
-    href: "/parametros",
+    href: ROTAS.parametros,
     titulo: "Parâmetros fiscais",
     descricao:
       "Consulte regras, vigências e evidências usadas nos cálculos de INSS e IRRF.",
@@ -21,28 +20,12 @@ const modulos = [
     icon: Settings2,
   },
   {
-    href: "/migracoes",
-    titulo: "Importação do GIW",
+    href: ROTAS.importacoes,
+    titulo: "Migração histórica",
     descricao:
       "Acompanhe cargas, reconciliação, cobertura e histórico técnico da migração.",
-    acao: "Abrir importações",
+    acao: "Abrir migração",
     icon: History,
-  },
-  {
-    href: "/homologacoes",
-    titulo: "Controle de fechamento",
-    descricao:
-      "Consulte versões congeladas, evidências e decisões formais por competência.",
-    acao: "Abrir controles",
-    icon: ClipboardCheck,
-  },
-  {
-    href: "/consolidacoes",
-    titulo: "Consolidação mensal",
-    descricao:
-      "Analise pessoas com múltiplos vínculos, rateios e decisões fiscais registradas.",
-    acao: "Abrir consolidação",
-    icon: GitMerge,
   },
 ] as const;
 
@@ -67,7 +50,7 @@ export default async function AdministracaoPage() {
           <strong>Área reservada à configuração e ao histórico técnico</strong>
           <p>
             Estes recursos não fazem parte da rotina mensal do operador. Alterações
-            em parâmetros, importações e decisões congeladas podem afetar cálculos e
+            em parâmetros e importações podem afetar cálculos e
             devem seguir o processo de revisão da organização.
           </p>
         </div>

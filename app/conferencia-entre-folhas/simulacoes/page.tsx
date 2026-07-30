@@ -98,8 +98,8 @@ export default async function SimulacoesConsolidacaoPage({
     } catch {
       return (
         <AppShell
-          title="Simulações fiscais"
-          eyebrow="Consolidação mensal"
+          title="Simulações de rateio entre folhas"
+          eyebrow="Conferência entre folhas"
           organization="Não configurada"
         >
           <section className="alert-box danger">
@@ -141,7 +141,7 @@ export default async function SimulacoesConsolidacaoPage({
 
   return (
     <AppShell
-      title="Simulações fiscais consolidadas"
+      title="Simulações de rateio entre folhas"
       eyebrow="Pessoa · competência · múltiplos vínculos"
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
       notice={{
@@ -154,14 +154,14 @@ export default async function SimulacoesConsolidacaoPage({
         <div className="button-row">
           <Link
             className="button secondary"
-            href={`/consolidacoes?competencia=${encodeURIComponent(competencia)}`}
+            href={`/conferencia-entre-folhas?competencia=${encodeURIComponent(competencia)}`}
           >
             <ArrowLeft size={16} /> Casos mensais
           </Link>
           {simulacoes.length > 0 && (
             <Link
               className="button secondary"
-              href={`/consolidacoes/simulacoes/espelho?competencia=${encodeURIComponent(competencia)}`}
+              href={`/conferencia-entre-folhas/simulacoes/espelho?competencia=${encodeURIComponent(competencia)}`}
             >
               <Download size={16} /> Exportar memória
             </Link>
@@ -202,8 +202,8 @@ export default async function SimulacoesConsolidacaoPage({
           </strong>
           <p>
             {ativacao.ativa
-              ? "Somente uma simulação homologada ainda atual pode alimentar a Folha. Mudança de fonte, regra, enquadramento ou Vínculo interrompe o processamento, e o fechamento exige todas as Folhas da Pessoa."
-              : "“Homologada” registra a decisão do RH, mas não produz efeito financeiro enquanto empresa e competência não forem habilitadas na implantação."}
+              ? "Somente uma simulação aprovada e ainda atual pode alimentar a Folha. Mudança de fonte, regra, enquadramento ou Vínculo interrompe o processamento, e o fechamento exige todas as Folhas da Pessoa."
+              : "“Aprovada pelo RH” registra a decisão, mas não produz efeito financeiro enquanto empresa e competência não forem habilitadas na implantação."}
           </p>
         </div>
       </section>
@@ -280,7 +280,7 @@ export default async function SimulacoesConsolidacaoPage({
           <strong>{simulacoes.length}</strong>
         </div>
         <div>
-          <span>Em homologação</span>
+          <span>Em validação pelo RH</span>
           <strong>
             {
               simulacoes.filter(
@@ -290,7 +290,7 @@ export default async function SimulacoesConsolidacaoPage({
           </strong>
         </div>
         <div>
-          <span>Homologadas pelo RH</span>
+          <span>Aprovadas pelo RH</span>
           <strong>{homologadas}</strong>
         </div>
         <div>
@@ -397,7 +397,7 @@ export default async function SimulacoesConsolidacaoPage({
                 <textarea name="justificativa" maxLength={3000} />
               </label>
               <button className="button primary" type="submit">
-                Enviar para homologação
+                Enviar para validação do RH
               </button>
             </form>
           )}

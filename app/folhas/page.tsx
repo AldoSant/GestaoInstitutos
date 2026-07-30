@@ -51,7 +51,7 @@ export default async function FolhasPage() {
     folhas = await listarFolhas(empresa.id);
   } catch {
     return (
-      <AppShell title="Folhas" eyebrow="Processamento mensal" organization="Não configurada">
+      <AppShell title="Folhas mensais" eyebrow="Processamento mensal" organization="Não configurada">
         <section className="alert-box danger">
           <Database size={22} />
           <div>
@@ -70,7 +70,7 @@ export default async function FolhasPage() {
 
   return (
       <AppShell
-        title="Folhas"
+        title="Folhas mensais"
         eyebrow="Processamento mensal"
         organization={empresa.nomeFantasia ?? empresa.razaoSocial}
         actions={

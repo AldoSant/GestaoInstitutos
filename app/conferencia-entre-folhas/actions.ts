@@ -13,7 +13,7 @@ function destino(competencia: string, texto: string, erro = false) {
     competencia,
     [erro ? "erro" : "sucesso"]: texto,
   });
-  return `/consolidacoes?${params.toString()}`;
+  return `/conferencia-entre-folhas?${params.toString()}`;
 }
 
 function mensagem(error: unknown) {
@@ -27,7 +27,7 @@ function mensagem(error: unknown) {
   }
   return error instanceof Error
     ? error.message
-    : "Não foi possível concluir a homologação mensal.";
+    : "Não foi possível concluir a conferência entre folhas.";
 }
 
 export async function congelarDiagnostico(formData: FormData) {
@@ -49,7 +49,7 @@ export async function congelarDiagnostico(formData: FormData) {
   } catch (error) {
     erro = mensagem(error);
   }
-  revalidatePath("/consolidacoes");
+  revalidatePath("/conferencia-entre-folhas");
   redirect(destino(competencia, erro || resultado, Boolean(erro)));
 }
 
@@ -76,6 +76,6 @@ export async function revisarCaso(formData: FormData) {
   } catch (error) {
     erro = mensagem(error);
   }
-  revalidatePath("/consolidacoes");
+  revalidatePath("/conferencia-entre-folhas");
   redirect(destino(competencia, erro || resultado, Boolean(erro)));
 }

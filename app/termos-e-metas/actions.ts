@@ -11,7 +11,7 @@ import { validarMetaCadastro, validarTermoCadastro } from "@/lib/instrumentos";
 
 function destino(mensagem: string, erro = false) {
   const params = new URLSearchParams({ [erro ? "erro" : "sucesso"]: mensagem });
-  return `/instrumentos?${params.toString()}`;
+  return `/termos-e-metas?${params.toString()}`;
 }
 
 function mensagemBanco(error: unknown) {
@@ -71,7 +71,7 @@ export async function salvarTermo(formData: FormData) {
   }
 
   if (erro) redirect(destino(erro, true));
-  revalidatePath("/instrumentos");
+  revalidatePath("/termos-e-metas");
   redirect(destino(validacao.dados.id ? "Termo atualizado." : "Termo cadastrado."));
 }
 
@@ -145,7 +145,7 @@ export async function salvarMeta(formData: FormData) {
   }
 
   if (erro) redirect(destino(erro, true));
-  revalidatePath("/instrumentos");
+  revalidatePath("/termos-e-metas");
   redirect(destino(validacao.dados.id ? "Meta atualizada." : "Meta cadastrada."));
 }
 
@@ -210,6 +210,6 @@ export async function alternarInstrumento(formData: FormData) {
   }
 
   if (erro) redirect(destino(erro, true));
-  revalidatePath("/instrumentos");
+  revalidatePath("/termos-e-metas");
   redirect(destino(ativo ? "Cadastro ativado." : "Cadastro inativado."));
 }

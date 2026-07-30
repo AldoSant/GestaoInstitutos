@@ -19,6 +19,7 @@ import {
   type CompetenciaDashboard,
 } from "@/db/dashboard";
 import { diagnosticarHomologacaoCompetencia } from "@/db/homologacoes-competencia";
+import { ROTAS, rotaComCompetencia } from "@/lib/rotas";
 import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 
 export const dynamic = "force-dynamic";
@@ -36,13 +37,13 @@ function competencia(valor: string) {
 }
 
 function statusOperacional(item: CompetenciaDashboard) {
-  if (item.homologacao_status === "APROVADA") return "Homologada";
+  if (item.homologacao_status === "APROVADA") return "Fechamento aprovado";
   if (item.status_folhas !== "FECHADA") return "Folhas pendentes";
   if (item.pagamentos_conformes !== item.pagamentos_total) {
     return "Pagamentos bloqueados";
   }
   if (item.obrigacao_status !== "EMITIDA") return "Obrigação pendente";
-  return "Aguardando homologação";
+  return "Aguardando fechamento";
 }
 
 function bloqueioAtual(item: CompetenciaDashboard) {
@@ -58,7 +59,7 @@ function bloqueioAtual(item: CompetenciaDashboard) {
     return {
       titulo: "Relação de pagamentos bloqueada",
       texto: `${item.pagamentos_total - item.pagamentos_conformes} pagamento(s) possuem dados bancários incompletos ou precisam ser atualizados.`,
-      href: `/homologacoes?competencia=${item.competencia.slice(0, 7)}`,
+      href: rotaComCompetencia(ROTAS.fechamentoMensal, item.competencia.slice(0, 7)),
       acao: "Abrir fechamento",
     };
   }
@@ -76,14 +77,14 @@ function bloqueioAtual(item: CompetenciaDashboard) {
     return {
       titulo: "Decisão mensal pendente",
       texto: "A competência está pronta para a conferência e decisão final do RH.",
-      href: `/homologacoes?competencia=${item.competencia.slice(0, 7)}`,
-      acao: "Abrir homologação",
+      href: rotaComCompetencia(ROTAS.fechamentoMensal, item.competencia.slice(0, 7)),
+      acao: "Abrir fechamento",
     };
   }
   return {
     titulo: "Competência operacionalmente concluída",
-    texto: "Folhas, pagamentos, obrigação e homologação estão conformes.",
-    href: `/homologacoes?competencia=${item.competencia.slice(0, 7)}`,
+    texto: "Folhas, pagamentos, obrigação e fechamento estão conformes.",
+    href: rotaComCompetencia(ROTAS.fechamentoMensal, item.competencia.slice(0, 7)),
     acao: "Abrir dossiê",
   };
 }
@@ -300,7 +301,7 @@ export default async function Home({
                     <td>
                       <Link
                         className="row-action"
-                        href={`/homologacoes?competencia=${item.competencia.slice(0, 7)}`}
+                        href={rotaComCompetencia(ROTAS.fechamentoMensal, item.competencia.slice(0, 7))}
                         aria-label={`Abrir ${competencia(item.competencia)}`}
                       >
                         <ArrowRight size={17} />
@@ -336,7 +337,7 @@ export default async function Home({
               <dd>{moeda(atual.obrigacao_total)}</dd>
             </div>
             <div>
-              <dt>Homologação</dt>
+              <dt>Fechamento mensal</dt>
               <dd>
                 {atual.homologacao_status?.replaceAll("_", " ") ?? "Pendente"}
               </dd>
@@ -407,7 +408,7 @@ export default async function Home({
           <li className={concluida ? "done" : "attention"}>
             <span>5</span>
             <div>
-              <strong>Homologação mensal</strong>
+              <strong>Fechamento mensal</strong>
               <small>
                 {atual.homologacao_status ?? "Versão ainda não aprovada"}
               </small>
@@ -442,7 +443,7 @@ export default async function Home({
           <ArrowRight />
         </Link>
         <Link
-          href={`/homologacoes?competencia=${competenciaAtual}`}
+          href={rotaComCompetencia(ROTAS.fechamentoMensal, competenciaAtual)}
           className="quick-card"
         >
           <ClipboardCheck />

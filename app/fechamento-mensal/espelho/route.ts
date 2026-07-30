@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
         "Content-Disposition":
-          `attachment; filename="dossie-homologacao-${competencia}-v${atual.versao}.csv"`,
+          `attachment; filename="dossie-fechamento-${competencia}-v${atual.versao}.csv"`,
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
         "X-Content-SHA256": hash,

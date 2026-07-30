@@ -173,8 +173,8 @@ export async function importarHomologacao(formData: FormData) {
     resultado = registrada.reutilizada
       ? "Este arquivo já havia sido homologado para a revisão atual."
       : registrada.status === "CONCILIADA"
-        ? `Homologação concluída: ${registrada.conciliados} item(ns) conciliado(s), sem divergências.`
-        : `Homologação concluída com ${registrada.divergentes} divergência(s) para análise.`;
+        ? `Conferência concluída: ${registrada.conciliados} item(ns) conciliado(s), sem divergências.`
+        : `Conferência concluída com ${registrada.divergentes} divergência(s) para análise.`;
   } catch (error) {
     erro = mensagem(error);
   }

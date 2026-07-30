@@ -101,7 +101,7 @@ export default async function EventosPage({
   } catch {
     return (
       <AppShell
-        title="Eventos"
+        title="Eventos e lançamentos"
         eyebrow="Rubricas e lançamentos"
         organization="Não configurada"
       >
@@ -126,7 +126,7 @@ export default async function EventosPage({
 
   return (
     <AppShell
-      title="Eventos"
+      title="Eventos e lançamentos"
       eyebrow="Rubricas e recorrências"
       organization={dados.empresa.nomeFantasia ?? dados.empresa.razaoSocial}
     >

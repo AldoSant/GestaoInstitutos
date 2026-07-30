@@ -18,16 +18,16 @@ const paginas = [
   "/cadastros",
   "/prestadores",
   "/vinculos",
-  "/instrumentos",
+  "/termos-e-metas",
   "/medicoes?competencia=2026-06",
   "/eventos",
   "/folhas",
   "/folhas/nova?competencia=2026-06",
   "/obrigacoes?competencia=2026-06",
   "/fgts?competencia=2026-06",
-  "/homologacoes?competencia=2026-06",
-  "/consolidacoes?competencia=2026-06",
-  "/consolidacoes/simulacoes?competencia=2026-06",
+  "/fechamento-mensal?competencia=2026-06",
+  "/conferencia-entre-folhas?competencia=2026-06",
+  "/conferencia-entre-folhas/simulacoes?competencia=2026-06",
   "/administracao",
   "/migracoes?competencia=2026-06",
   "/parametros",
@@ -164,6 +164,76 @@ test("parâmetros separa consulta e publicação condicional do enquadramento", 
   expect(largura.documento).toBeLessThanOrEqual(largura.viewport);
 });
 
+test("menu, títulos e URLs usam a mesma linguagem operacional", async ({ page }) => {
+  await autenticar(page);
+  const destinos = [
+    { href: "/folhas", menu: "Folhas mensais", titulo: "Folhas mensais" },
+    { href: "/cadastros", menu: "Cadastros", titulo: "Cadastros" },
+    { href: "/termos-e-metas", menu: "Termos e metas", titulo: "Termos e metas" },
+    {
+      href: "/obrigacoes",
+      menu: "Obrigações e guias",
+      titulo: "Obrigações e guias",
+    },
+    {
+      href: "/fechamento-mensal",
+      menu: "Fechamento mensal",
+      titulo: "Fechamento mensal",
+    },
+    {
+      href: "/conferencia-entre-folhas",
+      menu: "Conferência entre folhas",
+      titulo: "Conferência entre folhas",
+    },
+  ] as const;
+
+  for (const destino of destinos) {
+    await page.goto(destino.href);
+    await expect(page.locator(`a.nav-link[href="${destino.href}"]`)).toContainText(
+      destino.menu,
+    );
+    await expect(
+      page.getByRole("heading", { level: 1, name: destino.titulo }),
+    ).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe(destino.href);
+  }
+
+  await page.goto("/administracao");
+  await expect(page.locator('a.admin-card[href="/fechamento-mensal"]')).toHaveCount(0);
+  await expect(
+    page.locator('a.admin-card[href="/conferencia-entre-folhas"]'),
+  ).toHaveCount(0);
+});
+
+test("URLs antigas preservam a competência e redirecionam para o nome canônico", async ({
+  page,
+}) => {
+  await autenticar(page);
+  const legadas = [
+    {
+      antiga: "/homologacoes?competencia=2026-06",
+      atual: "/fechamento-mensal?competencia=2026-06",
+    },
+    {
+      antiga: "/consolidacoes?competencia=2026-06",
+      atual: "/conferencia-entre-folhas?competencia=2026-06",
+    },
+    {
+      antiga: "/consolidacoes/simulacoes?competencia=2026-06",
+      atual: "/conferencia-entre-folhas/simulacoes?competencia=2026-06",
+    },
+    {
+      antiga: "/instrumentos",
+      atual: "/termos-e-metas",
+    },
+  ] as const;
+
+  for (const rota of legadas) {
+    await page.goto(rota.antiga);
+    await expect(page).toHaveURL(new RegExp(`${rota.atual.replace("?", "\\?")}$`));
+  }
+});
+
 test("a ficha completa da pessoa pode ser carregada e persistida", async ({
   page,
 }) => {
@@ -277,12 +347,12 @@ test("os cadastros operacionais existentes podem ser abertos e salvos", async ({
       salvar: "Salvar vínculo",
     },
     {
-      pagina: "/instrumentos",
+      pagina: "/termos-e-metas",
       destino: 'a[href*="editar=termo:"]',
       salvar: "Salvar termo",
     },
     {
-      pagina: "/instrumentos",
+      pagina: "/termos-e-metas",
       destino: 'a[href*="editar=meta:"]',
       salvar: "Salvar meta",
     },

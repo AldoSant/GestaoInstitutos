@@ -83,7 +83,7 @@ export default async function ObrigacoesPage({
     ]);
   } catch {
     return (
-      <AppShell title="Obrigações" eyebrow="Apuração previdenciária" organization="Não configurada">
+      <AppShell title="Obrigações e guias" eyebrow="Apuração previdenciária" organization="Não configurada">
         <section className="alert-box danger">
           <Database size={22} />
           <div><strong>Apuração indisponível</strong><p>Não foi possível carregar as obrigações. Tente novamente.</p></div>
@@ -105,7 +105,7 @@ export default async function ObrigacoesPage({
 
   return (
     <AppShell
-      title="Obrigações"
+      title="Obrigações e guias"
       eyebrow="Apuração previdenciária"
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
       notice={{

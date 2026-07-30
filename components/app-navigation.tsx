@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { sair } from "@/app/login/actions";
+import { ROTAS } from "@/lib/rotas";
 
 type ItemNavegacao = {
   href: string;
@@ -31,17 +32,17 @@ type ItemNavegacao = {
 };
 
 const pessoas: ItemNavegacao[] = [
-  { href: "/cadastros", label: "Pessoas", icon: Database },
-  { href: "/prestadores", label: "Prestadores", icon: UsersRound },
-  { href: "/vinculos", label: "Vínculos", icon: Link2 },
-  { href: "/instrumentos", label: "Termos e metas", icon: FileText },
-  { href: "/medicoes", label: "Medições", icon: ListChecks },
-  { href: "/eventos", label: "Eventos e lançamentos", icon: ReceiptText },
+  { href: ROTAS.pessoas, label: "Cadastros", icon: Database },
+  { href: ROTAS.prestadores, label: "Prestadores", icon: UsersRound },
+  { href: ROTAS.vinculos, label: "Vínculos", icon: Link2 },
+  { href: ROTAS.instrumentos, label: "Termos e metas", icon: FileText },
+  { href: ROTAS.medicoes, label: "Medições", icon: ListChecks },
+  { href: ROTAS.eventos, label: "Eventos e lançamentos", icon: ReceiptText },
 ];
 
 const conferencia: ItemNavegacao[] = [
-  { href: "/homologacoes", label: "Fechamento mensal", icon: ClipboardCheck },
-  { href: "/consolidacoes", label: "Conferência entre folhas", icon: GitMerge },
+  { href: ROTAS.fechamentoMensal, label: "Fechamento mensal", icon: ClipboardCheck },
+  { href: ROTAS.conferenciaEntreFolhas, label: "Conferência entre folhas", icon: GitMerge },
 ];
 
 function estaAtivo(pathname: string, href: string) {
@@ -115,9 +116,9 @@ export function NavegacaoPrincipal({
   return (
     <nav className="nav-list" aria-label="Navegação principal">
       <span className="nav-section-label">Operação</span>
-      <NavLink item={{ href: "/", label: "Visão geral", icon: Gauge }} />
+      <NavLink item={{ href: ROTAS.inicio, label: "Visão geral", icon: Gauge }} />
       <NavLink
-        item={{ href: "/folhas", label: "Folha mensal", icon: BadgeDollarSign }}
+        item={{ href: ROTAS.folhaMensal, label: "Folhas mensais", icon: BadgeDollarSign }}
       />
       <GrupoNavegacao
         label="Pessoas e vínculos"
@@ -126,7 +127,7 @@ export function NavegacaoPrincipal({
       />
       <NavLink
         item={{
-          href: "/obrigacoes",
+          href: ROTAS.obrigacoes,
           label: "Obrigações e guias",
           icon: FileCheck2,
         }}
@@ -141,7 +142,7 @@ export function NavegacaoPrincipal({
           <span className="nav-section-label nav-admin-label">Gestão</span>
           <NavLink
             item={{
-              href: "/administracao",
+              href: ROTAS.administracao,
               label: "Administração",
               icon: Settings2,
             }}
@@ -177,7 +178,7 @@ export function BarraLateral({
       </div>
       <NavegacaoPrincipal administrador={administrador} />
       <div className="sidebar-bottom">
-        <Link href="/ajuda" className="nav-link">
+        <Link href={ROTAS.ajuda} className="nav-link">
           <CircleHelp size={19} />
           <span>Ajuda</span>
         </Link>

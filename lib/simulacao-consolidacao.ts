@@ -100,8 +100,8 @@ export function normalizarTransicaoSimulacao({
 export function rotuloStatusSimulacao(status: StatusSimulacaoFiscal) {
   return {
     SIMULADA: "Simulada",
-    EM_HOMOLOGACAO: "Em homologação",
-    HOMOLOGADA: "Homologada",
+    EM_HOMOLOGACAO: "Em validação pelo RH",
+    HOMOLOGADA: "Aprovada pelo RH",
     REJEITADA: "Rejeitada",
     INVALIDADA: "Invalidada",
   }[status];

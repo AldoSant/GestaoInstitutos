@@ -23,6 +23,7 @@ import { carregarFolha } from "@/db/folhas";
 import { carregarHomologacoesFolha } from "@/db/homologacoes";
 import { nomeRegimePrevidenciario } from "@/lib/enquadramento-previdenciario";
 import { descreverProcessamento } from "@/lib/processamento-operacional";
+import { ROTAS, rotaComCompetencia } from "@/lib/rotas";
 import {
   cancelar,
   fechar,
@@ -345,7 +346,7 @@ export default async function FolhaDetalhePage({
                 <div>
                   <strong>Prepare pagamentos e obrigações</strong>
                   <p>
-                    Resolva contas pendentes e gere a relação bancária antes da homologação mensal.
+                    Resolva contas pendentes e gere a relação bancária antes do fechamento mensal.
                   </p>
                 </div>
                 <Link className="button primary" href={`/folhas/${folha.id}/pagamentos`}>
@@ -414,9 +415,9 @@ export default async function FolhaDetalhePage({
                   {estadoProcessamento?.categoria === "CONSOLIDACAO" && (
                     <Link
                       className="button secondary"
-                      href={`/consolidacoes?competencia=${folha.competencia.slice(0, 7)}`}
+                      href={rotaComCompetencia(ROTAS.conferenciaEntreFolhas, folha.competencia.slice(0, 7))}
                     >
-                      Revisar consolidação
+                      Conferir entre folhas
                     </Link>
                   )}
                   <form action={tentarNovamenteProcessamento}>
@@ -683,7 +684,7 @@ export default async function FolhaDetalhePage({
         <section className="panel">
           <div className="panel-header">
             <div>
-              <span className="section-kicker">Homologação paralela</span>
+              <span className="section-kicker">Conferência por arquivo</span>
               <h2>Comparação com GIW ou planilha do RH</h2>
               <p>
                 Importe os totais de referência. O sistema compara por matrícula,
@@ -759,7 +760,7 @@ export default async function FolhaDetalhePage({
                 </button>
                 <Link
                   className="button secondary"
-                  href={`/folhas/${folha.id}/homologacao/modelo`}
+                  href={`/folhas/${folha.id}/conferencia/modelo`}
                 >
                   <Download size={16} /> Baixar modelo CSV
                 </Link>
@@ -858,7 +859,7 @@ export default async function FolhaDetalhePage({
           <section className="panel">
             <div className="panel-header">
               <div>
-                <span className="section-kicker">Auditoria de homologação</span>
+                <span className="section-kicker">Auditoria da conferência por arquivo</span>
                 <h2>Referências já comparadas</h2>
                 <p>
                   Cada lote é imutável e preserva os hashes da Folha e do

@@ -108,7 +108,7 @@ export async function solicitarRetificacaoFiscal(formData: FormData) {
         : "Não foi possível iniciar a retificação.";
   }
   revalidatePath("/obrigacoes");
-  revalidatePath("/homologacoes");
+  revalidatePath("/fechamento-mensal");
   const params = new URLSearchParams({
     [erro ? "erro" : "sucesso"]: erro || sucesso,
   });

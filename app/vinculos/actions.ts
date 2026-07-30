@@ -165,7 +165,7 @@ export async function salvarVinculo(formData: FormData) {
   if (erro) redirect(destino(erro, true));
   revalidatePath("/vinculos");
   revalidatePath("/prestadores");
-  revalidatePath("/instrumentos");
+  revalidatePath("/termos-e-metas");
   redirect(destino(validacao.dados.id ? "Vínculo atualizado." : "Vínculo cadastrado."));
 }
 
@@ -228,6 +228,6 @@ export async function alternarVinculo(formData: FormData) {
   if (erro) redirect(destino(erro, true));
   revalidatePath("/vinculos");
   revalidatePath("/prestadores");
-  revalidatePath("/instrumentos");
+  revalidatePath("/termos-e-metas");
   redirect(destino(ativo ? "Vínculo ativado." : "Vínculo inativado."));
 }

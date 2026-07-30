@@ -118,6 +118,6 @@ test("bloqueia salto, reabertura terminal e decisão sem evidência", () => {
 
 test("apresenta rótulos operacionais", () => {
   assert.equal(rotuloStatusSimulacao("SIMULADA"), "Simulada");
-  assert.equal(rotuloStatusSimulacao("EM_HOMOLOGACAO"), "Em homologação");
-  assert.equal(rotuloStatusSimulacao("HOMOLOGADA"), "Homologada");
+  assert.equal(rotuloStatusSimulacao("EM_HOMOLOGACAO"), "Em validação pelo RH");
+  assert.equal(rotuloStatusSimulacao("HOMOLOGADA"), "Aprovada pelo RH");
 });

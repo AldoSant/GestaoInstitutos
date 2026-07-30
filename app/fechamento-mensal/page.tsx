@@ -102,14 +102,14 @@ export default async function HomologacoesPage({
     } catch {
       return (
         <AppShell
-          title="Homologação mensal"
+          title="Fechamento mensal"
           eyebrow="Execução paralela"
           organization="Não configurada"
         >
           <section className="alert-box danger">
             <AlertTriangle size={22} />
             <div>
-              <strong>Homologação indisponível</strong>
+              <strong>Fechamento indisponível</strong>
               <p>{erro}</p>
             </div>
           </section>
@@ -130,7 +130,7 @@ export default async function HomologacoesPage({
 
   return (
     <AppShell
-      title="Homologação mensal"
+      title="Fechamento mensal"
       eyebrow="Execução paralela e corte"
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
       notice={{
@@ -143,7 +143,7 @@ export default async function HomologacoesPage({
         versaoAtual ? (
           <Link
             className="button secondary"
-            href={`/homologacoes/espelho?competencia=${encodeURIComponent(competencia)}`}
+            href={`/fechamento-mensal/espelho?competencia=${encodeURIComponent(competencia)}`}
           >
             <Download size={16} /> Exportar dossiê
           </Link>
@@ -297,7 +297,7 @@ export default async function HomologacoesPage({
                   </td>
                   <td>
                     <Link
-                      href={`/homologacoes?competencia=${item.competencia}`}
+                      href={`/fechamento-mensal?competencia=${item.competencia}`}
                     >
                       Abrir competência
                     </Link>

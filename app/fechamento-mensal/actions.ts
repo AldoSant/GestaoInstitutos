@@ -13,7 +13,7 @@ function destino(competencia: string, texto: string, erro = false) {
     competencia,
     [erro ? "erro" : "sucesso"]: texto,
   });
-  return `/homologacoes?${params.toString()}`;
+  return `/fechamento-mensal?${params.toString()}`;
 }
 
 function mensagem(error: unknown) {
@@ -22,12 +22,12 @@ function mensagem(error: unknown) {
       return "A mesma versão mensal já foi materializada.";
     }
     if (error.code === "23514") {
-      return "O banco rejeitou um estado inconsistente da homologação.";
+      return "O banco rejeitou um estado inconsistente do fechamento.";
     }
   }
   return error instanceof Error
     ? error.message
-    : "Não foi possível concluir a homologação da competência.";
+    : "Não foi possível concluir o fechamento da competência.";
 }
 
 export async function congelarCompetencia(formData: FormData) {
@@ -52,7 +52,7 @@ export async function congelarCompetencia(formData: FormData) {
   } catch (error) {
     erro = mensagem(error);
   }
-  revalidatePath("/homologacoes");
+  revalidatePath("/fechamento-mensal");
   redirect(destino(competencia, erro || resultado, Boolean(erro)));
 }
 
@@ -82,6 +82,6 @@ export async function decidirCompetencia(formData: FormData) {
   } catch (error) {
     erro = mensagem(error);
   }
-  revalidatePath("/homologacoes");
+  revalidatePath("/fechamento-mensal");
   redirect(destino(competencia, erro || resultado, Boolean(erro)));
 }
