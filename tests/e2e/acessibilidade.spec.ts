@@ -19,27 +19,21 @@ async function auditar(page: Page, contexto: string) {
   const bloqueios = resultado.violations.filter((item) =>
     ["serious", "critical"].includes(item.impact ?? ""),
   );
-  const detalhes = bloqueios
-    .map(
-      (item) =>
-        `${item.id}: ${item.help} (${item.nodes
-          .map((node) => node.target.join(" "))
-          .join(", ")})`,
-    )
-    .join("\n");
-
-  expect(
-    bloqueios,
-    `${contexto} possui violações sérias ou críticas:\n${detalhes}`,
-  ).toEqual([]);
+  return bloqueios.map(
+    (item) =>
+      `${contexto} — ${item.id}: ${item.help} (${item.nodes
+        .map((node) => node.target.join(" "))
+        .join(", ")})`,
+  );
 }
 
 test("telas críticas não possuem violações sérias de acessibilidade", async ({
   page,
 }) => {
+  const problemas: string[] = [];
   await page.goto("login");
   await esperarPagina(page, "Entrar");
-  await auditar(page, "Login");
+  problemas.push(...(await auditar(page, "Login")));
 
   await page.getByLabel("Login").fill(login!);
   await page.getByLabel("Senha").fill(senha!);
@@ -58,6 +52,11 @@ test("telas críticas não possuem violações sérias de acessibilidade", async
   for (const tela of telas) {
     await page.goto(tela.caminho);
     await esperarPagina(page, tela.titulo);
-    await auditar(page, tela.titulo);
+    problemas.push(...(await auditar(page, tela.titulo)));
   }
+
+  expect(
+    problemas,
+    `Foram encontradas violações sérias ou críticas:\n${problemas.join("\n")}`,
+  ).toEqual([]);
 });
