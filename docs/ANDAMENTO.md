@@ -1,5 +1,80 @@
 # Andamento do MVP
 
+## Pauta prioritária — demonstrativo mensal de Camamu (30/07/2026)
+
+O contrato de Camamu usa a palavra **Folha** para um demonstrativo de prestação de
+contas municipal. Não é uma folha trabalhista convencional: na mesma competência ele
+precisa apresentar pagamentos a PJs, as retenções de cada pagamento e as guias de INSS
+ou demais obrigações a recolher.
+
+### Falha confirmada
+
+A migração `0034_payroll-eligibility.sql` e os caminhos de criação/processamento atuais
+codificaram a regra provisória `PJ = fora da folha`. Ela resolveu o caso do cadastro do
+INSS tratado como beneficiário, mas introduziu uma regressão: também exclui pagamentos
+PJ legítimos do demonstrativo de Camamu. Essa regra deve ser substituída, não remendada
+por preenchimento de cadastros.
+
+### Modelo a implementar
+
+Separar a natureza operacional da linha do demonstrativo — independente de PF/PJ:
+
+| Natureza | Papel no demonstrativo | Tratamento |
+|---|---|---|
+| `PAGAMENTO_PRESTADOR` | Beneficiário efetivamente pago (PF ou PJ) | compõe valor bruto, retenções e líquido/remessa |
+| `RETENCAO_TRIBUTARIA` | Tributo deduzido de um pagamento | exige vínculo ao pagamento de origem; não é beneficiário |
+| `GUIA_RECOLHIMENTO` | INSS/DARF e demais guia/obrigação | compõe total a recolher e evidência; não passa pelo motor de remuneração |
+
+O cadastro do INSS/matrícula 457 deve resultar em `GUIA_RECOLHIMENTO`; ele não deve
+exigir categoria eSocial, NIT, NF ou conta de beneficiário. Uma PJ prestadora, por sua
+vez, deve permanecer `PAGAMENTO_PRESTADOR`, exigir os dados fiscais aplicáveis e entrar
+normalmente na relação de pagamentos.
+
+### Entregas para a próxima sessão técnica
+
+1. Substituir `participa_folha` como único sinal por uma classificação versionada de
+   natureza/participação, com migração auditável e reversível dos vínculos existentes.
+   Não inferir silenciosamente: o lote legado deve gerar fila de revisão para itens
+   ambíguos.
+2. Dividir o processamento em três rotas. O motor atual de eSocial/INSS/IRRF para PF
+   só atende categorias previdenciárias suportadas; pagamento PJ precisa de rotina
+   fiscal própria (NF, serviço, regime, retenções), e guias precisam de registro e
+   conciliação da obrigação, sem criar `folha_item` de prestador.
+3. Reestruturar o relatório/CSV/A4 de Camamu para exibir, em blocos conciliáveis,
+   pagamentos brutos/líquidos, retenções por pagamento e guias a recolher. Os totais
+   precisam bater: bruto − retenções = líquido a pagar; retenções vinculadas + guias
+   independentes = obrigações a recolher.
+4. Ajustar pré-validação, opções de criação, importação GIW, edição de vínculo e busca
+   para respeitarem a natureza, sem bloquear PJs legítimas nem transformar guia em
+   prestador.
+5. Criar uma competência de homologação de Camamu com ao menos uma PJ paga, uma retenção
+   e uma guia INSS; validar histórico, reprocessamento idempotente, fechamento e
+   exportação antes de publicar. Definir a origem normativa e a matriz de incidências
+   fiscais da PJ com a contabilidade/município antes de automatizar alíquotas.
+
+### Pendências que não devem ser mascaradas
+
+- Manuel (458) e Jaqueline (461) continuam pendentes de enquadramento previdenciário/
+  eSocial real. Não preencher categoria 701 ou NIT fictícios; se forem empregados ou
+  outra categoria, a rota PF atual não é necessariamente aplicável.
+- A regra fiscal de PJ ainda não está homologada por natureza de serviço, regime e
+  documento fiscal. O sistema pode registrar e conferir esses dados, mas não deve
+  calcular retenções automaticamente sem a matriz aprovada.
+- A autenticação atual usa uma única conta administradora e não identifica o operador
+  nas trilhas de auditoria. Para uso colaborativo, perfis e autoria individual são uma
+  pendência de segurança/controle, separada da correção Camamu.
+
+### Critérios de aceite
+
+- PJ de Camamu é exibida e totalizada como pagamento; INSS é exibido somente como guia.
+- Nenhuma guia é processada pelo motor de contribuinte/eSocial; nenhuma PJ é bloqueada
+  por ser PJ.
+- Um lançamento classificado preserva origem, responsável, evidência e histórico de
+  alteração; itens sem classificação ficam bloqueados de fechar, não recebem um tipo
+  presumido.
+- Relatório final e CSV reconciliam centavo a centavo e a competência pode ser
+  reprocessada sem duplicar pagamentos, retenções ou guias.
+
 ## Visão geral
 
 **Estimativa do MVP ampliado: 72% concluído. Prontidão operacional com dados reais:
