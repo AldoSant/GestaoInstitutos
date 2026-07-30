@@ -198,6 +198,58 @@ export async function reservarProximaTarefa(
   });
 }
 
+export async function reservarTarefaPorChave({
+  trabalhadorId,
+  empresaId,
+  tipo,
+  chaveIdempotencia,
+}: {
+  trabalhadorId: string;
+  empresaId: string;
+  tipo: string;
+  chaveIdempotencia: string;
+}) {
+  const trabalhador = validarTexto(trabalhadorId, "trabalhadorId", 120);
+  const empresa = validarTexto(empresaId, "empresaId", 36);
+  const tipoNormalizado = validarTexto(tipo, "tipo", 60);
+  const chaveNormalizada = validarTexto(
+    chaveIdempotencia,
+    "chaveIdempotencia",
+    180,
+  );
+  return emTransacao(async (client) => {
+    const resultado = await client.query<LinhaTarefa>(
+      `with alvo as (
+         select id
+           from tarefa_processamento
+          where empresa_id = $2::uuid
+            and tipo = $3
+            and chave_idempotencia = $4
+            and status in ('PENDENTE', 'FALHA')
+            and tentativas < max_tentativas
+            and disponivel_em <= now()
+          for update skip locked
+       )
+       update tarefa_processamento tarefa
+          set status = 'EXECUTANDO',
+              tentativas = tarefa.tentativas + 1,
+              bloqueada_em = now(),
+              bloqueada_por = $1,
+              iniciada_em = coalesce(tarefa.iniciada_em, now()),
+              concluida_em = null,
+              atualizado_em = now()
+         from alvo
+        where tarefa.id = alvo.id
+       returning ${colunasTarefa
+         .split(",")
+         .map((coluna) => `tarefa.${coluna.trim()}`)
+         .join(", ")}`,
+      [trabalhador, empresa, tipoNormalizado, chaveNormalizada],
+    );
+    return resultado.rows[0] ? mapearTarefa(resultado.rows[0]) : null;
+  });
+}
+
 export async function concluirTarefa(
   tarefaId: string,
   trabalhadorId: string,
