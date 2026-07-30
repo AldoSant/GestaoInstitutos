@@ -130,10 +130,20 @@ test("parâmetros separa consulta e publicação condicional do enquadramento", 
   ).toBeVisible();
   await expect(page.locator("form.parameter-form")).toHaveCount(0);
   await expect(
-    page.getByText("Regime geral — Lucro Real, Presumido ou Arbitrado"),
+    page.getByRole("heading", {
+      name: "Regime geral — Lucro Real, Presumido ou Arbitrado",
+      level: 4,
+    }),
   ).toBeVisible();
-  await expect(page.getByText("Simples Nacional — Anexo IV")).toBeVisible();
-  await expect(page.getByText("Contribuição sobre a receita bruta (CPRB)")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Simples Nacional — Anexo IV", level: 4 }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Contribuição sobre a receita bruta (CPRB)",
+      level: 4,
+    }),
+  ).toBeVisible();
 
   await page.getByRole("link", { name: "Publicar nova vigência" }).click();
   const formulario = page.locator("form.parameter-form");
