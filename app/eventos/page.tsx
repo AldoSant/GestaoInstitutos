@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { caminhoAplicacao } from "@/lib/base-path";
 import { ModalShell } from "@/components/modal-shell";
 import { StatusBadge } from "@/components/ui";
 import { carregarEventos } from "@/db/eventos";
@@ -182,7 +183,7 @@ export default async function EventosPage({
           <h2>Eventos e lançamentos por Vínculo</h2>
           <p>Natureza, incidências e vigência são validadas antes de chegar ao motor.</p>
         </div>
-        <form action="/eventos" method="get" className="search-field">
+        <form action={caminhoAplicacao("/eventos")} method="get" className="search-field">
           <Search size={17} />
           <label className="sr-only" htmlFor="busca-eventos">Buscar Eventos</label>
           <input id="busca-eventos" name="busca" type="search" defaultValue={busca} placeholder="Evento, prestador, termo ou meta" />
