@@ -21,6 +21,7 @@ import { StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { carregarFolha } from "@/db/folhas";
 import { carregarHomologacoesFolha } from "@/db/homologacoes";
+import { nomeRegimePrevidenciario } from "@/lib/enquadramento-previdenciario";
 import { descreverProcessamento } from "@/lib/processamento-operacional";
 import {
   cancelar,
@@ -247,11 +248,7 @@ export default async function FolhaDetalhePage({
             <LockKeyhole size={17} />
             <span>Previdência</span>
             <strong>
-              {folha.regime_previdenciario === "BENEFICENTE_IMUNE"
-                ? "Imune · segurado 20%"
-                : folha.regime_previdenciario === "EMPRESA_GERAL"
-                  ? "Geral · segurado 11%"
-                  : "Aguardando"}
+              {nomeRegimePrevidenciario(folha.regime_previdenciario)}
             </strong>
           </div>
         </section>

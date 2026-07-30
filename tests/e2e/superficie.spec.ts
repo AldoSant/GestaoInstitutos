@@ -120,6 +120,40 @@ test("todas as páginas e seus controles básicos estão operacionais", async ({
   expect(errosDaPagina, "Erros JavaScript durante a navegação").toEqual([]);
 });
 
+test("parâmetros separa consulta e publicação condicional do enquadramento", async ({
+  page,
+}) => {
+  await autenticar(page);
+  await page.goto("parametros");
+  await expect(
+    page.getByRole("heading", { name: "Enquadramento previdenciário" }),
+  ).toBeVisible();
+  await expect(page.locator("form.parameter-form")).toHaveCount(0);
+  await expect(
+    page.getByText("Regime geral — Lucro Real, Presumido ou Arbitrado"),
+  ).toBeVisible();
+  await expect(page.getByText("Simples Nacional — Anexo IV")).toBeVisible();
+  await expect(page.getByText("Contribuição sobre a receita bruta (CPRB)")).toBeVisible();
+
+  await page.getByRole("link", { name: "Publicar nova vigência" }).click();
+  const formulario = page.locator("form.parameter-form");
+  await expect(formulario).toBeVisible();
+  await expect(formulario.locator('[name="cebasNumero"]')).toHaveCount(0);
+  await formulario.locator('[name="regime"]').selectOption("BENEFICENTE_IMUNE");
+  await expect(formulario.locator('[name="cebasNumero"]')).toBeVisible();
+  await expect(formulario.locator('[name="cebasInicio"]')).toBeVisible();
+  await expect(formulario.locator('[name="cebasFim"]')).toBeVisible();
+  await formulario.locator('[name="regime"]').selectOption("SIMPLES_SUBSTITUIDA");
+  await expect(formulario.locator('[name="cebasNumero"]')).toHaveCount(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const largura = await page.evaluate(() => ({
+    documento: document.documentElement.scrollWidth,
+    viewport: window.innerWidth,
+  }));
+  expect(largura.documento).toBeLessThanOrEqual(largura.viewport);
+});
+
 test("a ficha completa da pessoa pode ser carregada e persistida", async ({
   page,
 }) => {

@@ -776,7 +776,10 @@ export const enquadramentosPrevidenciarios = pgTable(
     ),
     check(
       "ck_enquadramento_regime",
-      sql`${table.regime} in ('EMPRESA_GERAL', 'BENEFICENTE_IMUNE')`,
+      sql`${table.regime} in (
+        'EMPRESA_GERAL', 'SIMPLES_SUBSTITUIDA', 'SIMPLES_ANEXO_IV',
+        'BENEFICENTE_IMUNE', 'ADMINISTRACAO_PUBLICA', 'INSTITUICAO_FINANCEIRA'
+      )`,
     ),
     check(
       "ck_enquadramento_vigencia",
@@ -799,6 +802,27 @@ export const enquadramentosPrevidenciarios = pgTable(
         and ${table.aliquotaSeguradoDenominador} = 100
         and ${table.aliquotaPatronalNumerador} = 20
         and ${table.aliquotaPatronalDenominador} = 100
+        and ${table.cebasNumero} is null
+        and ${table.cebasInicio} is null
+        and ${table.cebasFim} is null
+      ) or (
+        ${table.regime} = 'SIMPLES_SUBSTITUIDA'
+        and ${table.aliquotaSeguradoNumerador} = 11
+        and ${table.aliquotaSeguradoDenominador} = 100
+        and ${table.aliquotaPatronalNumerador} = 0
+        and ${table.aliquotaPatronalDenominador} = 100
+        and ${table.cebasNumero} is null
+        and ${table.cebasInicio} is null
+        and ${table.cebasFim} is null
+      ) or (
+        ${table.regime} = 'SIMPLES_ANEXO_IV'
+        and ${table.aliquotaSeguradoNumerador} = 11
+        and ${table.aliquotaSeguradoDenominador} = 100
+        and ${table.aliquotaPatronalNumerador} = 20
+        and ${table.aliquotaPatronalDenominador} = 100
+        and ${table.cebasNumero} is null
+        and ${table.cebasInicio} is null
+        and ${table.cebasFim} is null
       ) or (
         ${table.regime} = 'BENEFICENTE_IMUNE'
         and ${table.aliquotaSeguradoNumerador} = 20
@@ -810,6 +834,24 @@ export const enquadramentosPrevidenciarios = pgTable(
         and ${table.cebasFim} is not null
         and ${table.cebasInicio} <= ${table.inicioVigencia}
         and ${table.cebasFim} >= ${table.fimVigencia}
+      ) or (
+        ${table.regime} = 'ADMINISTRACAO_PUBLICA'
+        and ${table.aliquotaSeguradoNumerador} = 11
+        and ${table.aliquotaSeguradoDenominador} = 100
+        and ${table.aliquotaPatronalNumerador} = 20
+        and ${table.aliquotaPatronalDenominador} = 100
+        and ${table.cebasNumero} is null
+        and ${table.cebasInicio} is null
+        and ${table.cebasFim} is null
+      ) or (
+        ${table.regime} = 'INSTITUICAO_FINANCEIRA'
+        and ${table.aliquotaSeguradoNumerador} = 11
+        and ${table.aliquotaSeguradoDenominador} = 100
+        and ${table.aliquotaPatronalNumerador} = 225
+        and ${table.aliquotaPatronalDenominador} = 1000
+        and ${table.cebasNumero} is null
+        and ${table.cebasInicio} is null
+        and ${table.cebasFim} is null
       )`,
     ),
   ],
