@@ -150,6 +150,20 @@ export default async function VinculosPage({
           </StatusBadge>
         </div>
 
+        {editado && (!editado.atividadeId || !editado.lotacaoId) && (
+          <section className="alert-box">
+            <Database size={20} />
+            <div>
+              <strong>Relações do cadastro legado precisam ser confirmadas</strong>
+              <p>
+                Selecione a atividade e a lotação não relacionadas antes de
+                salvar. O texto histórico foi preservado, mas não substitui a
+                chave cadastral usada pela folha.
+              </p>
+            </div>
+          </section>
+        )}
+
         <form key={editado?.id ?? "novo"} action={salvarVinculo} className="crud-form vinculo-form">
           <input type="hidden" name="id" value={editado?.id ?? ""} />
           <label className="field-wide"><span>Prestador</span><select name="prestadorId" required defaultValue={editado?.prestadorId ?? ""}><option value="" disabled>Selecione um prestador</option>{dados.prestadores.map((item) => <option key={item.id} value={item.id}>{item.nome} · matrícula {item.matricula}</option>)}</select></label>

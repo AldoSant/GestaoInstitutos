@@ -280,7 +280,23 @@ test("os cadastros operacionais existentes podem ser abertos e salvos", async ({
       }
       const obrigatorios = formulario.locator("[required]");
       for (let indice = 0; indice < (await obrigatorios.count()); indice += 1) {
-        await expect(obrigatorios.nth(indice)).not.toHaveValue("");
+        const campo = obrigatorios.nth(indice);
+        if ((await campo.inputValue()) === "") {
+          expect(
+            await campo.evaluate((elemento) => elemento.tagName),
+            `Campo textual obrigatório sem valor em ${edicao.salvar}`,
+          ).toBe("SELECT");
+          const primeiraOpcao = await campo
+            .locator('option:not([disabled]):not([value=""])')
+            .first()
+            .getAttribute("value");
+          expect(
+            primeiraOpcao,
+            `Cadastro sem opção válida para corrigir ${edicao.salvar}`,
+          ).toBeTruthy();
+          await campo.selectOption(primeiraOpcao!);
+        }
+        await expect(campo).not.toHaveValue("");
       }
 
       await botao.click();
