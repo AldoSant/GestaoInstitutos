@@ -103,13 +103,27 @@ test("normaliza a ficha operacional completa da pessoa", () => {
     nascimento: "1985-06-12",
     sexo: "feminino",
     rgUf: "ba",
+    rgEmissao: "2003-01-10",
+    estadoCivil: "Solteira",
+    naturalidade: "Salvador",
+    conselhoTipo: "COREN",
+    conselhoNumero: "12345",
+    aposentado: "on",
+    cnhCategoria: "b",
+    cnhValidade: "2030-06-12",
+    nomeFantasia: "Maria Serviços",
     email: "maria@example.com",
     celular: "(71) 99999-9999",
+    celularAlternativo: "(71) 98888-8888",
     papelPrestador: "on",
   });
   assert.equal(resultado.dados?.nascimento, "1985-06-12");
   assert.equal(resultado.dados?.sexo, "FEMININO");
   assert.equal(resultado.dados?.rgUf, "BA");
+  assert.equal(resultado.dados?.rgEmissao, "2003-01-10");
+  assert.equal(resultado.dados?.cnhCategoria, "B");
+  assert.equal(resultado.dados?.aposentado, true);
+  assert.equal(resultado.dados?.nomeFantasia, "Maria Serviços");
   assert.equal(resultado.dados?.papelPrestador, true);
   assert.equal(resultado.dados?.papelFornecedor, false);
 });
@@ -135,8 +149,16 @@ test("valida endereço, conta bancária e dependente", () => {
       pessoaId,
       cep: "40.000-000",
       municipio: "Salvador",
+      referencia: "Ao lado do posto de saúde",
     }).dados?.cep,
     "40000000",
+  );
+  assert.equal(
+    validarEnderecoPessoaCadastro({
+      pessoaId,
+      referencia: "Ao lado do posto de saúde",
+    }).dados?.referencia,
+    "Ao lado do posto de saúde",
   );
   assert.equal(
     validarContaPessoaCadastro({
@@ -153,6 +175,7 @@ test("valida endereço, conta bancária e dependente", () => {
       nome: "Dependente",
       cpf: "529.982.247-25",
       estudante: "on",
+      baixaIrrf: "2026-07-01",
     }).dados?.estudante,
     true,
   );

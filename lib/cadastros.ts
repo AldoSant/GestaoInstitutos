@@ -32,10 +32,24 @@ export type FichaPessoaCadastro = PessoaCadastro & {
   rg: string | null;
   rgOrgaoEmissor: string | null;
   rgUf: string | null;
+  rgEmissao: string | null;
+  estadoCivil: string | null;
+  naturalidade: string | null;
   inscricaoInss: string | null;
+  conselhoTipo: string | null;
+  conselhoNumero: string | null;
+  aposentado: boolean;
+  cnh: string | null;
+  cnhCategoria: string | null;
+  cnhValidade: string | null;
+  nomeFantasia: string | null;
+  representanteLegal: string | null;
+  inscricaoMunicipal: string | null;
+  inscricaoEstadual: string | null;
   email: string | null;
   telefone: string | null;
   celular: string | null;
+  celularAlternativo: string | null;
   papelPrestador: boolean;
   papelParceiro: boolean;
   papelFornecedor: boolean;
@@ -49,6 +63,7 @@ export type EnderecoPessoaCadastro = {
   bairro: string | null;
   municipio: string | null;
   complemento: string | null;
+  referencia: string | null;
 };
 
 export type ContaPessoaCadastro = {
@@ -68,6 +83,8 @@ export type DependenteCadastro = {
   nascimento: string | null;
   parentesco: string | null;
   estudante: boolean;
+  baixaSalarioFamilia: string | null;
+  baixaIrrf: string | null;
 };
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -170,10 +187,24 @@ export function validarFichaPessoaCadastro(input: {
   rg?: unknown;
   rgOrgaoEmissor?: unknown;
   rgUf?: unknown;
+  rgEmissao?: unknown;
+  estadoCivil?: unknown;
+  naturalidade?: unknown;
   inscricaoInss?: unknown;
+  conselhoTipo?: unknown;
+  conselhoNumero?: unknown;
+  aposentado?: unknown;
+  cnh?: unknown;
+  cnhCategoria?: unknown;
+  cnhValidade?: unknown;
+  nomeFantasia?: unknown;
+  representanteLegal?: unknown;
+  inscricaoMunicipal?: unknown;
+  inscricaoEstadual?: unknown;
   email?: unknown;
   telefone?: unknown;
   celular?: unknown;
+  celularAlternativo?: unknown;
   papelPrestador?: unknown;
   papelParceiro?: unknown;
   papelFornecedor?: unknown;
@@ -207,15 +238,50 @@ export function validarFichaPessoaCadastro(input: {
       erros,
     ),
     rgUf,
+    rgEmissao: dataOpcional(input.rgEmissao, "Emissão do RG", erros),
+    estadoCivil: textoOpcional(input.estadoCivil, 40, "Estado civil", erros),
+    naturalidade: textoOpcional(input.naturalidade, 120, "Naturalidade", erros),
     inscricaoInss: textoOpcional(
       input.inscricaoInss,
       30,
       "Inscrição INSS/NIT",
       erros,
     ),
+    conselhoTipo: textoOpcional(input.conselhoTipo, 20, "Conselho profissional", erros),
+    conselhoNumero: textoOpcional(input.conselhoNumero, 20, "Número do conselho", erros),
+    aposentado: marcado(input.aposentado),
+    cnh: textoOpcional(input.cnh, 20, "CNH", erros),
+    cnhCategoria: textoOpcional(input.cnhCategoria, 2, "Categoria da CNH", erros)
+      ?.toUpperCase() ?? null,
+    cnhValidade: dataOpcional(input.cnhValidade, "Validade da CNH", erros),
+    nomeFantasia: textoOpcional(input.nomeFantasia, 180, "Nome fantasia", erros),
+    representanteLegal: textoOpcional(
+      input.representanteLegal,
+      180,
+      "Representante legal",
+      erros,
+    ),
+    inscricaoMunicipal: textoOpcional(
+      input.inscricaoMunicipal,
+      30,
+      "Inscrição municipal",
+      erros,
+    ),
+    inscricaoEstadual: textoOpcional(
+      input.inscricaoEstadual,
+      30,
+      "Inscrição estadual",
+      erros,
+    ),
     email,
     telefone: textoOpcional(input.telefone, 20, "Telefone", erros),
     celular: textoOpcional(input.celular, 20, "Celular", erros),
+    celularAlternativo: textoOpcional(
+      input.celularAlternativo,
+      20,
+      "Celular alternativo",
+      erros,
+    ),
     papelPrestador: marcado(input.papelPrestador),
     papelParceiro: marcado(input.papelParceiro),
     papelFornecedor: marcado(input.papelFornecedor),
@@ -231,6 +297,7 @@ export function validarEnderecoPessoaCadastro(input: {
   bairro?: unknown;
   municipio?: unknown;
   complemento?: unknown;
+  referencia?: unknown;
 }): ResultadoValidacao<EnderecoPessoaCadastro> {
   const erros: string[] = [];
   const pessoaId = texto(input.pessoaId);
@@ -247,6 +314,7 @@ export function validarEnderecoPessoaCadastro(input: {
     bairro: textoOpcional(input.bairro, 100, "Bairro", erros),
     municipio: textoOpcional(input.municipio, 120, "Município", erros),
     complemento: textoOpcional(input.complemento, 200, "Complemento", erros),
+    referencia: textoOpcional(input.referencia, 200, "Referência", erros),
   };
   return erros.length ? { dados: null, erros } : { dados, erros: [] };
 }
@@ -291,6 +359,8 @@ export function validarDependenteCadastro(input: {
   nascimento?: unknown;
   parentesco?: unknown;
   estudante?: unknown;
+  baixaSalarioFamilia?: unknown;
+  baixaIrrf?: unknown;
 }): ResultadoValidacao<DependenteCadastro> {
   const erros: string[] = [];
   const id = idOpcional(input.id, erros);
@@ -309,6 +379,12 @@ export function validarDependenteCadastro(input: {
     nascimento: dataOpcional(input.nascimento, "Nascimento", erros),
     parentesco: textoOpcional(input.parentesco, 80, "Parentesco", erros),
     estudante: marcado(input.estudante),
+    baixaSalarioFamilia: dataOpcional(
+      input.baixaSalarioFamilia,
+      "Baixa do salário-família",
+      erros,
+    ),
+    baixaIrrf: dataOpcional(input.baixaIrrf, "Baixa do IRRF", erros),
   };
   return erros.length ? { dados: null, erros } : { dados, erros: [] };
 }

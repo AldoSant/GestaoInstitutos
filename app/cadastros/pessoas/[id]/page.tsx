@@ -154,8 +154,9 @@ export default async function FichaPessoaPage({
           </div>
           <UserRound size={22} />
         </div>
-        <form action={salvarFichaPessoa} className="crud-form">
+        <form action={salvarFichaPessoa} className="crud-form person-form">
           <input type="hidden" name="pessoaId" value={dados.pessoa.id} />
+          <h3 className="form-section-heading">Identificação civil</h3>
           <label>
             <span>Natureza</span>
             <select name="tipo" defaultValue={dados.pessoa.tipo}>
@@ -205,6 +206,30 @@ export default async function FichaPessoaPage({
             <input name="rgUf" maxLength={2} defaultValue={dados.pessoa.rgUf ?? ""} />
           </label>
           <label>
+            <span>Emissão do RG</span>
+            <input
+              name="rgEmissao"
+              type="date"
+              defaultValue={dados.pessoa.rgEmissao ?? ""}
+            />
+          </label>
+          <label>
+            <span>Estado civil</span>
+            <input
+              name="estadoCivil"
+              maxLength={40}
+              defaultValue={dados.pessoa.estadoCivil ?? ""}
+            />
+          </label>
+          <label className="field-wide">
+            <span>Naturalidade</span>
+            <input
+              name="naturalidade"
+              maxLength={120}
+              defaultValue={dados.pessoa.naturalidade ?? ""}
+            />
+          </label>
+          <label>
             <span>Inscrição INSS/NIT</span>
             <input
               name="inscricaoInss"
@@ -212,6 +237,86 @@ export default async function FichaPessoaPage({
               defaultValue={dados.pessoa.inscricaoInss ?? ""}
             />
           </label>
+          <h3 className="form-section-heading">Informações profissionais</h3>
+          <label>
+            <span>Conselho profissional</span>
+            <input
+              name="conselhoTipo"
+              maxLength={20}
+              placeholder="Ex.: COREN"
+              defaultValue={dados.pessoa.conselhoTipo ?? ""}
+            />
+          </label>
+          <label>
+            <span>Número do conselho</span>
+            <input
+              name="conselhoNumero"
+              maxLength={20}
+              defaultValue={dados.pessoa.conselhoNumero ?? ""}
+            />
+          </label>
+          <label>
+            <span>CNH</span>
+            <input name="cnh" maxLength={20} defaultValue={dados.pessoa.cnh ?? ""} />
+          </label>
+          <label>
+            <span>Categoria da CNH</span>
+            <input
+              name="cnhCategoria"
+              maxLength={2}
+              defaultValue={dados.pessoa.cnhCategoria ?? ""}
+            />
+          </label>
+          <label>
+            <span>Validade da CNH</span>
+            <input
+              name="cnhValidade"
+              type="date"
+              defaultValue={dados.pessoa.cnhValidade ?? ""}
+            />
+          </label>
+          <label className="checkbox-field">
+            <input
+              name="aposentado"
+              type="checkbox"
+              defaultChecked={dados.pessoa.aposentado}
+            />
+            <span>Aposentado</span>
+          </label>
+          <h3 className="form-section-heading">Dados empresariais</h3>
+          <label className="field-wide">
+            <span>Nome fantasia</span>
+            <input
+              name="nomeFantasia"
+              maxLength={180}
+              defaultValue={dados.pessoa.nomeFantasia ?? ""}
+            />
+          </label>
+          <label className="field-wide">
+            <span>Representante legal</span>
+            <input
+              name="representanteLegal"
+              maxLength={180}
+              defaultValue={dados.pessoa.representanteLegal ?? ""}
+            />
+          </label>
+          <label>
+            <span>Inscrição municipal</span>
+            <input
+              name="inscricaoMunicipal"
+              maxLength={30}
+              defaultValue={dados.pessoa.inscricaoMunicipal ?? ""}
+            />
+          </label>
+          <label>
+            <span>Inscrição estadual</span>
+            <input
+              name="inscricaoEstadual"
+              maxLength={30}
+              defaultValue={dados.pessoa.inscricaoEstadual ?? ""}
+            />
+          </label>
+          <h3 className="form-section-heading">Contato e papéis</h3>
           <label className="field-wide">
             <span>E-mail</span>
             <input
@@ -228,6 +333,14 @@ export default async function FichaPessoaPage({
           <label>
             <span>Celular</span>
             <input name="celular" maxLength={20} defaultValue={dados.pessoa.celular ?? ""} />
+          </label>
+          <label>
+            <span>Celular alternativo</span>
+            <input
+              name="celularAlternativo"
+              maxLength={20}
+              defaultValue={dados.pessoa.celularAlternativo ?? ""}
+            />
           </label>
           <fieldset className="field-wide role-fields">
             <legend>Papéis no sistema</legend>
@@ -307,6 +420,14 @@ export default async function FichaPessoaPage({
                 name="complemento"
                 maxLength={200}
                 defaultValue={dados.endereco?.complemento ?? ""}
+              />
+            </label>
+            <label className="field-wide">
+              <span>Ponto de referência</span>
+              <input
+                name="referencia"
+                maxLength={200}
+                defaultValue={dados.endereco?.referencia ?? ""}
               />
             </label>
             <button className="button primary" type="submit">
@@ -425,6 +546,22 @@ export default async function FichaPessoaPage({
               defaultChecked={dependenteEditado?.estudante ?? false}
             />
             <span>Estudante</span>
+          </label>
+          <label>
+            <span>Baixa do salário-família</span>
+            <input
+              name="baixaSalarioFamilia"
+              type="date"
+              defaultValue={dependenteEditado?.baixaSalarioFamilia ?? ""}
+            />
+          </label>
+          <label>
+            <span>Baixa do IRRF</span>
+            <input
+              name="baixaIrrf"
+              type="date"
+              defaultValue={dependenteEditado?.baixaIrrf ?? ""}
+            />
           </label>
           <button className="button primary" type="submit">
             {dependenteEditado ? "Salvar dependente" : "Adicionar dependente"}

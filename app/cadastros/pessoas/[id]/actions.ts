@@ -71,10 +71,24 @@ export async function salvarFichaPessoa(formData: FormData) {
     rg: formData.get("rg"),
     rgOrgaoEmissor: formData.get("rgOrgaoEmissor"),
     rgUf: formData.get("rgUf"),
+    rgEmissao: formData.get("rgEmissao"),
+    estadoCivil: formData.get("estadoCivil"),
+    naturalidade: formData.get("naturalidade"),
     inscricaoInss: formData.get("inscricaoInss"),
+    conselhoTipo: formData.get("conselhoTipo"),
+    conselhoNumero: formData.get("conselhoNumero"),
+    aposentado: formData.get("aposentado"),
+    cnh: formData.get("cnh"),
+    cnhCategoria: formData.get("cnhCategoria"),
+    cnhValidade: formData.get("cnhValidade"),
+    nomeFantasia: formData.get("nomeFantasia"),
+    representanteLegal: formData.get("representanteLegal"),
+    inscricaoMunicipal: formData.get("inscricaoMunicipal"),
+    inscricaoEstadual: formData.get("inscricaoEstadual"),
     email: formData.get("email"),
     telefone: formData.get("telefone"),
     celular: formData.get("celular"),
+    celularAlternativo: formData.get("celularAlternativo"),
     papelPrestador: formData.get("papelPrestador"),
     papelParceiro: formData.get("papelParceiro"),
     papelFornecedor: formData.get("papelFornecedor"),
@@ -101,10 +115,24 @@ export async function salvarFichaPessoa(formData: FormData) {
           rg: dados.rg,
           rgOrgaoEmissor: dados.rgOrgaoEmissor,
           rgUf: dados.rgUf,
+          rgEmissao: dados.rgEmissao,
+          estadoCivil: dados.estadoCivil,
+          naturalidade: dados.naturalidade,
           inscricaoInss: dados.inscricaoInss,
+          conselhoTipo: dados.conselhoTipo,
+          conselhoNumero: dados.conselhoNumero,
+          aposentado: dados.aposentado,
+          cnh: dados.cnh,
+          cnhCategoria: dados.cnhCategoria,
+          cnhValidade: dados.cnhValidade,
+          nomeFantasia: dados.nomeFantasia,
+          representanteLegal: dados.representanteLegal,
+          inscricaoMunicipal: dados.inscricaoMunicipal,
+          inscricaoEstadual: dados.inscricaoEstadual,
           email: dados.email,
           telefone: dados.telefone,
           celular: dados.celular,
+          celularAlternativo: dados.celularAlternativo,
           papelPrestador: dados.papelPrestador,
           papelParceiro: dados.papelParceiro,
           papelFornecedor: dados.papelFornecedor,
@@ -129,6 +157,7 @@ export async function salvarEnderecoPessoa(formData: FormData) {
     bairro: formData.get("bairro"),
     municipio: formData.get("municipio"),
     complemento: formData.get("complemento"),
+    referencia: formData.get("referencia"),
   });
   const pessoaId = String(formData.get("pessoaId") ?? "");
   if (!validacao.dados) {
@@ -151,6 +180,7 @@ export async function salvarEnderecoPessoa(formData: FormData) {
           bairro: dados.bairro,
           municipio: dados.municipio,
           complemento: dados.complemento,
+          referencia: dados.referencia,
         })
         .onConflictDoUpdate({
           target: [pessoasEnderecos.empresaId, pessoasEnderecos.pessoaId],
@@ -161,6 +191,7 @@ export async function salvarEnderecoPessoa(formData: FormData) {
             bairro: dados.bairro,
             municipio: dados.municipio,
             complemento: dados.complemento,
+            referencia: dados.referencia,
             atualizadoEm: new Date(),
           },
         });
@@ -227,6 +258,8 @@ export async function salvarDependente(formData: FormData) {
     nascimento: formData.get("nascimento"),
     parentesco: formData.get("parentesco"),
     estudante: formData.get("estudante"),
+    baixaSalarioFamilia: formData.get("baixaSalarioFamilia"),
+    baixaIrrf: formData.get("baixaIrrf"),
   });
   const pessoaId = String(formData.get("pessoaId") ?? "");
   if (!validacao.dados) {
@@ -247,6 +280,8 @@ export async function salvarDependente(formData: FormData) {
             nascimento: dados.nascimento,
             parentesco: dados.parentesco,
             estudante: dados.estudante,
+            baixaSalarioFamilia: dados.baixaSalarioFamilia,
+            baixaIrrf: dados.baixaIrrf,
             atualizadoEm: new Date(),
           })
           .where(
@@ -270,6 +305,8 @@ export async function salvarDependente(formData: FormData) {
           nascimento: dados.nascimento,
           parentesco: dados.parentesco,
           estudante: dados.estudante,
+          baixaSalarioFamilia: dados.baixaSalarioFamilia,
+          baixaIrrf: dados.baixaIrrf,
         });
       }
     },

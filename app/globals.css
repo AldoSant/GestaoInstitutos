@@ -236,6 +236,9 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
 .crud-form label > span { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .crud-form input, .crud-form select { width: 100%; height: 38px; padding: 0 10px; border: 1px solid #cfdbdc; border-radius: 8px; outline: 0; color: var(--ink); background: #fff; font-size: 11px; }
 .crud-form input:focus, .crud-form select:focus { border-color: #6eaaa4; box-shadow: 0 0 0 3px rgba(12,116,109,.09); }
+.person-form { grid-template-columns: repeat(4, minmax(150px, 1fr)); }
+.form-section-heading { grid-column: 1 / -1; margin: 8px 0 0; padding: 9px 0 5px; border-bottom: 1px solid var(--line); color: var(--teal-dark); font-family: Georgia, "Times New Roman", serif; font-size: 14px; }
+.form-section-heading:first-of-type { margin-top: 0; padding-top: 0; }
 .prestador-form { grid-template-columns: minmax(220px, 1.5fr) repeat(3, minmax(130px, .7fr)); }
 .termo-form { grid-template-columns: minmax(110px, .6fr) minmax(220px, 1.5fr) minmax(130px, .8fr) repeat(3, minmax(120px, .65fr)); }
 .meta-form { grid-template-columns: minmax(240px, 1.2fr) minmax(120px, .5fr) minmax(240px, 1.4fr) auto auto; }

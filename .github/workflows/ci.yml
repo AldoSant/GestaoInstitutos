@@ -141,8 +141,9 @@ jobs:
                 'import { criarTokenSessao } from "./lib/sessao.ts"; console.log(criarTokenSessao({ login: "ci-admin", perfil: "ADMINISTRADOR" }));')
               curl --fail --silent http://localhost:3000/login > /dev/null
               for path in / /folhas /cadastros /prestadores /instrumentos /vinculos \
-                /eventos /consolidacoes /homologacoes /administracao /migracoes \
-                /parametros /obrigacoes /fgts; do
+                /eventos /medicoes /folhas/nova /consolidacoes \
+                /consolidacoes/simulacoes /homologacoes /administracao /migracoes \
+                /parametros /obrigacoes /fgts /ajuda; do
                 curl --fail --silent \
                   --cookie "instituto_sessao=$SESSION_TOKEN" \
                   "http://localhost:3000$path" > /dev/null

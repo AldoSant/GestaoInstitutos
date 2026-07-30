@@ -1,0 +1,288 @@
+import { expect, type Page, test } from "playwright/test";
+
+const login = process.env.E2E_LOGIN;
+const senha = process.env.E2E_PASSWORD;
+
+test.skip(!login || !senha, "Defina E2E_LOGIN e E2E_PASSWORD.");
+
+async function autenticar(page: Page) {
+  await page.goto("login");
+  await page.getByLabel("Login").fill(login!);
+  await page.getByLabel("Senha").fill(senha!);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
+}
+
+const paginas = [
+  "/",
+  "/cadastros",
+  "/prestadores",
+  "/vinculos",
+  "/instrumentos",
+  "/medicoes?competencia=2026-06",
+  "/eventos",
+  "/folhas",
+  "/folhas/nova?competencia=2026-06",
+  "/obrigacoes?competencia=2026-06",
+  "/fgts?competencia=2026-06",
+  "/homologacoes?competencia=2026-06",
+  "/consolidacoes?competencia=2026-06",
+  "/consolidacoes/simulacoes?competencia=2026-06",
+  "/administracao",
+  "/migracoes?competencia=2026-06",
+  "/parametros",
+  "/ajuda",
+] as const;
+
+test("todas as páginas e seus controles básicos estão operacionais", async ({
+  page,
+}) => {
+  await autenticar(page);
+  const errosDaPagina: string[] = [];
+  const destinosInternos = new Set<string>();
+  const destinosComAncora = new Set<string>();
+  page.on("pageerror", (erro) => errosDaPagina.push(erro.message));
+
+  for (const caminho of paginas) {
+    await test.step(caminho, async () => {
+      const resposta = await page.goto(caminho);
+      expect(resposta?.status(), `${caminho} não respondeu`).toBeLessThan(400);
+      await expect(page.locator("main h1").first()).toBeVisible();
+      await expect(page.locator(".feedback-banner.error")).toHaveCount(0);
+
+      const formularios = page.locator("form");
+      for (let indice = 0; indice < (await formularios.count()); indice += 1) {
+        const formulario = formularios.nth(indice);
+        if (!(await formulario.isVisible())) continue;
+        await expect(
+          formulario.locator('button[type="submit"], input[type="submit"]'),
+          `Formulário sem ação de confirmação em ${caminho}`,
+        ).not.toHaveCount(0);
+      }
+
+      const botoes = page.getByRole("button");
+      for (let indice = 0; indice < (await botoes.count()); indice += 1) {
+        const botao = botoes.nth(indice);
+        if (!(await botao.isVisible())) continue;
+        const nome = await botao.evaluate((elemento) =>
+          (
+            elemento.getAttribute("aria-label") ??
+            elemento.getAttribute("title") ??
+            elemento.textContent ??
+            ""
+          ).trim(),
+        );
+        expect(nome, `Botão sem nome acessível em ${caminho}`).not.toBe("");
+      }
+
+      const linksInvalidos = await page.locator("a").evaluateAll((links) =>
+        links
+          .filter((link) => !link.getAttribute("href")?.trim())
+          .map((link) => link.textContent?.trim() || "(sem texto)"),
+      );
+      expect(linksInvalidos, `Links sem destino em ${caminho}`).toEqual([]);
+      const origem = new URL(page.url()).origin;
+      for (const href of await page.locator("a").evaluateAll((links) =>
+        links.map((link) => (link as HTMLAnchorElement).href),
+      )) {
+        const destino = new URL(href);
+        if (destino.origin !== origem) continue;
+        if (destino.hash) {
+          destinosComAncora.add(destino.href);
+          continue;
+        }
+        destinosInternos.add(destino.href);
+      }
+    });
+  }
+
+  for (const destino of destinosInternos) {
+    const resposta = await page.request.get(destino);
+    expect(
+      resposta.status(),
+      `Link interno indisponível: ${destino}`,
+    ).toBeLessThan(400);
+  }
+  for (const destino of destinosComAncora) {
+    const resposta = await page.goto(destino);
+    expect(resposta?.status(), `Link com âncora indisponível: ${destino}`).toBeLessThan(
+      400,
+    );
+    const id = decodeURIComponent(new URL(destino).hash.slice(1));
+    await expect(
+      page.locator(`[id="${id}"]`),
+      `Âncora inexistente: ${destino}`,
+    ).toHaveCount(1);
+  }
+  expect(errosDaPagina, "Erros JavaScript durante a navegação").toEqual([]);
+});
+
+test("a ficha completa da pessoa pode ser carregada e persistida", async ({
+  page,
+}) => {
+  await autenticar(page);
+  await page.goto("cadastros");
+  await page.locator('a[href*="/cadastros/pessoas/"]').first().click();
+  await expect(page.getByRole("heading", { name: "Dados pessoais" })).toBeVisible();
+
+  const camposPessoa = [
+    "tipo",
+    "nome",
+    "documento",
+    "nascimento",
+    "sexo",
+    "rg",
+    "rgOrgaoEmissor",
+    "rgUf",
+    "rgEmissao",
+    "estadoCivil",
+    "naturalidade",
+    "inscricaoInss",
+    "conselhoTipo",
+    "conselhoNumero",
+    "aposentado",
+    "cnh",
+    "cnhCategoria",
+    "cnhValidade",
+    "nomeFantasia",
+    "representanteLegal",
+    "inscricaoMunicipal",
+    "inscricaoEstadual",
+    "email",
+    "telefone",
+    "celular",
+    "celularAlternativo",
+    "papelPrestador",
+    "papelParceiro",
+    "papelFornecedor",
+  ];
+  const formularioPessoa = page.locator("#identidade form");
+  for (const campo of camposPessoa) {
+    await expect(formularioPessoa.locator(`[name="${campo}"]`)).toBeEditable();
+  }
+  await formularioPessoa.getByRole("button", { name: "Salvar dados pessoais" }).click();
+  await expect(page.getByText("Dados pessoais atualizados.")).toBeVisible();
+
+  const formularioEndereco = page.locator("#endereco form");
+  for (const campo of [
+    "cep",
+    "logradouro",
+    "numero",
+    "bairro",
+    "municipio",
+    "complemento",
+    "referencia",
+  ]) {
+    await expect(formularioEndereco.locator(`[name="${campo}"]`)).toBeEditable();
+  }
+  await formularioEndereco.getByRole("button", { name: "Salvar endereço" }).click();
+  await expect(page.getByText("Endereço atualizado.")).toBeVisible();
+
+  const formularioConta = page.locator("#pagamento form");
+  for (const campo of ["tipo", "agencia", "numero", "digito", "variacao"]) {
+    await expect(formularioConta.locator(`[name="${campo}"]`)).toBeEditable();
+  }
+  await formularioConta.getByRole("button", { name: "Salvar conta" }).click();
+  await expect(page.getByText("Conta bancária atualizada.")).toBeVisible();
+
+  await page.locator('#dependentes a[href*="dependente="]').first().click();
+  const formularioDependente = page.locator("#dependentes form.crud-form");
+  for (const campo of [
+    "nome",
+    "cpf",
+    "nascimento",
+    "parentesco",
+    "estudante",
+    "baixaSalarioFamilia",
+    "baixaIrrf",
+  ]) {
+    await expect(formularioDependente.locator(`[name="${campo}"]`)).toBeEditable();
+  }
+  await formularioDependente
+    .getByRole("button", { name: "Salvar dependente" })
+    .click();
+  await expect(page.getByText("Dependente atualizado.")).toBeVisible();
+});
+
+test("os cadastros operacionais existentes podem ser abertos e salvos", async ({
+  page,
+}) => {
+  await autenticar(page);
+  const edicoes = [
+    {
+      pagina: "/cadastros",
+      destino: 'a[href*="editar=atividade:"]',
+      salvar: "Salvar atividade",
+    },
+    {
+      pagina: "/cadastros",
+      destino: 'a[href*="editar=lotacao:"]',
+      salvar: "Salvar lotação",
+    },
+    {
+      pagina: "/prestadores",
+      destino: 'a[href*="editar="]',
+      salvar: "Salvar prestador",
+    },
+    {
+      pagina: "/vinculos",
+      destino: 'a[href*="editar="]',
+      salvar: "Salvar vínculo",
+    },
+    {
+      pagina: "/instrumentos",
+      destino: 'a[href*="editar=termo:"]',
+      salvar: "Salvar termo",
+    },
+    {
+      pagina: "/instrumentos",
+      destino: 'a[href*="editar=meta:"]',
+      salvar: "Salvar meta",
+    },
+    {
+      pagina: "/eventos",
+      destino: 'a[href*="editarEvento="]',
+      salvar: "Salvar Evento",
+    },
+    {
+      pagina: "/eventos",
+      destino: 'a[href*="editarRecorrente="]',
+      salvar: "Salvar recorrência",
+    },
+  ] as const;
+
+  for (const edicao of edicoes) {
+    await test.step(edicao.salvar, async () => {
+      await page.goto(edicao.pagina);
+      const link = page.locator(edicao.destino).first();
+      await expect(link).toBeVisible();
+      await link.click();
+
+      const botao = page.getByRole("button", {
+        name: edicao.salvar,
+        exact: true,
+      });
+      await expect(botao).toBeVisible();
+      const formulario = page.locator("form.crud-form").filter({ has: botao });
+      await expect(formulario).toHaveCount(1);
+
+      const campos = formulario.locator(
+        'input:not([type="hidden"]), select, textarea',
+      );
+      for (let indice = 0; indice < (await campos.count()); indice += 1) {
+        await expect(
+          campos.nth(indice),
+          `Campo bloqueado na ação ${edicao.salvar}`,
+        ).toBeEditable();
+      }
+      const obrigatorios = formulario.locator("[required]");
+      for (let indice = 0; indice < (await obrigatorios.count()); indice += 1) {
+        await expect(obrigatorios.nth(indice)).not.toHaveValue("");
+      }
+
+      await botao.click();
+      await expect(page.locator(".feedback-banner.success")).toBeVisible();
+      await expect(page.locator(".feedback-banner.error")).toHaveCount(0);
+    });
+  }
+});
