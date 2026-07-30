@@ -38,7 +38,7 @@ test("telas críticas não possuem violações sérias de acessibilidade", async
   page,
 }) => {
   await page.goto("login");
-  await esperarPagina(page, "Acessar sistema");
+  await esperarPagina(page, "Entrar");
   await auditar(page, "Login");
 
   await page.getByLabel("Login").fill(login!);
