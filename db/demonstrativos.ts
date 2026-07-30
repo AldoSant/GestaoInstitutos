@@ -328,6 +328,13 @@ export async function adicionarPagamentoPj({
       );
     }
     await atualizarTotais(client, demonstrativo.rows[0].id);
+    await client.query(
+      `update demonstrativo_mensal
+          set status = 'RASCUNHO', hash_resultado = null,
+              atualizado_em = now()
+        where id = $1`,
+      [demonstrativo.rows[0].id],
+    );
     await client.query("set constraints all immediate");
     await client.query("commit");
     return pagamento.rows[0];
@@ -374,6 +381,13 @@ export async function excluirPagamentoPj({
       pagamentoId,
     ]);
     await atualizarTotais(client, pagamento.rows[0].demonstrativo_id);
+    await client.query(
+      `update demonstrativo_mensal
+          set status = 'RASCUNHO', hash_resultado = null,
+              atualizado_em = now()
+        where id = $1`,
+      [pagamento.rows[0].demonstrativo_id],
+    );
     await client.query("set constraints all immediate");
     await client.query("commit");
   } catch (error) {

@@ -233,6 +233,27 @@ test(
         client,
       });
       assert.match(conferencia.hash, /^[0-9a-f]{64}$/u);
+      await client.query(
+        `update pagamento_prestador
+            set documento_referencia = documento_referencia || ' alterado'
+          where demonstrativo_id = $1`,
+        [resultado.demonstrativoId],
+      );
+      await assert.rejects(
+        fecharDemonstrativo({
+          empresaId,
+          demonstrativoId: resultado.demonstrativoId,
+          responsavel: "Gerente do RH",
+          client,
+        }),
+        /mudaram após a conferência/,
+      );
+      await client.query(
+        `update pagamento_prestador
+            set documento_referencia = replace(documento_referencia, ' alterado', '')
+          where demonstrativo_id = $1`,
+        [resultado.demonstrativoId],
+      );
       const fechamento = await fecharDemonstrativo({
         empresaId,
         demonstrativoId: resultado.demonstrativoId,
