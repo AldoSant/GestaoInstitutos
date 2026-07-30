@@ -392,8 +392,63 @@ export async function solicitarRetificacaoObrigacao({
   });
 }
 
-export async function listarObrigacoes(empresaId: string) {
+export async function diagnosticarCompetenciaObrigacao(
+  empresaId: string,
+  competencia: string,
+) {
   validarId(empresaId, "Empresa");
+  const data = competenciaNormalizada(competencia);
+  const resultado = await getPool().query<{
+    folhas_total: number;
+    folhas_fechadas: number;
+    folhas_pendentes: number;
+    itens_fechados: number;
+    inss_segurado: string;
+    apta_apuracao: boolean;
+  }>(
+    `select
+       count(distinct f.id)::int folhas_total,
+       count(distinct f.id) filter (where f.status = 'FECHADA')::int
+         folhas_fechadas,
+       count(distinct f.id) filter (
+         where f.status not in ('FECHADA', 'CANCELADA')
+       )::int folhas_pendentes,
+       count(fi.id) filter (where f.status = 'FECHADA')::int itens_fechados,
+       coalesce(
+         sum(fi.valor_inss) filter (where f.status = 'FECHADA'),
+         0
+       )::text inss_segurado,
+       (
+         count(distinct f.id) filter (where f.status = 'FECHADA') > 0
+         and count(distinct f.id) filter (
+           where f.status not in ('FECHADA', 'CANCELADA')
+         ) = 0
+         and count(fi.id) filter (where f.status = 'FECHADA') > 0
+       ) apta_apuracao
+     from folha f
+     left join folha_item fi on fi.folha_id = f.id
+    where f.empresa_id = $1 and f.competencia = $2::date
+      and f.status <> 'CANCELADA'`,
+    [empresaId, data],
+  );
+  return (
+    resultado.rows[0] ?? {
+      folhas_total: 0,
+      folhas_fechadas: 0,
+      folhas_pendentes: 0,
+      itens_fechados: 0,
+      inss_segurado: "0",
+      apta_apuracao: false,
+    }
+  );
+}
+
+export async function listarObrigacoes(
+  empresaId: string,
+  competencia?: string,
+) {
+  validarId(empresaId, "Empresa");
+  const data = competencia ? competenciaNormalizada(competencia) : null;
   const resultado = await getPool().query<{
     id: string;
     competencia: string;
@@ -537,9 +592,10 @@ export async function listarObrigacoes(empresaId: string) {
             ) retificacoes
        from obrigacao_fiscal o
       where o.empresa_id = $1
+        and ($2::date is null or o.competencia = $2::date)
       order by o.competencia desc, o.criado_em desc
       limit 60`,
-    [empresaId],
+    [empresaId, data],
   );
   return resultado.rows;
 }

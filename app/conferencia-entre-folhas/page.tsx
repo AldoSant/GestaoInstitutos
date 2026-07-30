@@ -15,6 +15,7 @@ import {
   listarCasosConsolidacao,
 } from "@/db/consolidacoes";
 import { rotuloDecisao } from "@/lib/caso-consolidacao";
+import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 import { congelarDiagnostico, revisarCaso } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -58,8 +59,7 @@ export default async function ConsolidacoesPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
-  const competencia =
-    primeiro(params.competencia) || new Date().toISOString().slice(0, 7);
+  const competencia = await lerCompetenciaContexto(params.competencia);
   const sucesso = primeiro(params.sucesso);
   let erro = primeiro(params.erro);
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
@@ -83,7 +83,7 @@ export default async function ConsolidacoesPage({
     } catch {
       return (
         <AppShell
-          title="Consolidação mensal"
+          title="Conferência entre folhas"
           eyebrow="Diagnóstico"
           organization="Não configurada"
         >
@@ -119,7 +119,7 @@ export default async function ConsolidacoesPage({
 
   return (
     <AppShell
-      title="Consolidação mensal"
+      title="Conferência entre folhas"
       eyebrow="Pessoas em múltiplos vínculos"
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
       notice={{
@@ -132,14 +132,14 @@ export default async function ConsolidacoesPage({
         <div className="button-row">
           <Link
             className="button secondary"
-            href={`/consolidacoes/simulacoes?competencia=${encodeURIComponent(competencia)}`}
+            href={`/conferencia-entre-folhas/simulacoes?competencia=${encodeURIComponent(competencia)}`}
           >
             <GitMerge size={16} /> Simulações fiscais
           </Link>
           {diagnostico && diagnostico.pessoasMultilote > 0 && (
             <Link
               className="button secondary"
-              href={`/consolidacoes/espelho?competencia=${encodeURIComponent(competencia)}`}
+              href={`/conferencia-entre-folhas/espelho?competencia=${encodeURIComponent(competencia)}`}
             >
               <Download size={16} /> Exportar CSV
             </Link>
@@ -339,7 +339,7 @@ export default async function ConsolidacoesPage({
         <div className="panel-header">
           <div>
             <span className="section-kicker">Trilha persistente</span>
-            <h2>Casos de homologação da competência</h2>
+            <h2>Casos em análise na competência</h2>
             <p>
               O hash identifica exatamente o conjunto de fontes analisado.
               Mudanças posteriores invalidam a decisão, sem apagar o histórico.
@@ -451,7 +451,7 @@ export default async function ConsolidacoesPage({
             <strong>Nenhum diagnóstico congelado</strong>
             <p>
               Analise a competência e congele as fontes para iniciar a
-              homologação.
+              análise.
             </p>
           </div>
         )}
@@ -462,8 +462,8 @@ export default async function ConsolidacoesPage({
         <div>
           <strong>A decisão não executa rateio tributário</strong>
           <p>
-            Esta homologação organiza a evidência do RH. O bloqueio
-            previdenciário multi-lote permanece até o motor de consolidação ser
+            Esta conferência organiza a evidência do RH. O bloqueio
+            previdenciário entre folhas permanece até o cálculo de rateio ser
             homologado com casos reais e memória de cálculo.
           </p>
         </div>

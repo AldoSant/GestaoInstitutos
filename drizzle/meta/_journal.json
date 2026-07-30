@@ -232,6 +232,13 @@
       "when": 1785991200000,
       "tag": "0032_contract_scoped_link_ranges",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1786077600000,
+      "tag": "0033_expand_social_security_profiles",
+      "breakpoints": true
     }
   ]
 }

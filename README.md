@@ -80,9 +80,10 @@ Este primeiro incremento contém:
 - Dockerfile e Compose para implantação própria;
 - testes automatizados e pipeline de integração contínua.
 
-Os módulos `/cadastros`, `/prestadores`, `/instrumentos`, `/vinculos`, `/medicoes`,
-`/eventos`, `/folhas`, `/consolidacoes`, `/consolidacoes/simulacoes`,
-`/homologacoes`, `/migracoes`, `/fgts`, `/obrigacoes` e `/parametros`
+Os módulos `/cadastros`, `/prestadores`, `/termos-e-metas`, `/vinculos`, `/medicoes`,
+`/eventos`, `/folhas`, `/conferencia-entre-folhas`,
+`/conferencia-entre-folhas/simulacoes`, `/fechamento-mensal`, `/migracoes`,
+`/fgts`, `/obrigacoes` e `/parametros`
 usam PostgreSQL. A autenticação não consulta nem armazena credenciais nesse banco;
 ela usa o administrador único configurado no servidor. Nenhuma obrigação é
 transmitida. Consulte o

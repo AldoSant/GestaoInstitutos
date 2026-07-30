@@ -6,15 +6,18 @@ import {
   FileCheck2,
   Link2Off,
   Pencil,
+  Plus,
   Power,
   Search,
   ShieldOff,
   Trash2,
+  UserRound,
   UsersRound,
   WalletCards,
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ModalShell } from "@/components/modal-shell";
 import { StatusBadge } from "@/components/ui";
 import { carregarOutrasFontes } from "@/db/outras-fontes";
 import { carregarPrestadores } from "@/db/prestadores";
@@ -32,6 +35,8 @@ type SearchParams = Promise<{
   busca?: string | string[];
   editar?: string | string[];
   fontes?: string | string[];
+  novo?: string | string[];
+  pessoa?: string | string[];
   erro?: string | string[];
   sucesso?: string | string[];
 }>;
@@ -80,28 +85,26 @@ export default async function PrestadoresPage({
   const busca = primeiro(params.busca).trim();
   const editarId = primeiro(params.editar);
   const fontesId = primeiro(params.fontes);
+  const novo = primeiro(params.novo) === "1";
+  const pessoaIdInformada = primeiro(params.pessoa);
   const erro = primeiro(params.erro);
   const sucesso = primeiro(params.sucesso);
 
   let dados: Awaited<ReturnType<typeof carregarPrestadores>>;
   try {
     dados = await carregarPrestadores(busca);
-  } catch (error) {
+  } catch {
     return (
       <AppShell
         title="Prestadores"
-        eyebrow="PostgreSQL"
+        eyebrow="Pessoas e vínculos"
         organization="Não configurada"
-        notice={{
-          label: "Configuração necessária",
-          text: "Esta área consulta dados persistidos e requer banco e empresa ativa.",
-        }}
       >
         <section className="alert-box danger">
           <Database size={22} />
           <div>
             <strong>Prestadores indisponíveis</strong>
-            <p>{error instanceof Error ? error.message : "Não foi possível consultar o banco."}</p>
+            <p>Não foi possível carregar os prestadores. Tente novamente.</p>
           </div>
         </section>
       </AppShell>
@@ -117,27 +120,69 @@ export default async function PrestadoresPage({
       outrasFontes = null;
     }
   }
-  const pessoasDisponiveis = dados.pessoas.filter(
+  const pessoasElegiveis = dados.pessoas.filter(
     (item) =>
       (!item.prestadorId || item.prestadorId === prestadorEditado?.id) &&
       (item.ativo || item.id === prestadorEditado?.pessoaId),
   );
+  const pessoasDisponiveisSemOrdem =
+    prestadorEditado &&
+    !pessoasElegiveis.some((item) => item.id === prestadorEditado.pessoaId)
+      ? [
+          {
+            id: prestadorEditado.pessoaId,
+            nome: prestadorEditado.nome,
+            tipo: prestadorEditado.tipo,
+            cpf: prestadorEditado.cpf,
+            cnpj: prestadorEditado.cnpj,
+            ativo: true,
+            prestadorId: prestadorEditado.id,
+          },
+          ...pessoasElegiveis,
+        ]
+      : pessoasElegiveis;
+  const pessoasDisponiveis = [...pessoasDisponiveisSemOrdem].sort((a, b) => {
+    if (a.id === prestadorEditado?.pessoaId) return -1;
+    if (b.id === prestadorEditado?.pessoaId) return 1;
+    return a.nome.localeCompare(b.nome, "pt-BR");
+  });
+  const pessoaPreselecionada = pessoasDisponiveis.some(
+    (item) => item.id === pessoaIdInformada,
+  )
+    ? pessoaIdInformada
+    : "";
+  const modalPrestadorAberto = Boolean(prestadorEditado || novo);
 
   return (
     <AppShell
       title="Prestadores"
       eyebrow="Pessoas e vínculos"
       organization={dados.empresa.nomeFantasia ?? dados.empresa.razaoSocial}
-      notice={{
-        label: "Operacional",
-        text: "Prestadores são gravados no PostgreSQL; vínculos contratuais serão o próximo elo persistente.",
-      }}
     >
       {(erro || sucesso) && (
         <section className={`feedback-banner ${erro ? "error" : "success"}`} role="status">
           <strong>{erro ? "Operação não concluída" : "Operação concluída"}</strong>
           <span>{erro || sucesso}</span>
         </section>
+      )}
+
+      {modalPrestadorAberto && (
+        <ModalShell
+          title={prestadorEditado ? "Editar prestador" : "Cadastrar prestador"}
+          description="Associe uma pessoa e complete os dados previdenciários usados no processamento da folha."
+          closeHref="/prestadores"
+        >
+          <form key={prestadorEditado?.id ?? "novo"} action={salvarPrestador} className="crud-form prestador-form">
+            <input type="hidden" name="id" value={prestadorEditado?.id ?? ""} />
+            <label className="field-wide"><span>Pessoa</span><select key={prestadorEditado?.id ?? pessoaPreselecionada ?? "novo"} name="pessoaId" required defaultValue={prestadorEditado?.pessoaId ?? pessoaPreselecionada}>{!prestadorEditado && <option value="" disabled>Selecione uma pessoa</option>}{pessoasDisponiveis.map((item) => <option key={item.id} value={item.id}>{item.nome} · {item.tipo === "FISICA" ? "PF" : "PJ"}{item.ativo ? "" : " · inativa"}</option>)}</select></label>
+            <label><span>Matrícula</span><input name="matricula" required maxLength={40} defaultValue={prestadorEditado?.matricula ?? ""} /></label>
+            <label><span>NIT / PIS / PASEP</span><input name="nitPisPasep" inputMode="numeric" maxLength={20} defaultValue={prestadorEditado?.nitPisPasep ?? ""} /></label>
+            <label><span>Categoria eSocial</span><input name="categoriaContribuinte" maxLength={30} placeholder="Ex.: 701" defaultValue={prestadorEditado?.categoriaContribuinte ?? ""} /></label>
+            <label className="checkbox-field"><input name="isentoInss" type="checkbox" defaultChecked={prestadorEditado?.isentoInss ?? false} /><span>Isento de retenção de INSS</span></label>
+            <button className="button primary" type="submit" disabled={pessoasDisponiveis.length === 0}>{prestadorEditado ? "Salvar prestador" : "Cadastrar prestador"}</button>
+            <Link className="button secondary" href="/prestadores">Cancelar</Link>
+          </form>
+        </ModalShell>
       )}
 
       <section className="cadastro-toolbar panel">
@@ -157,6 +202,7 @@ export default async function PrestadoresPage({
             placeholder="Nome, documento, matrícula ou NIT"
           />
           {busca && <Link href="/prestadores" aria-label="Limpar busca"><X size={15} /></Link>}
+          <button type="submit" aria-label="Buscar prestadores"><Search size={15} /></button>
         </form>
       </section>
 
@@ -177,19 +223,12 @@ export default async function PrestadoresPage({
 
       <section className="panel cadastro-section">
         <div className="panel-header">
-          <div><span className="section-kicker">Dados funcionais</span><h2>{prestadorEditado ? "Editar prestador" : "Novo prestador"}</h2><p>A Pessoa deve existir antes de ser promovida a Prestador.</p></div>
-          <StatusBadge tone="info">{pessoasDisponiveis.length} pessoas disponíveis</StatusBadge>
+          <div><span className="section-kicker">Dados funcionais</span><h2>Prestadores cadastrados</h2><p>Abra a ficha da pessoa para revisar os dados completos ou edite apenas o cadastro previdenciário.</p></div>
+          <div className="row-actions">
+            <StatusBadge tone="info">{pessoasDisponiveis.length} pessoas disponíveis</StatusBadge>
+            <Link className="button primary" href="/prestadores?novo=1"><Plus size={16} /> Novo prestador</Link>
+          </div>
         </div>
-        <form action={salvarPrestador} className="crud-form prestador-form">
-          <input type="hidden" name="id" value={prestadorEditado?.id ?? ""} />
-          <label className="field-wide"><span>Pessoa</span><select name="pessoaId" required defaultValue={prestadorEditado?.pessoaId ?? ""}><option value="" disabled>Selecione uma pessoa</option>{pessoasDisponiveis.map((item) => <option key={item.id} value={item.id}>{item.nome} · {item.tipo === "FISICA" ? "PF" : "PJ"}{item.ativo ? "" : " · inativa"}</option>)}</select></label>
-          <label><span>Matrícula</span><input name="matricula" required maxLength={40} defaultValue={prestadorEditado?.matricula ?? ""} /></label>
-          <label><span>NIT / PIS / PASEP</span><input name="nitPisPasep" inputMode="numeric" maxLength={20} defaultValue={prestadorEditado?.nitPisPasep ?? ""} /></label>
-          <label><span>Categoria eSocial (obrigatória na Folha)</span><input name="categoriaContribuinte" maxLength={30} placeholder="Ex.: 701" defaultValue={prestadorEditado?.categoriaContribuinte ?? ""} /></label>
-          <label className="checkbox-field"><input name="isentoInss" type="checkbox" defaultChecked={prestadorEditado?.isentoInss ?? false} /><span>Isento de retenção de INSS</span></label>
-          <button className="button primary" type="submit" disabled={pessoasDisponiveis.length === 0}>{prestadorEditado ? "Salvar prestador" : "Cadastrar prestador"}</button>
-          {prestadorEditado && <Link className="button secondary" href="/prestadores">Cancelar</Link>}
-        </form>
 
         <div className="table-wrap">
           <table>
@@ -204,7 +243,7 @@ export default async function PrestadoresPage({
                   <td>{item.atividadeAtual ?? "Sem vínculo ativo"}<small>{item.totalVinculos} vínculo(s) no histórico</small></td>
                   <td>{moeda(item.retribuicaoAtual)}</td>
                   <td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativo" : "Inativo"}</StatusBadge></td>
-                  <td><div className="row-actions"><Link className="row-text-action" href={`/prestadores?fontes=${item.id}`}><WalletCards size={13} /> Outras fontes</Link><Link className="row-text-action" href={`/prestadores?editar=${item.id}`}><Pencil size={13} /> Editar</Link><AcaoSituacao id={item.id} ativo={item.ativo} /></div></td>
+                  <td><div className="row-actions"><Link className="row-text-action" href={`/cadastros/pessoas/${item.pessoaId}`}><UserRound size={13} /> Abrir ficha</Link><Link className="row-text-action" href={`/prestadores?fontes=${item.id}`}><WalletCards size={13} /> Outras fontes</Link><Link className="row-text-action" href={`/prestadores?editar=${item.id}`}><Pencil size={13} /> Editar</Link><AcaoSituacao id={item.id} ativo={item.ativo} /></div></td>
                 </tr>
               ))}
               {dados.prestadores.length === 0 && <tr><td colSpan={8} className="empty-cell">Nenhum prestador encontrado.</td></tr>}
@@ -215,18 +254,11 @@ export default async function PrestadoresPage({
       </section>
 
       {outrasFontes && (
-        <section className="panel cadastro-section">
-          <div className="panel-header">
-            <div>
-              <span className="section-kicker">Teto previdenciário mensal</span>
-              <h2>Outras fontes de {outrasFontes.prestador.nome}</h2>
-              <p>
-                Somente comprovantes verificados reduzem a base residual de INSS
-                durante o processamento da Folha.
-              </p>
-            </div>
-            <Link className="button secondary" href="/prestadores">Fechar</Link>
-          </div>
+        <ModalShell
+          title={`Outras fontes de ${outrasFontes.prestador.nome}`}
+          description="Somente comprovantes verificados reduzem a base residual de INSS durante o processamento da folha."
+          closeHref="/prestadores"
+        >
           <form action={salvarOutraFonte} className="crud-form">
             <input type="hidden" name="prestadorId" value={outrasFontes.prestador.id} />
             <label><span>Competência</span><input name="competencia" type="month" required /></label>
@@ -267,7 +299,7 @@ export default async function PrestadoresPage({
               </tbody>
             </table>
           </div>
-        </section>
+        </ModalShell>
       )}
     </AppShell>
   );

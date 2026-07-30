@@ -4,9 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { publicarEnquadramento } from "@/db/enquadramentos";
+import { exigirAdministrador } from "@/lib/autorizacao";
 import { validarEnquadramentoPrevidenciario } from "@/lib/enquadramento-previdenciario";
 
 export async function salvarEnquadramento(formData: FormData) {
+  await exigirAdministrador();
   const validacao = validarEnquadramentoPrevidenciario({
     regime: formData.get("regime"),
     inicioVigencia: formData.get("inicioVigencia"),

@@ -9,7 +9,7 @@ import {
 } from "@/db/simulacoes-consolidacao";
 
 function destino(competencia: string, texto: string, erro = false) {
-  return `/consolidacoes/simulacoes?${new URLSearchParams({
+  return `/conferencia-entre-folhas/simulacoes?${new URLSearchParams({
     competencia,
     [erro ? "erro" : "sucesso"]: texto,
   }).toString()}`;
@@ -53,7 +53,7 @@ export async function simularCaso(formData: FormData) {
     texto = mensagem(error);
     erro = true;
   }
-  revalidatePath("/consolidacoes/simulacoes");
+  revalidatePath("/conferencia-entre-folhas/simulacoes");
   redirect(destino(competencia, texto, erro));
 }
 
@@ -75,6 +75,6 @@ export async function alterarStatusSimulacao(formData: FormData) {
     texto = mensagem(error);
     erro = true;
   }
-  revalidatePath("/consolidacoes/simulacoes");
+  revalidatePath("/conferencia-entre-folhas/simulacoes");
   redirect(destino(competencia, texto, erro));
 }

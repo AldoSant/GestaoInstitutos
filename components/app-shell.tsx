@@ -1,91 +1,38 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
-  BadgeDollarSign,
-  Building2,
-  Database,
-  CalendarDays,
-  ChevronDown,
-  CircleHelp,
-  ClipboardCheck,
-  FileCheck2,
-  FileText,
-  Gauge,
-  GitMerge,
-  History,
-  Landmark,
-  Link2,
-  ListChecks,
-  LogOut,
-  Menu,
-  ReceiptText,
-  Settings2,
-  ShieldCheck,
-  UsersRound,
-} from "lucide-react";
+import { cookies } from "next/headers";
+import { Menu } from "lucide-react";
 import type { ReactNode } from "react";
-import { sair } from "@/app/login/actions";
+import {
+  BarraLateral,
+  Logo,
+  NavegacaoPrincipal,
+} from "@/components/app-navigation";
+import { CompetenciaSwitcher } from "@/components/competencia-switcher";
+import { resolverEmpresaAtiva } from "@/db/cadastros";
+import { listarCompetenciasDisponiveis } from "@/db/competencias";
+import {
+  competenciaCalendario,
+  COOKIE_COMPETENCIA,
+  primeiraCompetencia,
+} from "@/lib/competencia";
+import { COOKIE_SESSAO, lerTokenSessao } from "@/lib/sessao";
 
-const navegacao = [
-  { href: "/", label: "Visão geral", icon: Gauge },
-  { href: "/folhas", label: "Folhas", icon: BadgeDollarSign },
-  { href: "/homologacoes", label: "Homologação", icon: ClipboardCheck },
-  { href: "/consolidacoes", label: "Consolidação", icon: GitMerge },
-  { href: "/cadastros", label: "Cadastros", icon: Database },
-  { href: "/migracoes", label: "Migração GIW", icon: History },
-  { href: "/instrumentos", label: "Termos e metas", icon: FileText },
-  { href: "/vinculos", label: "Vínculos", icon: Link2 },
-  { href: "/medicoes", label: "Medições", icon: ListChecks },
-  { href: "/eventos", label: "Eventos", icon: ReceiptText },
-  { href: "/prestadores", label: "Prestadores", icon: UsersRound },
-  { href: "/fgts", label: "FGTS Digital", icon: Landmark },
-  { href: "/obrigacoes", label: "Obrigações", icon: FileCheck2 },
-  { href: "/parametros", label: "Parâmetros", icon: Settings2 },
-];
-
-function Logo() {
-  return (
-    <Link href="/" className="brand" aria-label="Instituto Folha — início">
-      <span className="brand-mark"><ShieldCheck size={22} /></span>
-      <span><strong>Instituto</strong><small>Folha & Obrigações</small></span>
-    </Link>
-  );
+function iniciais(login: string) {
+  const partes = login
+    .trim()
+    .split(/[\s._-]+/)
+    .filter(Boolean);
+  if (partes.length === 0) return "US";
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return `${partes[0][0]}${partes.at(-1)?.[0] ?? ""}`.toUpperCase();
 }
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = usePathname();
-  return (
-    <nav className="nav-list" aria-label="Navegação principal">
-      {navegacao.map(({ href, label, icon: Icon }) => {
-        const ativo = href === "/" ? pathname === href : pathname.startsWith(href);
-        return (
-          <Link
-            href={href}
-            key={href}
-            className={ativo ? "nav-link active" : "nav-link"}
-            onClick={onNavigate}
-          >
-            <Icon size={19} strokeWidth={1.8} />
-            <span>{label}</span>
-          </Link>
-        );
-      })}
-    </nav>
-  );
-}
-
-export function AppShell({
+export async function AppShell({
   children,
   title,
   eyebrow,
   actions,
-  organization = "Instituto · Demonstração",
-  notice = {
-    label: "Protótipo local",
-    text: "Dados demonstrativos e anonimizados. Nenhuma obrigação fiscal é transmitida.",
-  },
+  organization = "Organização não configurada",
+  notice,
 }: {
   children: ReactNode;
   title: string;
@@ -94,50 +41,65 @@ export function AppShell({
   organization?: string;
   notice?: { label: string; text: string };
 }) {
+  const jar = await cookies();
+  const sessao = lerTokenSessao(jar.get(COOKIE_SESSAO)?.value);
+  const login = sessao?.login ?? "Usuário";
+  const administrador = sessao?.perfil === "ADMINISTRADOR";
+  const perfil = administrador ? "Administrador" : "Operador";
+  const selecionada =
+    primeiraCompetencia(jar.get(COOKIE_COMPETENCIA)?.value) ??
+    competenciaCalendario();
+  let competencias: string[] = [];
+  try {
+    const empresa = await resolverEmpresaAtiva();
+    competencias = await listarCompetenciasDisponiveis(empresa.id);
+  } catch {
+    // O seletor continua utilizável mesmo durante indisponibilidade do banco.
+  }
+  competencias = [...new Set([selecionada, competenciaCalendario(), ...competencias])]
+    .sort()
+    .reverse();
+
   return (
     <div className="app-frame">
-      <aside className="sidebar">
-        <Logo />
-        <div className="tenant-card">
-          <Building2 size={17} />
-          <span><small>Organização ativa</small><strong>{organization}</strong></span>
-          <ChevronDown size={15} />
-        </div>
-        <NavLinks />
-        <div className="sidebar-bottom">
-          <Link href="/ajuda" className="nav-link"><CircleHelp size={19} /><span>Ajuda</span></Link>
-          <form action={sair}><button type="submit" className="nav-link logout-button"><LogOut size={19} /><span>Sair</span></button></form>
-          <div className="operator">
-            <span className="avatar">AD</span>
-            <span><strong>Administrador</strong><small>Ambiente local</small></span>
-          </div>
-        </div>
-      </aside>
+      <BarraLateral
+        organization={organization}
+        login={login}
+        perfil={perfil}
+        iniciais={iniciais(login)}
+        administrador={administrador}
+      />
 
       <div className="main-column">
         <header className="topbar">
           <details className="mobile-menu">
-            <summary aria-label="Abrir menu"><Menu size={22} /></summary>
-            <div className="mobile-menu-panel"><Logo /><NavLinks /></div>
+            <summary aria-label="Abrir menu">
+              <Menu size={22} />
+            </summary>
+            <div className="mobile-menu-panel">
+              <Logo />
+              <NavegacaoPrincipal administrador={administrador} />
+            </div>
           </details>
           <div className="page-heading">
             {eyebrow && <span>{eyebrow}</span>}
             <h1>{title}</h1>
           </div>
           <div className="topbar-actions">
-            <button className="context-button" type="button">
-              <CalendarDays size={17} />
-              <span>Competência: jun/2026</span>
-              <ChevronDown size={15} />
-            </button>
+            <CompetenciaSwitcher
+              competencias={competencias}
+              selecionada={selecionada}
+            />
             {actions}
           </div>
         </header>
         <main className="content">
-          <div className="demo-notice">
-            <span>{notice.label}</span>
-            {notice.text}
-          </div>
+          {notice && (
+            <div className="demo-notice" role="status">
+              <span>{notice.label}</span>
+              {notice.text}
+            </div>
+          )}
           {children}
         </main>
       </div>

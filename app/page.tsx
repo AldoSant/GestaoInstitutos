@@ -19,6 +19,8 @@ import {
   type CompetenciaDashboard,
 } from "@/db/dashboard";
 import { diagnosticarHomologacaoCompetencia } from "@/db/homologacoes-competencia";
+import { ROTAS, rotaComCompetencia } from "@/lib/rotas";
+import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 
 export const dynamic = "force-dynamic";
 
@@ -35,13 +37,13 @@ function competencia(valor: string) {
 }
 
 function statusOperacional(item: CompetenciaDashboard) {
-  if (item.homologacao_status === "APROVADA") return "Homologada";
+  if (item.homologacao_status === "APROVADA") return "Fechamento aprovado";
   if (item.status_folhas !== "FECHADA") return "Folhas pendentes";
   if (item.pagamentos_conformes !== item.pagamentos_total) {
     return "Pagamentos bloqueados";
   }
   if (item.obrigacao_status !== "EMITIDA") return "Obrigação pendente";
-  return "Aguardando homologação";
+  return "Aguardando fechamento";
 }
 
 function bloqueioAtual(item: CompetenciaDashboard) {
@@ -56,8 +58,8 @@ function bloqueioAtual(item: CompetenciaDashboard) {
   if (item.pagamentos_total !== item.pagamentos_conformes) {
     return {
       titulo: "Relação de pagamentos bloqueada",
-      texto: `${item.pagamentos_total - item.pagamentos_conformes} pagamento(s) possuem conta incompleta ou snapshot anterior ao controle bancário.`,
-      href: `/homologacoes?competencia=${item.competencia.slice(0, 7)}`,
+      texto: `${item.pagamentos_total - item.pagamentos_conformes} pagamento(s) possuem dados bancários incompletos ou precisam ser atualizados.`,
+      href: rotaComCompetencia(ROTAS.fechamentoMensal, item.competencia.slice(0, 7)),
       acao: "Abrir fechamento",
     };
   }
@@ -74,20 +76,28 @@ function bloqueioAtual(item: CompetenciaDashboard) {
   if (item.homologacao_status !== "APROVADA") {
     return {
       titulo: "Decisão mensal pendente",
-      texto: "Os controles operacionais precisam ser congelados e aprovados na mesma versão.",
-      href: `/homologacoes?competencia=${item.competencia.slice(0, 7)}`,
-      acao: "Abrir homologação",
+      texto: "A competência está pronta para a conferência e decisão final do RH.",
+      href: rotaComCompetencia(ROTAS.fechamentoMensal, item.competencia.slice(0, 7)),
+      acao: "Abrir fechamento",
     };
   }
   return {
     titulo: "Competência operacionalmente concluída",
-    texto: "Folhas, pagamentos, obrigação e homologação estão conformes.",
-    href: `/homologacoes?competencia=${item.competencia.slice(0, 7)}`,
+    texto: "Folhas, pagamentos, obrigação e fechamento estão conformes.",
+    href: rotaComCompetencia(ROTAS.fechamentoMensal, item.competencia.slice(0, 7)),
     acao: "Abrir dossiê",
   };
 }
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ competencia?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const competenciaSelecionada = await lerCompetenciaContexto(
+    params.competencia,
+  );
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
   let dados: Awaited<ReturnType<typeof carregarDashboardOperacional>>;
   let diagnosticoAtual: Awaited<
@@ -95,14 +105,20 @@ export default async function Home() {
   > | null = null;
   try {
     empresa = await resolverEmpresaAtiva();
-    dados = await carregarDashboardOperacional(empresa.id);
-    if (dados.competencias[0]) {
+    dados = await carregarDashboardOperacional(
+      empresa.id,
+      competenciaSelecionada,
+    );
+    const competenciaEmFoco = dados.competencias.find(
+      (item) => item.competencia.slice(0, 7) === competenciaSelecionada,
+    );
+    if (competenciaEmFoco) {
       diagnosticoAtual = await diagnosticarHomologacaoCompetencia(
         empresa.id,
-        dados.competencias[0].competencia.slice(0, 7),
+        competenciaSelecionada,
       );
     }
-  } catch (error) {
+  } catch {
     return (
       <AppShell
         title="Visão geral"
@@ -113,36 +129,38 @@ export default async function Home() {
           <AlertTriangle size={22} />
           <div>
             <strong>Painel operacional indisponível</strong>
-            <p>
-              {error instanceof Error
-                ? error.message
-                : "Não foi possível consultar o PostgreSQL."}
-            </p>
+            <p>Não foi possível carregar os dados operacionais. Tente novamente.</p>
           </div>
         </section>
       </AppShell>
     );
   }
 
-  const competenciaMaisRecente = dados.competencias[0];
-  if (!competenciaMaisRecente) {
+  const competenciaEmFoco = dados.competencias.find(
+    (item) => item.competencia.slice(0, 7) === competenciaSelecionada,
+  );
+  if (!competenciaEmFoco) {
     return (
       <AppShell
         title="Visão geral"
         eyebrow="Folha de prestadores"
         organization={empresa.nomeFantasia ?? empresa.razaoSocial}
         actions={
-          <Link href="/folhas/nova" className="button primary">
+          <Link
+            href={`/folhas/nova?competencia=${competenciaSelecionada}`}
+            className="button primary"
+          >
             Nova Folha
           </Link>
         }
       >
         <section className="empty-state">
           <BadgeDollarSign size={30} />
-          <strong>Nenhuma competência processada</strong>
+          <strong>
+            Nenhuma folha em {competencia(competenciaSelecionada)}
+          </strong>
           <p>
-            Cadastre vínculos e crie a primeira Folha. Este painel não usa dados
-            demonstrativos.
+            Selecione outro mês ou crie a primeira folha desta competência.
           </p>
         </section>
       </AppShell>
@@ -150,12 +168,12 @@ export default async function Home() {
   }
 
   const versaoMensalAtual =
-    diagnosticoAtual?.hashFontes === competenciaMaisRecente.homologacao_hash &&
+    diagnosticoAtual?.hashFontes === competenciaEmFoco.homologacao_hash &&
     diagnosticoAtual.resumo.pronta;
   const atual: CompetenciaDashboard = {
-    ...competenciaMaisRecente,
+    ...competenciaEmFoco,
     homologacao_status: versaoMensalAtual
-      ? competenciaMaisRecente.homologacao_status
+      ? competenciaEmFoco.homologacao_status
       : null,
   };
   const bloqueio = bloqueioAtual(atual);
@@ -168,20 +186,23 @@ export default async function Home() {
       eyebrow="Fechamento operacional"
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
       actions={
-        <Link href="/folhas/nova" className="button primary">
+        <Link
+          href={`/folhas/nova?competencia=${competenciaAtual}`}
+          className="button primary"
+        >
           Nova Folha
         </Link>
       }
     >
       <section className="hero-row">
         <div>
-          <p className="section-kicker">Competência mais recente</p>
+          <p className="section-kicker">Competência em foco</p>
           <h2>
             {competencia(atual.competencia)} · {statusOperacional(atual)}
           </h2>
           <p>
-            Informações calculadas diretamente do PostgreSQL. A competência só é
-            concluída quando os oito controles usam a mesma versão de fontes.
+            Acompanhe valores, pendências e liberações até a conclusão do
+            fechamento mensal.
           </p>
         </div>
         <div className="hero-status">
@@ -233,7 +254,7 @@ export default async function Home() {
         <article className="panel span-2">
           <div className="panel-header">
             <div>
-              <span className="section-kicker">Histórico real</span>
+              <span className="section-kicker">Histórico</span>
               <h3>Últimas competências</h3>
             </div>
             <Link href="/folhas" className="text-link">
@@ -280,7 +301,7 @@ export default async function Home() {
                     <td>
                       <Link
                         className="row-action"
-                        href={`/homologacoes?competencia=${item.competencia.slice(0, 7)}`}
+                        href={rotaComCompetencia(ROTAS.fechamentoMensal, item.competencia.slice(0, 7))}
                         aria-label={`Abrir ${competencia(item.competencia)}`}
                       >
                         <ArrowRight size={17} />
@@ -316,7 +337,7 @@ export default async function Home() {
               <dd>{moeda(atual.obrigacao_total)}</dd>
             </div>
             <div>
-              <dt>Homologação</dt>
+              <dt>Fechamento mensal</dt>
               <dd>
                 {atual.homologacao_status?.replaceAll("_", " ") ?? "Pendente"}
               </dd>
@@ -334,11 +355,11 @@ export default async function Home() {
       <section className="workflow-panel">
         <div className="panel-header">
           <div>
-            <span className="section-kicker">Cadeia auditável</span>
-            <h3>Da entrada ao fechamento</h3>
+            <span className="section-kicker">Etapas do mês</span>
+            <h3>Da preparação ao fechamento</h3>
           </div>
           <StatusBadge tone="info">
-            <LockKeyhole size={14} /> Fontes versionadas
+            <LockKeyhole size={14} /> Controles atualizados
           </StatusBadge>
         </div>
         <ol className="workflow">
@@ -387,7 +408,7 @@ export default async function Home() {
           <li className={concluida ? "done" : "attention"}>
             <span>5</span>
             <div>
-              <strong>Homologação mensal</strong>
+              <strong>Fechamento mensal</strong>
               <small>
                 {atual.homologacao_status ?? "Versão ainda não aprovada"}
               </small>
@@ -408,27 +429,27 @@ export default async function Home() {
         <Link href="/folhas" className="quick-card">
           <BadgeDollarSign />
           <span>
-            <strong>Auditar Folhas</strong>
-            <small>Memórias, pagamentos e relatórios</small>
+            <strong>Conferir folhas</strong>
+            <small>Valores, pagamentos e relatórios</small>
           </span>
           <ArrowRight />
         </Link>
         <Link href="/obrigacoes" className="quick-card">
           <FileCheck2 />
           <span>
-            <strong>Conciliar obrigação</strong>
-            <small>Totalizador, recibo e DARF</small>
+            <strong>Conferir obrigações</strong>
+            <small>Apuração, documentos e pagamento</small>
           </span>
           <ArrowRight />
         </Link>
         <Link
-          href={`/homologacoes?competencia=${competenciaAtual}`}
+          href={rotaComCompetencia(ROTAS.fechamentoMensal, competenciaAtual)}
           className="quick-card"
         >
           <ClipboardCheck />
           <span>
             <strong>Fechar competência</strong>
-            <small>Oito controles e decisão final</small>
+            <small>Checklist e decisão final do RH</small>
           </span>
           <ArrowRight />
         </Link>

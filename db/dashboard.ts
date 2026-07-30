@@ -32,16 +32,35 @@ export type CompetenciaDashboard = {
   homologacao_hash: string | null;
 };
 
-export async function carregarDashboardOperacional(empresaId: string) {
+export async function carregarDashboardOperacional(
+  empresaId: string,
+  competenciaSelecionada?: string,
+) {
   validarId(empresaId);
+  const competenciaData = competenciaSelecionada
+    ? `${competenciaSelecionada}-01`
+    : null;
   const [competencias, cadastros] = await Promise.all([
     getPool().query<CompetenciaDashboard>(
-      `with competencias as (
+      `with competencias_recentes as (
          select distinct folha.competencia
            from folha
           where folha.empresa_id = $1 and folha.status <> 'CANCELADA'
           order by folha.competencia desc
           limit 6
+       ),
+       competencias as (
+         select competencia from competencias_recentes
+         union
+         select $2::date
+          where $2::date is not null
+            and exists (
+              select 1
+                from folha
+               where folha.empresa_id = $1
+                 and folha.competencia = $2::date
+                 and folha.status <> 'CANCELADA'
+            )
        ),
        resumo as (
          select competencia.competencia,
@@ -110,7 +129,7 @@ export async function carregarDashboardOperacional(empresaId: string) {
             limit 1
          ) homologacao on true
         order by resumo.competencia desc`,
-      [empresaId],
+      [empresaId, competenciaData],
     ),
     getPool().query<{
       pessoas: number;

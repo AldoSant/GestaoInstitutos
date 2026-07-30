@@ -141,7 +141,9 @@ jobs:
                 'import { criarTokenSessao } from "./lib/sessao.ts"; console.log(criarTokenSessao({ login: "ci-admin", perfil: "ADMINISTRADOR" }));')
               curl --fail --silent http://localhost:3000/login > /dev/null
               for path in / /folhas /cadastros /prestadores /instrumentos /vinculos \
-                /eventos /consolidacoes /homologacoes /migracoes /obrigacoes; do
+                /eventos /medicoes /folhas/nova /consolidacoes \
+                /consolidacoes/simulacoes /homologacoes /administracao /migracoes \
+                /parametros /obrigacoes /fgts /ajuda; do
                 curl --fail --silent \
                   --cookie "instituto_sessao=$SESSION_TOKEN" \
                   "http://localhost:3000$path" > /dev/null
@@ -153,10 +155,55 @@ jobs:
           cat /tmp/gestao-institutos.log
           exit 1
 
+      - name: Browser journey
+        shell: bash
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3000
+          E2E_LOGIN: ci-admin
+          E2E_PASSWORD: ci-password-not-used-outside-tests
+        run: |
+          npx playwright install --with-deps chromium
+          npm start > /tmp/gestao-institutos-e2e.log 2>&1 &
+          APP_PID=$!
+          trap 'kill $APP_PID 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/api/health > /dev/null; then
+              npm run test:e2e:mvp
+              exit $?
+            fi
+            sleep 1
+          done
+          cat /tmp/gestao-institutos-e2e.log
+          exit 1
+
       - name: VPS base-path build
         env:
           NEXT_BASE_PATH: /gestao-institutos
         run: npm run build
+
+      - name: VPS base-path login journey
+        shell: bash
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3010/gestao-institutos
+          E2E_LOGIN: ci-admin
+          E2E_PASSWORD: ci-password-not-used-outside-tests
+          PORT: 3010
+        run: |
+          cp -R public .next/standalone/public
+          mkdir -p .next/standalone/.next
+          cp -R .next/static .next/standalone/.next/static
+          node .next/standalone/server.js > /tmp/gestao-institutos-base-path.log 2>&1 &
+          APP_PID=$!
+          trap 'kill $APP_PID 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3010/gestao-institutos/api/health > /dev/null; then
+              npx playwright test tests/e2e/base-path.spec.ts
+              exit $?
+            fi
+            sleep 1
+          done
+          cat /tmp/gestao-institutos-base-path.log
+          exit 1
 
       - name: Container images
         run: |

@@ -1,7 +1,14 @@
 import Link from "next/link";
-import { ArrowRight, Database, Plus } from "lucide-react";
+import {
+  ArrowRight,
+  Calculator,
+  ClipboardCheck,
+  Database,
+  LockKeyhole,
+  Plus,
+} from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { StatusBadge } from "@/components/ui";
+import { MetricCard, StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { listarFolhas } from "@/db/folhas";
 
@@ -20,11 +27,20 @@ function competencia(valor: string) {
 }
 
 function nomeStatus(status: string) {
-  if (status === "RASCUNHO") return "Na fila";
+  if (status === "RASCUNHO") return "Aguardando cálculo";
   if (status === "PROCESSANDO") return "Processando";
   if (status === "ABERTA") return "Em conferência";
   if (status === "FECHADA") return "Fechada";
   return status;
+}
+
+function proximaAcao(status: string) {
+  if (status === "RASCUNHO" || status === "PROCESSANDO") {
+    return "Acompanhar cálculo";
+  }
+  if (status === "ABERTA") return "Conferir e fechar";
+  if (status === "FECHADA") return "Ver pagamentos";
+  return "Abrir folha";
 }
 
 export default async function FolhasPage() {
@@ -33,23 +49,28 @@ export default async function FolhasPage() {
   try {
     empresa = await resolverEmpresaAtiva();
     folhas = await listarFolhas(empresa.id);
-  } catch (error) {
+  } catch {
     return (
-      <AppShell title="Folhas" eyebrow="PostgreSQL" organization="Não configurada">
+      <AppShell title="Folhas mensais" eyebrow="Processamento mensal" organization="Não configurada">
         <section className="alert-box danger">
           <Database size={22} />
           <div>
             <strong>Folhas indisponíveis</strong>
-            <p>{error instanceof Error ? error.message : "Não foi possível consultar o banco."}</p>
+            <p>Não foi possível carregar as competências. Tente novamente.</p>
           </div>
         </section>
       </AppShell>
     );
   }
+  const processando = folhas.filter((item) =>
+    ["RASCUNHO", "PROCESSANDO"].includes(item.status),
+  ).length;
+  const emConferencia = folhas.filter((item) => item.status === "ABERTA").length;
+  const fechadas = folhas.filter((item) => item.status === "FECHADA").length;
 
   return (
       <AppShell
-        title="Folhas"
+        title="Folhas mensais"
         eyebrow="Processamento mensal"
         organization={empresa.nomeFantasia ?? empresa.razaoSocial}
         actions={
@@ -57,17 +78,35 @@ export default async function FolhasPage() {
             <Plus size={16} /> Nova folha
           </Link>
         }
-        notice={{
-          label: "Persistência operacional",
-          text: "Cada lote é calculado pelo worker, recebe memória e só fecha após conferência do hash.",
-        }}
       >
+        <section className="metrics-grid" aria-label="Situação das folhas">
+          <MetricCard
+            label="Em cálculo"
+            value={String(processando)}
+            detail="lotes aguardando memória"
+            icon={Calculator}
+            tone="blue"
+          />
+          <MetricCard
+            label="Em conferência"
+            value={String(emConferencia)}
+            detail="exigem decisão do RH"
+            icon={ClipboardCheck}
+            tone="amber"
+          />
+          <MetricCard
+            label="Fechadas"
+            value={String(fechadas)}
+            detail="memória congelada"
+            icon={LockKeyhole}
+          />
+        </section>
         <section className="panel">
           <div className="panel-header">
             <div>
               <span className="section-kicker">Histórico</span>
               <h2>Competências processadas</h2>
-              <p>Folhas reais do PostgreSQL, separadas por Termo, Meta e lote.</p>
+              <p>Consulte valores, pendências e situação de cada competência.</p>
             </div>
             <StatusBadge tone={folhas.length ? "success" : "neutral"}>
               {folhas.length} lote(s)
@@ -79,7 +118,7 @@ export default async function FolhasPage() {
                 <tr>
                   <th>Competência</th><th>Instrumento</th><th>Status</th>
                   <th>Prestadores</th><th>Proventos</th><th>INSS</th>
-                  <th>IRRF</th><th>Líquido</th><th></th>
+                  <th>IRRF</th><th>Líquido</th><th>Próximo passo</th>
                 </tr>
               </thead>
               <tbody>
@@ -106,8 +145,8 @@ export default async function FolhasPage() {
                     <td>{moeda(item.irrf)}</td>
                     <td><strong>{moeda(item.liquido)}</strong></td>
                     <td>
-                      <Link className="row-action" href={`/folhas/${item.id}`} aria-label="Abrir Folha">
-                        <ArrowRight size={17} />
+                      <Link className="text-link" href={`/folhas/${item.id}`}>
+                        {proximaAcao(item.status)} <ArrowRight size={15} />
                       </Link>
                     </td>
                   </tr>

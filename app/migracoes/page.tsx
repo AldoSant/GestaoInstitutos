@@ -14,14 +14,12 @@ import {
   carregarCoberturaMigracao,
   carregarMigracaoHistorica,
 } from "@/db/migracoes-historicas";
+import { exigirAdministrador } from "@/lib/autorizacao";
+import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{ competencia?: string | string[] }>;
-
-function primeiro(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
-}
 
 function moeda(value: string | number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -68,9 +66,9 @@ export default async function MigracoesPage({
 }: {
   searchParams: SearchParams;
 }) {
+  await exigirAdministrador();
   const params = await searchParams;
-  const competencia =
-    primeiro(params.competencia) || new Date().toISOString().slice(0, 7);
+  const competencia = await lerCompetenciaContexto(params.competencia);
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
   try {
     empresa = await resolverEmpresaAtiva();

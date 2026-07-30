@@ -15,7 +15,7 @@ const regime = argumento("--regime");
 try {
   if (!regime) {
     throw new Error(
-      "Informe explicitamente --regime EMPRESA_GERAL ou BENEFICENTE_IMUNE.",
+      "Informe explicitamente --regime com um cenário previdenciário suportado. Consulte a tela Parâmetros.",
     );
   }
   const empresa = await resolverEmpresaAtiva();

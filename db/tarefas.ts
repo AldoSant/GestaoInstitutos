@@ -94,7 +94,7 @@ export async function enfileirarTarefa({
   payload,
   prioridade = 100,
   maxTentativas = 3,
-  disponivelEm = new Date(),
+  disponivelEm,
 }: {
   empresaId: string;
   tipo: string;
@@ -116,7 +116,7 @@ export async function enfileirarTarefa({
   if (!Number.isSafeInteger(maxTentativas) || maxTentativas <= 0) {
     throw new Error("maxTentativas deve ser um inteiro positivo.");
   }
-  if (Number.isNaN(disponivelEm.getTime())) {
+  if (disponivelEm && Number.isNaN(disponivelEm.getTime())) {
     throw new Error("disponivelEm deve ser uma data válida.");
   }
 
@@ -124,7 +124,7 @@ export async function enfileirarTarefa({
     `insert into tarefa_processamento
        (empresa_id, tipo, chave_idempotencia, payload, prioridade,
         max_tentativas, disponivel_em)
-     values ($1, $2, $3, $4, $5, $6, $7)
+     values ($1, $2, $3, $4, $5, $6, coalesce($7::timestamptz, now()))
      on conflict (empresa_id, tipo, chave_idempotencia)
      do update set chave_idempotencia = excluded.chave_idempotencia
      returning ${colunasTarefa}`,
@@ -135,7 +135,7 @@ export async function enfileirarTarefa({
       payload,
       prioridade,
       maxTentativas,
-      disponivelEm,
+      disponivelEm ?? null,
     ],
   );
   return mapearTarefa(resultado.rows[0]);

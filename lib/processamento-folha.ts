@@ -10,6 +10,7 @@ import {
 } from "./dinheiro";
 import type { RegraFiscalParametros } from "./regras-fiscais";
 import { resolverEnquadramentoPrestador } from "./inteligencia-contabil";
+import type { RegimePrevidenciario } from "./enquadramento-previdenciario";
 
 export type EventoCompetencia = {
   id: string;
@@ -53,7 +54,7 @@ export type EntradaVinculoFolha = {
   }>;
   enquadramentoPrevidenciario: {
     id: string;
-    regime: "EMPRESA_GERAL" | "BENEFICENTE_IMUNE";
+    regime: RegimePrevidenciario;
     aliquotaSeguradoNumerador: number;
     aliquotaSeguradoDenominador: number;
     aliquotaPatronalNumerador: number;

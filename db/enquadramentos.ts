@@ -2,13 +2,14 @@ import type { PoolClient } from "pg";
 import {
   CENARIOS_PREVIDENCIARIOS,
   type EnquadramentoCadastro,
+  type RegimePrevidenciario,
 } from "@/lib/enquadramento-previdenciario";
 import { getPool } from "./index";
 
 export type LinhaEnquadramentoPrevidenciario = {
   id: string;
   empresa_id: string;
-  regime: "EMPRESA_GERAL" | "BENEFICENTE_IMUNE";
+  regime: RegimePrevidenciario;
   inicio_vigencia: string;
   fim_vigencia: string;
   aliquota_segurado_numerador: number;

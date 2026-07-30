@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  AlertTriangle,
   ArrowLeft,
+  Calculator,
+  CheckCircle2,
   ClipboardCheck,
   CreditCard,
   Download,
@@ -13,10 +16,14 @@ import {
   XCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ProcessingAutoRefresh } from "@/components/processing-auto-refresh";
 import { StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { carregarFolha } from "@/db/folhas";
 import { carregarHomologacoesFolha } from "@/db/homologacoes";
+import { nomeRegimePrevidenciario } from "@/lib/enquadramento-previdenciario";
+import { descreverProcessamento } from "@/lib/processamento-operacional";
+import { ROTAS, rotaComCompetencia } from "@/lib/rotas";
 import {
   cancelar,
   fechar,
@@ -24,6 +31,7 @@ import {
   reabrir,
   registrarConferencia,
   solicitarReprocessamento,
+  tentarNovamenteProcessamento,
 } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -106,6 +114,26 @@ export default async function FolhaDetalhePage({
     (item) => item.hash_resultado === folha.hash_resultado,
   );
   const aprovadaPeloRh = conferenciaAtual?.resultado === "APROVADA";
+  const calculada = Boolean(folha.hash_resultado && dados.itens.length);
+  const fechada = folha.status === "FECHADA";
+  const pagamentosAptos = dados.itens.filter((item) => {
+    const snapshots = item.snapshots as Record<string, unknown>;
+    const conta = snapshots.contaBancaria;
+    if (!conta || typeof conta !== "object") return false;
+    const dadosConta = conta as Record<string, unknown>;
+    return Boolean(
+      String(dadosConta.agencia ?? "").trim() &&
+        String(dadosConta.numero ?? "").trim() &&
+        ["CORRENTE", "POUPANCA"].includes(String(dadosConta.tipo ?? "")),
+    );
+  }).length;
+  const estadoProcessamento = dados.processamento
+    ? descreverProcessamento(
+        dados.processamento.status,
+        dados.processamento.ultimo_erro,
+      )
+    : null;
+  const processamentoFalhou = dados.processamento?.status === "FALHA";
   const rateiosHomologados = dados.itens
     .map((item) => consolidacaoMemoria(item.memoria))
     .filter((item): item is NonNullable<typeof item> => item !== null);
@@ -221,12 +249,111 @@ export default async function FolhaDetalhePage({
             <LockKeyhole size={17} />
             <span>Previdência</span>
             <strong>
-              {folha.regime_previdenciario === "BENEFICENTE_IMUNE"
-                ? "Imune · segurado 20%"
-                : folha.regime_previdenciario === "EMPRESA_GERAL"
-                  ? "Geral · segurado 11%"
-                  : "Aguardando"}
+              {nomeRegimePrevidenciario(folha.regime_previdenciario)}
             </strong>
+          </div>
+        </section>
+
+        <section className="panel process-panel" aria-label="Etapas da folha">
+          <div className="panel-header">
+            <div>
+              <span className="section-kicker">Fluxo desta folha</span>
+              <h2>Próximo passo operacional</h2>
+              <p>
+                A revisão {folha.revisao} percorre cálculo, conferência, fechamento
+                e preparação dos pagamentos.
+              </p>
+            </div>
+            <StatusBadge tone={fechada ? "success" : "warning"}>
+              {fechada ? "Folha fechada" : "Em andamento"}
+            </StatusBadge>
+          </div>
+          <ol className="process-steps">
+            <li className={calculada ? "done" : "current"}>
+              <span><Calculator size={17} /></span>
+              <div>
+                <strong>1. Cálculo</strong>
+                <small>{calculada ? "Memória gerada" : "Aguardando processamento"}</small>
+              </div>
+              {calculada && <CheckCircle2 size={17} />}
+            </li>
+            <li className={aprovadaPeloRh ? "done" : calculada ? "current" : "pending"}>
+              <span><ClipboardCheck size={17} /></span>
+              <div>
+                <strong>2. Conferência do RH</strong>
+                <small>
+                  {aprovadaPeloRh
+                    ? "Revisão aprovada"
+                    : conferenciaAtual
+                      ? "Correções solicitadas"
+                      : "Checklist pendente"}
+                </small>
+              </div>
+              {aprovadaPeloRh && <CheckCircle2 size={17} />}
+            </li>
+            <li className={fechada ? "done" : aprovadaPeloRh ? "current" : "pending"}>
+              <span><LockKeyhole size={17} /></span>
+              <div>
+                <strong>3. Fechamento</strong>
+                <small>{fechada ? "Memória congelada" : "Depende da aprovação"}</small>
+              </div>
+              {fechada && <CheckCircle2 size={17} />}
+            </li>
+            <li className={fechada ? "current" : "pending"}>
+              <span><CreditCard size={17} /></span>
+              <div>
+                <strong>4. Pagamentos</strong>
+                <small>
+                  {pagamentosAptos}/{dados.itens.length} conta(s) apta(s)
+                </small>
+              </div>
+            </li>
+          </ol>
+          <div className="guided-actions">
+            {!calculada ? (
+              <>
+                <RefreshCw size={19} />
+                <div>
+                  <strong>Processamento em andamento</strong>
+                  <p>Atualize a página em alguns instantes para acompanhar o resultado.</p>
+                </div>
+              </>
+            ) : !aprovadaPeloRh ? (
+              <>
+                <ClipboardCheck size={19} />
+                <div>
+                  <strong>Faça a conferência formal</strong>
+                  <p>Confira cadastros, valores e rubricas antes de registrar a decisão.</p>
+                </div>
+                <Link className="button primary" href="#conferencia">
+                  Ir para conferência
+                </Link>
+              </>
+            ) : !fechada ? (
+              <>
+                <LockKeyhole size={19} />
+                <div>
+                  <strong>A folha está pronta para fechar</strong>
+                  <p>O fechamento congela a revisão aprovada e libera as etapas mensais seguintes.</p>
+                </div>
+                <Link className="button primary" href="#fechamento">
+                  Ir para fechamento
+                </Link>
+              </>
+            ) : (
+              <>
+                <CreditCard size={19} />
+                <div>
+                  <strong>Prepare pagamentos e obrigações</strong>
+                  <p>
+                    Resolva contas pendentes e gere a relação bancária antes do fechamento mensal.
+                  </p>
+                </div>
+                <Link className="button primary" href={`/folhas/${folha.id}/pagamentos`}>
+                  Abrir pagamentos
+                </Link>
+              </>
+            )}
           </div>
         </section>
 
@@ -247,9 +374,72 @@ export default async function FolhaDetalhePage({
         )}
 
         {folha.status === "RASCUNHO" && (
-          <section className="alert-box">
-            <RefreshCw size={22} />
-            <div><strong>Processamento enfileirado</strong><p>O worker materializará esta revisão. Atualize a página em alguns instantes.</p></div>
+          <section className={`alert-box ${processamentoFalhou ? "danger" : ""}`}>
+            {processamentoFalhou ? (
+              <AlertTriangle size={22} />
+            ) : (
+              <RefreshCw size={22} />
+            )}
+            <div>
+              <strong>
+                {estadoProcessamento?.titulo ?? "Aguardando processamento"}
+              </strong>
+              <p>
+                {estadoProcessamento?.texto ??
+                  "A folha está na fila e será calculada automaticamente."}
+              </p>
+              {dados.processamento && (
+                <small className="technical-reference">
+                  Tentativa {dados.processamento.tentativas} de{" "}
+                  {dados.processamento.max_tentativas} · registro{" "}
+                  {dados.processamento.id.slice(0, 8)}
+                </small>
+              )}
+            </div>
+            <div className="processing-status-actions">
+              {processamentoFalhou ? (
+                <>
+                  {estadoProcessamento?.categoria === "CADASTRO" && (
+                    <Link className="button secondary" href="/cadastros">
+                      Revisar pessoas
+                    </Link>
+                  )}
+                  {estadoProcessamento?.categoria === "MEDICAO" && (
+                    <Link
+                      className="button secondary"
+                      href={`/medicoes?competencia=${folha.competencia.slice(0, 7)}`}
+                    >
+                      Revisar medições
+                    </Link>
+                  )}
+                  {estadoProcessamento?.categoria === "CONSOLIDACAO" && (
+                    <Link
+                      className="button secondary"
+                      href={rotaComCompetencia(ROTAS.conferenciaEntreFolhas, folha.competencia.slice(0, 7))}
+                    >
+                      Conferir entre folhas
+                    </Link>
+                  )}
+                  <form action={tentarNovamenteProcessamento}>
+                    <input type="hidden" name="folhaId" value={folha.id} />
+                    <button className="button primary" type="submit">
+                      <RefreshCw size={16} /> Tentar novamente
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <>
+                  <ProcessingAutoRefresh
+                    active={["PENDENTE", "EXECUTANDO"].includes(
+                      dados.processamento?.status ?? "",
+                    )}
+                  />
+                  <Link className="button secondary" href={`/folhas/${folha.id}`}>
+                    <RefreshCw size={16} /> Atualizar agora
+                  </Link>
+                </>
+              )}
+            </div>
           </section>
         )}
 
@@ -287,12 +477,12 @@ export default async function FolhaDetalhePage({
 
         {folha.status === "ABERTA" && (
           <>
-            <section className="panel">
+            <section className="panel" id="conferencia">
               <div className="panel-header">
                 <div>
                   <span className="section-kicker">Validação operacional</span>
                   <h2>Conferência formal do RH</h2>
-                  <p>A decisão vale somente para o hash desta revisão. Reprocessar exige uma nova conferência.</p>
+              <p>A decisão vale somente para esta versão da folha. Recalcular exige uma nova conferência.</p>
                 </div>
                 <StatusBadge tone={aprovadaPeloRh ? "success" : conferenciaAtual ? "danger" : "info"}>
                   {aprovadaPeloRh ? "Aprovada pelo RH" : conferenciaAtual ? "Rejeitada pelo RH" : "Pendente"}
@@ -333,9 +523,9 @@ export default async function FolhaDetalhePage({
               </form>
             </section>
 
-            <section className="panel">
+            <section className="panel" id="fechamento">
               <div className="panel-header">
-                <div><span className="section-kicker">Fechamento</span><h2>Ações da revisão {folha.revisao}</h2><p>O fechamento exige a aprovação vigente do RH e reconfere o hash.</p></div>
+          <div><span className="section-kicker">Fechamento</span><h2>Ações da versão {folha.revisao}</h2><p>O fechamento exige a aprovação vigente do RH e uma última verificação dos dados.</p></div>
                 <div className="row-actions">
                   <form action={solicitarReprocessamento}>
                     <input type="hidden" name="folhaId" value={folha.id} />
@@ -494,7 +684,7 @@ export default async function FolhaDetalhePage({
         <section className="panel">
           <div className="panel-header">
             <div>
-              <span className="section-kicker">Homologação paralela</span>
+              <span className="section-kicker">Conferência por arquivo</span>
               <h2>Comparação com GIW ou planilha do RH</h2>
               <p>
                 Importe os totais de referência. O sistema compara por matrícula,
@@ -570,7 +760,7 @@ export default async function FolhaDetalhePage({
                 </button>
                 <Link
                   className="button secondary"
-                  href={`/folhas/${folha.id}/homologacao/modelo`}
+                  href={`/folhas/${folha.id}/conferencia/modelo`}
                 >
                   <Download size={16} /> Baixar modelo CSV
                 </Link>
@@ -669,7 +859,7 @@ export default async function FolhaDetalhePage({
           <section className="panel">
             <div className="panel-header">
               <div>
-                <span className="section-kicker">Auditoria de homologação</span>
+                <span className="section-kicker">Auditoria da conferência por arquivo</span>
                 <h2>Referências já comparadas</h2>
                 <p>
                   Cada lote é imutável e preserva os hashes da Folha e do

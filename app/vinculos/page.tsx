@@ -6,12 +6,14 @@ import {
   Database,
   Link2,
   Pencil,
+  Plus,
   Power,
   Search,
   ShieldOff,
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ModalShell } from "@/components/modal-shell";
 import { StatusBadge } from "@/components/ui";
 import { carregarVinculos } from "@/db/vinculos";
 import { alternarVinculo, salvarVinculo } from "./actions";
@@ -22,6 +24,8 @@ export const dynamic = "force-dynamic";
 type SearchParams = Promise<{
   busca?: string | string[];
   editar?: string | string[];
+  novo?: string | string[];
+  prestador?: string | string[];
   erro?: string | string[];
   sucesso?: string | string[];
 }>;
@@ -63,28 +67,26 @@ export default async function VinculosPage({
   const params = await searchParams;
   const busca = primeiro(params.busca).trim();
   const editarId = primeiro(params.editar);
+  const novo = primeiro(params.novo) === "1";
+  const prestadorIdInformado = primeiro(params.prestador);
   const erro = primeiro(params.erro);
   const sucesso = primeiro(params.sucesso);
 
   let dados: Awaited<ReturnType<typeof carregarVinculos>>;
   try {
     dados = await carregarVinculos(busca);
-  } catch (error) {
+  } catch {
     return (
       <AppShell
         title="Vínculos"
-        eyebrow="PostgreSQL"
+        eyebrow="Cadeia contratual"
         organization="Não configurada"
-        notice={{
-          label: "Configuração necessária",
-          text: "Esta área requer banco migrado, empresa ativa e cadastros-base.",
-        }}
       >
         <section className="alert-box danger">
           <Database size={22} />
           <div>
             <strong>Vínculos indisponíveis</strong>
-            <p>{error instanceof Error ? error.message : "Não foi possível consultar o banco."}</p>
+            <p>Não foi possível carregar os vínculos. Tente novamente.</p>
           </div>
         </section>
       </AppShell>
@@ -97,6 +99,12 @@ export default async function VinculosPage({
     dados.instrumentos.length > 0 &&
     dados.atividades.length > 0 &&
     dados.lotacoes.length > 0;
+  const prestadorPreselecionado = dados.prestadores.some(
+    (item) => item.id === prestadorIdInformado,
+  )
+    ? prestadorIdInformado
+    : "";
+  const modalAberto = Boolean(editado || novo);
 
   return (
     <AppShell
@@ -113,6 +121,42 @@ export default async function VinculosPage({
           <strong>{erro ? "Operação não concluída" : "Operação concluída"}</strong>
           <span>{erro || sucesso}</span>
         </section>
+      )}
+
+      {modalAberto && (
+        <ModalShell
+          title={editado ? "Editar vínculo" : "Cadastrar vínculo"}
+          description="Conecte prestador, termo, meta, atividade e lotação. O sistema valida vigência e sobreposição ao salvar."
+          closeHref="/vinculos"
+        >
+          {editado && (!editado.atividadeId || !editado.lotacaoId) && (
+            <section className="alert-box">
+              <Database size={20} />
+              <div>
+                <strong>Relações do cadastro legado precisam ser confirmadas</strong>
+                <p>Selecione a atividade e a lotação ainda não relacionadas antes de salvar.</p>
+              </div>
+            </section>
+          )}
+
+          <form key={editado?.id ?? "novo"} action={salvarVinculo} className="crud-form vinculo-form">
+            <input type="hidden" name="id" value={editado?.id ?? ""} />
+            <label className="field-wide"><span>Prestador</span><select name="prestadorId" required defaultValue={editado?.prestadorId ?? prestadorPreselecionado}><option value="" disabled>Selecione um prestador</option>{dados.prestadores.map((item) => <option key={item.id} value={item.id}>{item.nome} · matrícula {item.matricula}</option>)}</select></label>
+            <label className="field-wide"><span>Termo e meta</span><select name="instrumento" required defaultValue={editado ? `${editado.termoId}:${editado.metaId}` : ""}><option value="" disabled>Selecione termo e meta</option>{dados.instrumentos.map((item) => <option key={item.metaId} value={`${item.termoId}:${item.metaId}`}>Termo {item.termoNumero} · {item.metaCodigo} — {item.metaDescricao}</option>)}</select></label>
+            <label><span>Atividade</span><select name="atividadeId" required defaultValue={editado?.atividadeId ?? ""}><option value="" disabled>Selecione</option>{dados.atividades.map((item) => <option key={item.id} value={item.id}>{item.codigo} · {item.descricao}</option>)}</select></label>
+            <label><span>Lotação</span><select name="lotacaoId" required defaultValue={editado?.lotacaoId ?? ""}><option value="" disabled>Selecione</option>{dados.lotacoes.map((item) => <option key={item.id} value={item.id}>{item.codigo} · {item.descricao}</option>)}</select></label>
+            <label><span>Número do contrato</span><input name="numeroContrato" maxLength={60} defaultValue={editado?.numeroContrato ?? ""} /></label>
+            <label><span>Início</span><input name="inicio" type="date" required defaultValue={editado?.inicio ?? ""} /></label>
+            <label><span>Término</span><input name="fim" type="date" defaultValue={editado?.fim ?? ""} /></label>
+            <label><span>Retribuição</span><input name="valorRetribuicao" inputMode="decimal" required placeholder="0,00" defaultValue={editado?.valorRetribuicao ?? ""} /></label>
+            <label><span>Carga horária</span><input name="cargaHoraria" inputMode="decimal" placeholder="Ex.: 200" defaultValue={editado?.cargaHoraria ?? ""} /></label>
+            <label className="checkbox-field"><input name="exigeMedicaoMensal" type="checkbox" defaultChecked={editado?.exigeMedicaoMensal ?? false} /><span>Exige medição mensal</span></label>
+            <label className="checkbox-field"><input name="descontaInss" type="checkbox" defaultChecked={editado?.descontaInss ?? true} /><span>Desconta INSS</span></label>
+            <label className="checkbox-field"><input name="descontaIrrf" type="checkbox" defaultChecked={editado?.descontaIrrf ?? true} /><span>Desconta IRRF</span></label>
+            <button className="button primary" type="submit" disabled={!podeCadastrar}>{editado ? "Salvar vínculo" : "Cadastrar vínculo"}</button>
+            <Link className="button secondary" href="/vinculos">Cancelar</Link>
+          </form>
+        </ModalShell>
       )}
 
       <section className="cadastro-toolbar panel">
@@ -132,6 +176,7 @@ export default async function VinculosPage({
             placeholder="Prestador, contrato, termo, meta ou atividade"
           />
           {busca && <Link href="/vinculos" aria-label="Limpar busca"><X size={15} /></Link>}
+          <button type="submit" aria-label="Buscar vínculos"><Search size={15} /></button>
         </form>
       </section>
 
@@ -145,31 +190,16 @@ export default async function VinculosPage({
         <div className="panel-header">
           <div>
             <span className="section-kicker">Dados contratuais</span>
-            <h2>{editado ? "Editar vínculo" : "Novo vínculo"}</h2>
-            <p>O sistema valida pertencimento, vigência e sobreposição antes de gravar.</p>
+            <h2>Vínculos cadastrados</h2>
+            <p>Consulte o histórico e abra o cadastro somente quando precisar incluir ou alterar.</p>
           </div>
-          <StatusBadge tone={podeCadastrar ? "success" : "warning"}>
-            {podeCadastrar ? "Cadastros prontos" : "Complete os cadastros-base"}
-          </StatusBadge>
+          <div className="row-actions">
+            <StatusBadge tone={podeCadastrar ? "success" : "warning"}>
+              {podeCadastrar ? "Cadastros prontos" : "Complete os cadastros-base"}
+            </StatusBadge>
+            <Link className="button primary" href="/vinculos?novo=1"><Plus size={16} /> Novo vínculo</Link>
+          </div>
         </div>
-
-        <form action={salvarVinculo} className="crud-form vinculo-form">
-          <input type="hidden" name="id" value={editado?.id ?? ""} />
-          <label className="field-wide"><span>Prestador</span><select name="prestadorId" required defaultValue={editado?.prestadorId ?? ""}><option value="" disabled>Selecione um prestador</option>{dados.prestadores.map((item) => <option key={item.id} value={item.id}>{item.nome} · matrícula {item.matricula}</option>)}</select></label>
-          <label className="field-wide"><span>Termo e meta</span><select name="instrumento" required defaultValue={editado ? `${editado.termoId}:${editado.metaId}` : ""}><option value="" disabled>Selecione termo e meta</option>{dados.instrumentos.map((item) => <option key={item.metaId} value={`${item.termoId}:${item.metaId}`}>Termo {item.termoNumero} · {item.metaCodigo} — {item.metaDescricao}</option>)}</select></label>
-          <label><span>Atividade</span><select name="atividadeId" required defaultValue={editado?.atividadeId ?? ""}><option value="" disabled>Selecione</option>{dados.atividades.map((item) => <option key={item.id} value={item.id}>{item.codigo} · {item.descricao}</option>)}</select></label>
-          <label><span>Lotação</span><select name="lotacaoId" required defaultValue={editado?.lotacaoId ?? ""}><option value="" disabled>Selecione</option>{dados.lotacoes.map((item) => <option key={item.id} value={item.id}>{item.codigo} · {item.descricao}</option>)}</select></label>
-          <label><span>Número do contrato</span><input name="numeroContrato" maxLength={60} defaultValue={editado?.numeroContrato ?? ""} /></label>
-          <label><span>Início</span><input name="inicio" type="date" required defaultValue={editado?.inicio ?? ""} /></label>
-          <label><span>Término</span><input name="fim" type="date" defaultValue={editado?.fim ?? ""} /></label>
-          <label><span>Retribuição</span><input name="valorRetribuicao" inputMode="decimal" required placeholder="0,00" defaultValue={editado?.valorRetribuicao ?? ""} /></label>
-          <label><span>Carga horária</span><input name="cargaHoraria" inputMode="decimal" placeholder="Ex.: 200" defaultValue={editado?.cargaHoraria ?? ""} /></label>
-          <label className="checkbox-field"><input name="exigeMedicaoMensal" type="checkbox" defaultChecked={editado?.exigeMedicaoMensal ?? false} /><span>Exige medição mensal</span></label>
-          <label className="checkbox-field"><input name="descontaInss" type="checkbox" defaultChecked={editado?.descontaInss ?? true} /><span>Desconta INSS</span></label>
-          <label className="checkbox-field"><input name="descontaIrrf" type="checkbox" defaultChecked={editado?.descontaIrrf ?? true} /><span>Desconta IRRF</span></label>
-          <button className="button primary" type="submit" disabled={!podeCadastrar}>{editado ? "Salvar vínculo" : "Cadastrar vínculo"}</button>
-          {editado && <Link className="button secondary" href="/vinculos">Cancelar</Link>}
-        </form>
 
         <div className="table-wrap">
           <table>

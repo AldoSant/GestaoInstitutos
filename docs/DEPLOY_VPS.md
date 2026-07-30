@@ -122,13 +122,13 @@ uma integridade apenas aparente. Nesse caso, preserve o backup, identifique a Fo
 afetada e reapure a competência em ambiente controlado antes de repetir a migração.
 
 A migração `0024` cria os casos mensais e os espelhos imutáveis usados por
-`/consolidacoes`. Após aplicá-la, abra uma competência multi-lote, use **Congelar
+`/conferencia-entre-folhas`. Após aplicá-la, abra uma competência multi-lote, use **Congelar
 diagnóstico atual**, registre um caso em análise e confirme que a exportação CSV contém
 o hash e o estado. Alterar uma medição ou Folha e congelar novamente deve invalidar a
 versão anterior.
 
 A migração `0025` cria o dossiê de homologação e seus sete itens imutáveis. Depois de
-aplicá-la, acesse `/homologacoes`, escolha uma competência sintética, congele o
+aplicá-la, acesse `/fechamento-mensal`, escolha uma competência sintética, congele o
 diagnóstico e exporte o CSV. Tentar aprovar com qualquer controle pendente deve ser
 recusado pelo servidor. O teste de restauração agora exige ao menos 39 tabelas públicas.
 

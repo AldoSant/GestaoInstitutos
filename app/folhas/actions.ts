@@ -11,6 +11,7 @@ import {
   reabrirFolha,
   registrarConferenciaFolha,
   solicitarReprocessamentoFolha,
+  tentarNovamenteProcessamentoFolha,
 } from "@/db/folhas";
 import { registrarHomologacaoFolha } from "@/db/homologacoes";
 
@@ -45,7 +46,11 @@ export async function criarNovaFolha(formData: FormData) {
   } catch (error) {
     erro = mensagem(error);
   }
-  if (erro) redirect(`/folhas/nova?erro=${encodeURIComponent(erro)}`);
+  if (erro) {
+    const params = new URLSearchParams({ erro });
+    if (/^\d{4}-\d{2}$/.test(competencia)) params.set("competencia", competencia);
+    redirect(`/folhas/nova?${params}`);
+  }
   revalidatePath("/folhas");
   redirect(destino(folhaId, "Folha criada e enviada para processamento."));
 }
@@ -64,6 +69,25 @@ export async function solicitarReprocessamento(formData: FormData) {
     destino(
       folhaId,
       erro || "Nova revisão enviada para processamento.",
+      Boolean(erro),
+    ),
+  );
+}
+
+export async function tentarNovamenteProcessamento(formData: FormData) {
+  const folhaId = String(formData.get("folhaId") ?? "");
+  let erro = "";
+  try {
+    await tentarNovamenteProcessamentoFolha(folhaId);
+  } catch (error) {
+    erro = mensagem(error);
+  }
+  revalidatePath("/folhas");
+  revalidatePath(`/folhas/${folhaId}`);
+  redirect(
+    destino(
+      folhaId,
+      erro || "Nova tentativa enviada para a fila de processamento.",
       Boolean(erro),
     ),
   );
@@ -149,8 +173,8 @@ export async function importarHomologacao(formData: FormData) {
     resultado = registrada.reutilizada
       ? "Este arquivo já havia sido homologado para a revisão atual."
       : registrada.status === "CONCILIADA"
-        ? `Homologação concluída: ${registrada.conciliados} item(ns) conciliado(s), sem divergências.`
-        : `Homologação concluída com ${registrada.divergentes} divergência(s) para análise.`;
+        ? `Conferência concluída: ${registrada.conciliados} item(ns) conciliado(s), sem divergências.`
+        : `Conferência concluída com ${registrada.divergentes} divergência(s) para análise.`;
   } catch (error) {
     erro = mensagem(error);
   }

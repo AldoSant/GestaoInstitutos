@@ -5,12 +5,15 @@ import {
   Database,
   MapPin,
   Pencil,
+  Plus,
   Power,
   Search,
+  UserRound,
   UsersRound,
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ModalShell } from "@/components/modal-shell";
 import { StatusBadge } from "@/components/ui";
 import { carregarCadastrosBase } from "@/db/cadastros";
 import {
@@ -26,7 +29,10 @@ export const dynamic = "force-dynamic";
 type SearchParams = Promise<{
   busca?: string | string[];
   editar?: string | string[];
+  novo?: string | string[];
   erro?: string | string[];
+  pagina?: string | string[];
+  situacao?: string | string[];
   sucesso?: string | string[];
 }>;
 
@@ -85,28 +91,34 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
   const params = await searchParams;
   const busca = primeiro(params.busca).trim();
   const editar = primeiro(params.editar);
+  const novo = primeiro(params.novo);
   const erro = primeiro(params.erro);
   const sucesso = primeiro(params.sucesso);
+  const situacaoInformada = primeiro(params.situacao);
+  const situacao = ["ativas", "inativas", "todas"].includes(situacaoInformada)
+    ? (situacaoInformada as "ativas" | "inativas" | "todas")
+    : "ativas";
+  const paginaInformada = Number(primeiro(params.pagina));
+  const pagina =
+    Number.isInteger(paginaInformada) && paginaInformada > 0
+      ? paginaInformada
+      : 1;
 
   let dados: Awaited<ReturnType<typeof carregarCadastrosBase>>;
   try {
-    dados = await carregarCadastrosBase(busca);
-  } catch (error) {
+    dados = await carregarCadastrosBase(busca, { situacao, pagina });
+  } catch {
     return (
       <AppShell
         title="Cadastros"
-        eyebrow="PostgreSQL"
+        eyebrow="Pessoas e estrutura"
         organization="Não configurada"
-        notice={{
-          label: "Configuração necessária",
-          text: "Esta área consulta dados persistidos e requer banco e empresa ativa.",
-        }}
       >
         <section className="alert-box danger">
           <Database size={22} />
           <div>
             <strong>Cadastros indisponíveis</strong>
-            <p>{error instanceof Error ? error.message : "Não foi possível consultar o banco."}</p>
+            <p>Não foi possível carregar os cadastros. Tente novamente.</p>
           </div>
         </section>
       </AppShell>
@@ -122,16 +134,34 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
       : null;
   const lotacaoEditada =
     editarTipo === "lotacao" ? dados.lotacoes.find((item) => item.id === editarId) : null;
+  const modalTipo = editarTipo || novo;
+  const fecharModal =
+    modalTipo === "atividade"
+      ? hrefCadastro({ editar: undefined, novo: undefined }, "#atividades")
+      : modalTipo === "lotacao"
+        ? hrefCadastro({ editar: undefined, novo: undefined }, "#lotacoes")
+        : hrefCadastro({ editar: undefined, novo: undefined }, "#pessoas");
+  function hrefCadastro(
+    alteracoes: Record<string, string | number | undefined> = {},
+    ancora = "",
+  ) {
+    const query = new URLSearchParams();
+    if (busca) query.set("busca", busca);
+    if (situacao !== "ativas") query.set("situacao", situacao);
+    if (pagina > 1) query.set("pagina", String(pagina));
+    for (const [chave, valor] of Object.entries(alteracoes)) {
+      if (valor === undefined || valor === "") query.delete(chave);
+      else query.set(chave, String(valor));
+    }
+    const texto = query.toString();
+    return `/cadastros${texto ? `?${texto}` : ""}${ancora}`;
+  }
 
   return (
     <AppShell
       title="Cadastros"
-      eyebrow="Dados persistidos"
+      eyebrow="Pessoas e estrutura"
       organization={dados.empresa.nomeFantasia ?? dados.empresa.razaoSocial}
-      notice={{
-        label: "Operacional",
-        text: `Alterações são gravadas no PostgreSQL da organização ${dados.empresa.nomeFantasia ?? dados.empresa.razaoSocial}.`,
-      }}
     >
       {(erro || sucesso) && (
         <section className={`feedback-banner ${erro ? "error" : "success"}`} role="status">
@@ -140,13 +170,64 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
         </section>
       )}
 
+      {modalTipo === "pessoa" && (
+        <ModalShell
+          title={pessoaEditada ? "Editar pessoa" : "Cadastrar pessoa"}
+          description="Crie a identificação básica. Os demais dados ficam disponíveis na ficha completa."
+          closeHref={fecharModal}
+        >
+          <form key={pessoaEditada?.id ?? "nova-pessoa"} action={salvarPessoa} className="crud-form">
+            <input type="hidden" name="id" value={pessoaEditada?.id ?? ""} />
+            <label><span>Natureza</span><select name="tipo" defaultValue={pessoaEditada?.tipo ?? "FISICA"}><option value="FISICA">Pessoa física</option><option value="JURIDICA">Pessoa jurídica</option></select></label>
+            <label className="field-wide"><span>Nome ou razão social</span><input name="nome" required maxLength={180} defaultValue={pessoaEditada?.nome ?? ""} /></label>
+            <label><span>CPF ou CNPJ</span><input name="documento" inputMode="numeric" defaultValue={pessoaEditada?.cpf ?? pessoaEditada?.cnpj ?? ""} /></label>
+            <button className="button primary" type="submit">{pessoaEditada ? "Salvar pessoa" : "Cadastrar pessoa"}</button>
+            <Link className="button secondary" href={fecharModal}>Cancelar</Link>
+          </form>
+        </ModalShell>
+      )}
+
+      {modalTipo === "atividade" && (
+        <ModalShell
+          title={atividadeEditada ? "Editar atividade" : "Cadastrar atividade"}
+          description="Defina a função e os valores de referência usados nos vínculos."
+          closeHref={fecharModal}
+        >
+          <form key={atividadeEditada?.id ?? "nova-atividade"} action={salvarAtividade} className="crud-form">
+            <input type="hidden" name="id" value={atividadeEditada?.id ?? ""} />
+            <label><span>Código</span><input name="codigo" required maxLength={40} defaultValue={atividadeEditada?.codigo ?? ""} /></label>
+            <label className="field-wide"><span>Descrição</span><input name="descricao" required maxLength={180} defaultValue={atividadeEditada?.descricao ?? ""} /></label>
+            <label><span>Carga horária</span><input name="cargaHoraria" inputMode="decimal" defaultValue={atividadeEditada?.cargaHoraria ?? ""} /></label>
+            <label><span>Valor</span><input name="valor" inputMode="decimal" defaultValue={atividadeEditada?.valor ?? ""} /></label>
+            <button className="button primary" type="submit">{atividadeEditada ? "Salvar atividade" : "Cadastrar atividade"}</button>
+            <Link className="button secondary" href={fecharModal}>Cancelar</Link>
+          </form>
+        </ModalShell>
+      )}
+
+      {modalTipo === "lotacao" && (
+        <ModalShell
+          title={lotacaoEditada ? "Editar lotação" : "Cadastrar lotação"}
+          description="Cadastre a unidade ou o local que será associado ao vínculo."
+          closeHref={fecharModal}
+        >
+          <form key={lotacaoEditada?.id ?? "nova-lotacao"} action={salvarLotacao} className="crud-form">
+            <input type="hidden" name="id" value={lotacaoEditada?.id ?? ""} />
+            <label><span>Código</span><input name="codigo" required maxLength={40} defaultValue={lotacaoEditada?.codigo ?? ""} /></label>
+            <label className="field-wide"><span>Descrição</span><input name="descricao" required maxLength={160} defaultValue={lotacaoEditada?.descricao ?? ""} /></label>
+            <button className="button primary" type="submit">{lotacaoEditada ? "Salvar lotação" : "Cadastrar lotação"}</button>
+            <Link className="button secondary" href={fecharModal}>Cancelar</Link>
+          </form>
+        </ModalShell>
+      )}
+
       <section className="cadastro-toolbar panel">
         <div>
           <span className="section-kicker">Consulta unificada</span>
           <h2>Pessoas, atividades e lotações</h2>
           <p>Registros importados do GIW aparecem com o código de origem.</p>
         </div>
-        <form action="/cadastros" method="get" className="search-field">
+        <form action="/cadastros" method="get" className="search-field cadastro-filters">
           <Search size={17} />
           <label className="sr-only" htmlFor="busca-cadastros">Buscar cadastros</label>
           <input
@@ -156,7 +237,21 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
             defaultValue={busca}
             placeholder="Nome, documento, código ou descrição"
           />
-          {busca && <Link href="/cadastros" aria-label="Limpar busca"><X size={15} /></Link>}
+          <label className="sr-only" htmlFor="situacao-cadastros">Situação</label>
+          <select
+            id="situacao-cadastros"
+            name="situacao"
+            defaultValue={situacao}
+            aria-label="Filtrar situação"
+          >
+            <option value="ativas">Ativos</option>
+            <option value="inativas">Inativos</option>
+            <option value="todas">Todos</option>
+          </select>
+          <button className="button secondary" type="submit">Filtrar</button>
+          {(busca || situacao !== "ativas") && (
+            <Link href="/cadastros" aria-label="Limpar filtros"><X size={15} /></Link>
+          )}
         </form>
       </section>
 
@@ -178,33 +273,40 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
       <section className="panel cadastro-section" id="pessoas">
         <div className="panel-header">
           <div><span className="section-kicker">Identidade</span><h2>Pessoas</h2><p>Base para prestadores, parceiros e vínculos.</p></div>
-          <StatusBadge tone="info">{dados.pessoas.length} exibidas</StatusBadge>
+          <div className="row-actions">
+            <StatusBadge tone="info">{dados.paginacaoPessoas.total} encontrada(s)</StatusBadge>
+            <Link className="button primary" href={hrefCadastro({ novo: "pessoa", editar: undefined })}><Plus size={16} /> Nova pessoa</Link>
+          </div>
         </div>
-        <form action={salvarPessoa} className="crud-form">
-          <input type="hidden" name="id" value={pessoaEditada?.id ?? ""} />
-          <label><span>Natureza</span><select name="tipo" defaultValue={pessoaEditada?.tipo ?? "FISICA"}><option value="FISICA">Pessoa física</option><option value="JURIDICA">Pessoa jurídica</option></select></label>
-          <label className="field-wide"><span>Nome ou razão social</span><input name="nome" required maxLength={180} defaultValue={pessoaEditada?.nome ?? ""} /></label>
-          <label><span>CPF ou CNPJ</span><input name="documento" inputMode="numeric" defaultValue={pessoaEditada?.cpf ?? pessoaEditada?.cnpj ?? ""} /></label>
-          <button className="button primary" type="submit">{pessoaEditada ? "Salvar pessoa" : "Cadastrar pessoa"}</button>
-          {pessoaEditada && <Link className="button secondary" href="/cadastros#pessoas">Cancelar</Link>}
-        </form>
         <div className="table-wrap"><table><thead><tr><th>Código GIW</th><th>Nome</th><th>Documento</th><th>Contato</th><th>Ficha migrada</th><th>Situação</th><th>Ações</th></tr></thead><tbody>
-          {dados.pessoas.map((item) => <tr key={item.id}><td>{item.legacyId ?? "Local"}</td><td><strong>{item.nome}</strong><small>{item.tipo === "FISICA" ? "Pessoa física" : "Pessoa jurídica"}{item.nascimento ? ` · Nasc. ${item.nascimento}` : ""}</small></td><td>{documento(item.cpf, item.cnpj)}<small>{item.inscricaoInss ? `INSS ${item.inscricaoInss}` : "Inscrição INSS não informada"}</small></td><td>{item.email ?? item.celular ?? item.telefone ?? "Não informado"}<small>{item.email && (item.celular || item.telefone) ? item.celular ?? item.telefone : "—"}</small></td><td><StatusBadge tone={item.temEndereco && item.temContaBancaria ? "success" : "warning"}>{item.temEndereco ? "Endereço" : "Sem endereço"} · {item.temContaBancaria ? "Conta" : "Sem conta"}</StatusBadge><small>{item.dependentes} dependente(s){item.papelPrestador ? " · Prestador" : ""}</small></td><td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativa" : "Inativa"}</StatusBadge></td><td><div className="row-actions"><Link className="row-text-action" href={`/cadastros?editar=pessoa:${item.id}#pessoas`}><Pencil size={13} /> Editar</Link><AcaoSituacao entidade="pessoa" id={item.id} ativo={item.ativo} /></div></td></tr>)}
+          {dados.pessoas.map((item) => <tr key={item.id}><td>{item.legacyId ?? "Local"}</td><td><strong>{item.nome}</strong><small>{item.tipo === "FISICA" ? "Pessoa física" : "Pessoa jurídica"}{item.nascimento ? ` · Nasc. ${item.nascimento}` : ""}</small></td><td>{documento(item.cpf, item.cnpj)}<small>{item.inscricaoInss ? `INSS ${item.inscricaoInss}` : "Inscrição INSS não informada"}</small></td><td>{item.email ?? item.celular ?? item.telefone ?? "Não informado"}<small>{item.email && (item.celular || item.telefone) ? item.celular ?? item.telefone : "—"}</small></td><td><StatusBadge tone={item.temEndereco && item.temContaBancaria ? "success" : "warning"}>{item.temEndereco ? "Endereço" : "Sem endereço"} · {item.temContaBancaria ? "Conta" : "Sem conta"}</StatusBadge><small>{item.dependentes} dependente(s){item.papelPrestador ? " · Prestador" : ""}</small></td><td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativa" : "Inativa"}</StatusBadge></td><td><div className="row-actions"><Link className="row-text-action" href={`/cadastros/pessoas/${item.id}`}><UserRound size={13} /> Abrir ficha</Link><AcaoSituacao entidade="pessoa" id={item.id} ativo={item.ativo} /></div></td></tr>)}
           {dados.pessoas.length === 0 && <tr><td colSpan={7} className="empty-cell">Nenhuma pessoa encontrada.</td></tr>}
         </tbody></table></div>
+        {dados.paginacaoPessoas.totalPaginas > 1 && (
+          <nav className="pagination" aria-label="Paginação de pessoas">
+            <Link
+              className={`button secondary ${pagina <= 1 ? "disabled" : ""}`}
+              href={hrefCadastro({ pagina: Math.max(1, pagina - 1), editar: undefined }, "#pessoas")}
+              aria-disabled={pagina <= 1}
+            >
+              Anterior
+            </Link>
+            <span>
+              Página {pagina} de {dados.paginacaoPessoas.totalPaginas}
+            </span>
+            <Link
+              className={`button secondary ${pagina >= dados.paginacaoPessoas.totalPaginas ? "disabled" : ""}`}
+              href={hrefCadastro({ pagina: Math.min(dados.paginacaoPessoas.totalPaginas, pagina + 1), editar: undefined }, "#pessoas")}
+              aria-disabled={pagina >= dados.paginacaoPessoas.totalPaginas}
+            >
+              Próxima
+            </Link>
+          </nav>
+        )}
       </section>
 
       <section className="panel cadastro-section" id="atividades">
-        <div className="panel-header"><div><span className="section-kicker">Execução</span><h2>Atividades</h2><p>Funções, carga horária e valor de referência.</p></div><StatusBadge tone="info">{dados.atividades.length} exibidas</StatusBadge></div>
-        <form action={salvarAtividade} className="crud-form">
-          <input type="hidden" name="id" value={atividadeEditada?.id ?? ""} />
-          <label><span>Código</span><input name="codigo" required maxLength={40} defaultValue={atividadeEditada?.codigo ?? ""} /></label>
-          <label className="field-wide"><span>Descrição</span><input name="descricao" required maxLength={180} defaultValue={atividadeEditada?.descricao ?? ""} /></label>
-          <label><span>Carga horária</span><input name="cargaHoraria" inputMode="decimal" defaultValue={atividadeEditada?.cargaHoraria ?? ""} /></label>
-          <label><span>Valor</span><input name="valor" inputMode="decimal" defaultValue={atividadeEditada?.valor ?? ""} /></label>
-          <button className="button primary" type="submit">{atividadeEditada ? "Salvar atividade" : "Cadastrar atividade"}</button>
-          {atividadeEditada && <Link className="button secondary" href="/cadastros#atividades">Cancelar</Link>}
-        </form>
+        <div className="panel-header"><div><span className="section-kicker">Execução</span><h2>Atividades</h2><p>Funções, carga horária e valor de referência.</p></div><div className="row-actions"><StatusBadge tone="info">{dados.atividades.length} exibidas</StatusBadge><Link className="button primary" href={hrefCadastro({ novo: "atividade", editar: undefined }, "#atividades")}><Plus size={16} /> Nova atividade</Link></div></div>
         <div className="table-wrap"><table><thead><tr><th>Código</th><th>Descrição</th><th>Carga horária</th><th>Valor</th><th>Origem</th><th>Situação</th><th>Ações</th></tr></thead><tbody>
           {dados.atividades.map((item) => <tr key={item.id}><td><strong>{item.codigo}</strong></td><td>{item.descricao}</td><td>{decimal(item.cargaHoraria)}</td><td>{moeda(item.valor)}</td><td>{item.legacyId ? "GIW" : "Local"}</td><td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativa" : "Inativa"}</StatusBadge></td><td><div className="row-actions"><Link className="row-text-action" href={`/cadastros?editar=atividade:${item.id}#atividades`}><Pencil size={13} /> Editar</Link><AcaoSituacao entidade="atividade" id={item.id} ativo={item.ativo} /></div></td></tr>)}
           {dados.atividades.length === 0 && <tr><td colSpan={7} className="empty-cell">Nenhuma atividade encontrada.</td></tr>}
@@ -212,14 +314,7 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
       </section>
 
       <section className="panel cadastro-section" id="lotacoes">
-        <div className="panel-header"><div><span className="section-kicker">Organização</span><h2>Lotações</h2><p>Unidades e locais usados nos vínculos.</p></div><StatusBadge tone="info">{dados.lotacoes.length} exibidas</StatusBadge></div>
-        <form action={salvarLotacao} className="crud-form">
-          <input type="hidden" name="id" value={lotacaoEditada?.id ?? ""} />
-          <label><span>Código</span><input name="codigo" required maxLength={40} defaultValue={lotacaoEditada?.codigo ?? ""} /></label>
-          <label className="field-wide"><span>Descrição</span><input name="descricao" required maxLength={160} defaultValue={lotacaoEditada?.descricao ?? ""} /></label>
-          <button className="button primary" type="submit">{lotacaoEditada ? "Salvar lotação" : "Cadastrar lotação"}</button>
-          {lotacaoEditada && <Link className="button secondary" href="/cadastros#lotacoes">Cancelar</Link>}
-        </form>
+        <div className="panel-header"><div><span className="section-kicker">Organização</span><h2>Lotações</h2><p>Unidades e locais usados nos vínculos.</p></div><div className="row-actions"><StatusBadge tone="info">{dados.lotacoes.length} exibidas</StatusBadge><Link className="button primary" href={hrefCadastro({ novo: "lotacao", editar: undefined }, "#lotacoes")}><Plus size={16} /> Nova lotação</Link></div></div>
         <div className="table-wrap"><table><thead><tr><th>Código</th><th>Descrição</th><th>Origem</th><th>Situação</th><th>Ações</th></tr></thead><tbody>
           {dados.lotacoes.map((item) => <tr key={item.id}><td><strong>{item.codigo}</strong></td><td>{item.descricao}</td><td>{item.legacyId ? "GIW" : "Local"}</td><td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativa" : "Inativa"}</StatusBadge></td><td><div className="row-actions"><Link className="row-text-action" href={`/cadastros?editar=lotacao:${item.id}#lotacoes`}><Pencil size={13} /> Editar</Link><AcaoSituacao entidade="lotacao" id={item.id} ativo={item.ativo} /></div></td></tr>)}
           {dados.lotacoes.length === 0 && <tr><td colSpan={5} className="empty-cell">Nenhuma lotação encontrada.</td></tr>}

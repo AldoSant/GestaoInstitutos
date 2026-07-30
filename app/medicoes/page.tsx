@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { carregarMedicoesMensais } from "@/db/medicoes";
+import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 import { salvarMedicao } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -15,11 +16,6 @@ type SearchParams = Promise<{
 
 function primeiro(valor: string | string[] | undefined) {
   return Array.isArray(valor) ? valor[0] ?? "" : valor ?? "";
-}
-
-function competenciaAtual() {
-  const hoje = new Date();
-  return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function moeda(valor: string) {
@@ -48,10 +44,7 @@ export default async function MedicoesPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
-  const informada = primeiro(params.competencia);
-  const competencia = /^\d{4}-(0[1-9]|1[0-2])$/.test(informada)
-    ? informada
-    : competenciaAtual();
+  const competencia = await lerCompetenciaContexto(params.competencia);
   const erro = primeiro(params.erro);
   const sucesso = primeiro(params.sucesso);
   const empresa = await resolverEmpresaAtiva();

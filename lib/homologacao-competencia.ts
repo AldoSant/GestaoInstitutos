@@ -150,7 +150,7 @@ export function destinoItemCompetencia(
   const mes = encodeURIComponent(competencia);
   const destinos: Record<TipoChecklistCompetencia, string> = {
     MEDICOES: `/medicoes?competencia=${mes}`,
-    CONSOLIDACAO: `/consolidacoes?competencia=${mes}`,
+    CONSOLIDACAO: `/conferencia-entre-folhas?competencia=${mes}`,
     FOLHAS: "/folhas",
     CONFERENCIA_RH: "/folhas",
     PARALELO_GIW: "/folhas",

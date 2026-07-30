@@ -2,15 +2,22 @@ import {
   AlertTriangle,
   BookOpenCheck,
   CalendarClock,
-  Landmark,
+  Plus,
   ShieldCheck,
 } from "lucide-react";
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { listarEnquadramentos } from "@/db/enquadramentos";
 import { listarRegrasFiscais } from "@/db/regras";
-import { salvarEnquadramento } from "./actions";
+import { exigirAdministrador } from "@/lib/autorizacao";
+import {
+  CATALOGO_REGIMES_PREVIDENCIARIOS,
+  CENARIOS_PREVIDENCIARIOS,
+  nomeRegimePrevidenciario,
+} from "@/lib/enquadramento-previdenciario";
+import { EnquadramentoForm } from "./enquadramento-form";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +45,8 @@ function dataBrasileira(data: string | null) {
 type SearchParams = Promise<{
   erro?: string | string[];
   sucesso?: string | string[];
+  novo?: string | string[];
+  regime?: string | string[];
 }>;
 
 function primeiro(valor: string | string[] | undefined) {
@@ -49,19 +58,26 @@ export default async function ParametrosPage({
 }: {
   searchParams: SearchParams;
 }) {
+  await exigirAdministrador();
   const params = await searchParams;
   const erro = primeiro(params.erro);
   const sucesso = primeiro(params.sucesso);
+  const publicarNovo = primeiro(params.novo) === "1";
+  const regimeInicial = primeiro(params.regime);
   const empresa = await resolverEmpresaAtiva();
   const [regras, enquadramentos] = await Promise.all([
     listarRegrasFiscais(empresa.id),
     listarEnquadramentos(empresa.id),
   ]);
   const regra = regras.find((item) => item.publicada) ?? regras[0];
+  const hoje = new Date().toISOString().slice(0, 10);
+  const vigente = enquadramentos.find(
+    (item) => item.inicio_vigencia <= hoje && item.fim_vigencia >= hoje,
+  );
 
   if (!regra) {
     return (
-      <AppShell title="Parâmetros" eyebrow="Regras e vigências">
+      <AppShell title="Parâmetros fiscais" eyebrow="Regras e vigências">
         <section className="empty-state">
           <ShieldCheck size={34} />
           <h2>Nenhuma regra fiscal cadastrada</h2>
@@ -77,7 +93,7 @@ export default async function ParametrosPage({
   const { inss, irrf } = regra.parametros;
   return (
     <AppShell
-      title="Parâmetros"
+      title="Parâmetros fiscais"
       eyebrow="Regras e vigências"
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
     >
@@ -101,46 +117,92 @@ export default async function ParametrosPage({
         </section>
       )}
 
-      <section className="panel cadastro-section">
+      <section className="panel cadastro-section social-security-section">
         <div className="panel-header">
           <div>
             <span className="section-kicker">Contratante e contribuinte individual</span>
-            <h2>Publicar enquadramento previdenciário</h2>
+            <h2>Enquadramento previdenciário</h2>
             <p>
-              Regime geral aplica 11% ao segurado e 20% à contratante. Beneficente
-              imune aplica 20% ao segurado e exige CEBAS válido para zerar a patronal.
+              Consulte a situação vigente, compare os cenários suportados e publique
+              uma nova vigência somente quando houver mudança comprovada.
             </p>
           </div>
-          <StatusBadge tone="warning">Decisão contábil obrigatória</StatusBadge>
+          <Link className="button primary" href="/parametros?novo=1">
+            <Plus size={16} /> Publicar nova vigência
+          </Link>
         </div>
-        <form action={salvarEnquadramento} className="crud-form">
-          <label className="field-wide">
-            <span>Regime</span>
-            <select name="regime" required defaultValue="">
-              <option value="" disabled>Selecione após conferir a documentação</option>
-              <option value="EMPRESA_GERAL">Empresa/equiparada — patronal de 20%</option>
-              <option value="BENEFICENTE_IMUNE">Beneficente em gozo da imunidade — CEBAS</option>
-            </select>
-          </label>
-          <label><span>Início da vigência</span><input name="inicioVigencia" type="date" required /></label>
-          <label><span>Fim da vigência</span><input name="fimVigencia" type="date" required /></label>
-          <label><span>Número do CEBAS, se aplicável</span><input name="cebasNumero" maxLength={100} /></label>
-          <label><span>Início do CEBAS</span><input name="cebasInicio" type="date" /></label>
-          <label><span>Fim do CEBAS</span><input name="cebasFim" type="date" /></label>
-          <label className="field-wide">
-            <span>Evidência e responsável pela conferência</span>
-            <textarea
-              name="evidencia"
-              rows={4}
-              required
-              maxLength={2000}
-              placeholder="Documento consultado, protocolo/certidão, data e responsável pela validação"
-            />
-          </label>
-          <button className="button primary" type="submit">
-            <Landmark size={16} /> Publicar enquadramento
-          </button>
-        </form>
+
+        <article className={`current-profile ${vigente ? "" : "missing"}`}>
+          <div className="current-profile-icon">
+            {vigente ? <ShieldCheck size={22} /> : <AlertTriangle size={22} />}
+          </div>
+          <div>
+            <small>Enquadramento vigente hoje</small>
+            <strong>
+              {vigente
+                ? nomeRegimePrevidenciario(vigente.regime)
+                : "Nenhuma vigência cobre a data atual"}
+            </strong>
+            <p>
+              {vigente
+                ? `${dataBrasileira(vigente.inicio_vigencia)} a ${dataBrasileira(vigente.fim_vigencia)} · segurado ${percentual(vigente.aliquota_segurado_numerador, vigente.aliquota_segurado_denominador)} · patronal ${percentual(vigente.aliquota_patronal_numerador, vigente.aliquota_patronal_denominador)}`
+                : "A folha fica bloqueada até existir um enquadramento publicado para a competência."}
+            </p>
+          </div>
+          <StatusBadge tone={vigente ? "info" : "warning"}>
+            {vigente ? "Vigente" : "Ação necessária"}
+          </StatusBadge>
+        </article>
+
+        <div className="regime-catalog">
+          <div className="subsection-heading">
+            <div>
+              <h3>Cenários previdenciários</h3>
+              <p>As classificações seguem a Tabela 08 do eSocial. Casos com apuração variável aparecem como dependência, não como alíquota fictícia.</p>
+            </div>
+          </div>
+          <div className="regime-catalog-grid">
+            {CATALOGO_REGIMES_PREVIDENCIARIOS.map((item) => {
+              const cenario = item.publicavel
+                ? CENARIOS_PREVIDENCIARIOS[
+                    item.regime as keyof typeof CENARIOS_PREVIDENCIARIOS
+                  ]
+                : null;
+              return (
+                <article className={`regime-card ${item.publicavel ? "" : "pending"}`} key={item.regime}>
+                  <div className="regime-card-heading">
+                    <span>eSocial {item.codigoClassificacaoTributaria}</span>
+                    <StatusBadge tone={item.publicavel ? "neutral" : "warning"}>
+                      {item.publicavel ? "Disponível" : "Módulo adicional"}
+                    </StatusBadge>
+                  </div>
+                  <h4>{item.nome}</h4>
+                  <p>{item.resumo}</p>
+                  {cenario ? (
+                    <>
+                      <dl>
+                        <div><dt>Segurado</dt><dd>{percentual(cenario.aliquotaSeguradoNumerador, cenario.aliquotaSeguradoDenominador)}</dd></div>
+                        <div><dt>Patronal</dt><dd>{percentual(cenario.aliquotaPatronalNumerador, cenario.aliquotaPatronalDenominador)}</dd></div>
+                      </dl>
+                      <Link className="text-link" href={`/parametros?novo=1&regime=${item.regime}`}>
+                        Selecionar este cenário
+                      </Link>
+                    </>
+                  ) : (
+                    <small className="dependency-note">{item.motivoIndisponibilidade}</small>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="subsection-heading history-heading">
+          <div>
+            <h3>Histórico publicado</h3>
+            <p>Vigências preservadas para auditoria e reprocessamento.</p>
+          </div>
+        </div>
         <div className="table-wrap">
           <table>
             <thead><tr><th>Vigência</th><th>Regime</th><th>Segurado</th><th>Patronal</th><th>CEBAS</th><th>Evidência</th></tr></thead>
@@ -148,7 +210,7 @@ export default async function ParametrosPage({
               {enquadramentos.map((item) => (
                 <tr key={item.id}>
                   <td><strong>{dataBrasileira(item.inicio_vigencia)}</strong><small>até {dataBrasileira(item.fim_vigencia)}</small></td>
-                  <td><StatusBadge tone={item.regime === "BENEFICENTE_IMUNE" ? "info" : "neutral"}>{item.regime === "BENEFICENTE_IMUNE" ? "Beneficente imune" : "Regime geral"}</StatusBadge></td>
+                  <td><StatusBadge tone={item.regime === "BENEFICENTE_IMUNE" ? "info" : "neutral"}>{nomeRegimePrevidenciario(item.regime)}</StatusBadge></td>
                   <td>{percentual(item.aliquota_segurado_numerador, item.aliquota_segurado_denominador)}</td>
                   <td>{percentual(item.aliquota_patronal_numerador, item.aliquota_patronal_denominador)}</td>
                   <td>{item.cebas_numero ?? "Não aplicável"}<small>{item.cebas_fim ? `até ${dataBrasileira(item.cebas_fim)}` : ""}</small></td>
@@ -160,6 +222,8 @@ export default async function ParametrosPage({
           </table>
         </div>
       </section>
+
+      {publicarNovo && <EnquadramentoForm regimeInicial={regimeInicial} />}
 
       <section className="rule-summary">
         <article>

@@ -91,13 +91,13 @@ e competência exige uma ativação controlada. Sem ela, a criação e o worker 
 esse cenário sob trava transacional. O desenho e os
 critérios estão em [Consolidação mensal por pessoa](CONSOLIDACAO_MENSAL.md). A tela da
 Folha agora também apresenta bases totais de INSS/IRRF e resumo de rubricas. O
-diagnóstico `/consolidacoes` antecipa pessoas multi-lote, medições e Folhas existentes.
+diagnóstico `/conferencia-entre-folhas` antecipa pessoas multi-lote, medições e Folhas existentes.
 O operador congela as fontes em casos versionados por SHA-256; o RH registra andamento,
 decisão, justificativa e responsável. Mudança nas fontes invalida automaticamente a
 decisão anterior, preservando-a para auditoria. O CSV inclui o estado da homologação.
 O motor agregado agora existe em modo controlado: calcula INSS/IRRF uma única vez por
 Pessoa, rateia por maior resto, versiona entradas e resultado e possui fluxo próprio de
-homologação em `/consolidacoes/simulacoes`. O consumo pela Folha está implementado,
+homologação em `/conferencia-entre-folhas/simulacoes`. O consumo pela Folha está implementado,
 desligado por padrão e limitado por empresa e competência inicial. Ele exige a
 simulação homologada ainda atual, registra seu ID/hash em cada item e bloqueia o
 fechamento sem todas as Folhas da Pessoa.
@@ -173,7 +173,7 @@ Cada execução preserva hashes do arquivo e da revisão, responsável, totais e
 em registros imutáveis. Repetir o mesmo arquivo é idempotente. O contrato e o roteiro
 estão em [Homologação paralela da Folha](HOMOLOGACAO_FOLHA.md).
 
-`/homologacoes` agora consolida oito gates por competência: medições, casos
+`/fechamento-mensal` agora consolida oito gates por competência: medições, casos
 multi-vínculo, Folhas fechadas, conferência do RH, comparação GIW, pagamentos,
 obrigação e documentos DCTFWeb/DARF. Cada fotografia possui hash, versão, itens imutáveis, decisão
 auditada e dossiê CSV. A campanha móvel apresenta três competências e só as considera

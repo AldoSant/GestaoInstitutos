@@ -1,34 +1,56 @@
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 
 export default function AjudaPage() {
   return (
-    <AppShell title="Ajuda" eyebrow="Evolução incremental">
+    <AppShell title="Ajuda" eyebrow="Guia rápido">
       <section className="panel prose-panel">
-        <h2>Sobre este incremento</h2>
-        <p>
-          Pessoas — incluindo dados civis, contatos, endereço, conta bancária e
-          dependentes —, Atividades, Lotações, Prestadores, Termos, Metas, Vínculos,
-          Eventos, lançamentos recorrentes, Folhas e Obrigações já são consultados no
-          PostgreSQL. O Vínculo une a cadeia contratual e impede vigências
-          ativas sobrepostas. A cadeia pode ser coletada e importada do GIW com
-          identificação de origem e repetição segura. Folhas possuem memória, revisão,
-          conferência, homologação e cancelamento; obrigações congelam suas fontes e
-          controlam documentos DCTFWeb/DARF e retificações formais. A homologação
-          mensal reúne oito controles, incluindo pagamentos, congela versões por hash
-          e acompanha três competências em paralelo. O módulo FGTS Digital separa
-          vínculos trabalhistas dos prestadores autônomos, documenta a cadeia
-          eSocial–S-5003–S-5013–GFD e impede que um PDF interno seja apresentado como
-          guia oficial.
-        </p>
-        <h3>Próximas entregas</h3>
+        <h2>Como executar o fechamento mensal</h2>
         <ol>
-          <li>Reconciliação dos vínculos reais coletados do GIW.</li>
-          <li>Homologação de produtividade, eventos e três competências reais.</li>
-          <li>Folha trabalhista e integração eSocial para alimentar o FGTS Digital.</li>
-          <li>Registro e conciliação da GFD oficial e do pagamento por Pix.</li>
-          <li>Ensaio de backup, restauração, retificação e corte operacional.</li>
-          <li>Autenticação, perfis e segregação completa por organização.</li>
+          <li>
+            Confira pessoas, prestadores e vínculos em{" "}
+            <Link className="text-link" href="/cadastros">
+              Pessoas e vínculos
+            </Link>
+            .
+          </li>
+          <li>
+            Registre medições e lançamentos que alteram os valores do mês.
+          </li>
+          <li>
+            Acesse{" "}
+            <Link className="text-link" href="/folhas">
+              Folha mensal
+            </Link>{" "}
+            e crie ou abra a competência.
+          </li>
+          <li>
+            Revise as pendências, confira pessoas, rubricas, descontos e valor
+            líquido.
+          </li>
+          <li>Registre a conferência do RH e feche a folha.</li>
+          <li>
+            Finalize a apuração em{" "}
+            <Link className="text-link" href="/obrigacoes">
+              Obrigações e guias
+            </Link>
+            .
+          </li>
         </ol>
+
+        <h3>Quando o sistema bloquear uma etapa</h3>
+        <p>
+          Leia a pendência apresentada e abra o cadastro indicado. Depois da
+          correção, volte à competência e processe novamente. Uma folha fechada
+          só pode ser reaberta com justificativa.
+        </p>
+
+        <h3>Documentos oficiais</h3>
+        <p>
+          Relatórios internos servem para conferência. DARF, documentos da
+          DCTFWeb e GFD são identificados separadamente e precisam corresponder
+          aos valores da competência antes do registro do pagamento.
+        </p>
       </section>
     </AppShell>
   );
