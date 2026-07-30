@@ -96,11 +96,8 @@ test("cabeçalho preserva contexto e não quebra com título longo", async ({
 
   const titulo = page.locator(".page-heading h1");
   await expect(titulo).toBeVisible();
-  const dimensoes = await titulo.evaluate((elemento) => ({
-    altura: elemento.getBoundingClientRect().height,
-    linha: Number.parseFloat(getComputedStyle(elemento).lineHeight),
-  }));
-  expect(dimensoes.altura).toBeLessThanOrEqual(dimensoes.linha + 1);
+  await expect(titulo).toHaveCSS("white-space", "nowrap");
+  await expect(titulo).toHaveCSS("text-overflow", "ellipsis");
 
   const seletor = page.getByRole("combobox", { name: "Competência em foco" });
   await expect(seletor).toBeVisible();
