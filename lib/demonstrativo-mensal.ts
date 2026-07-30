@@ -94,6 +94,37 @@ export function validarPagamentoDemonstrativo(
   };
 }
 
+export function derivarPagamentoFolhaPf(entrada: {
+  proventosCentavos: number;
+  descontosCentavos: number;
+  inssCentavos: number;
+  irrfCentavos: number;
+  liquidoCentavos: number;
+}) {
+  for (const [campo, valor] of Object.entries(entrada)) {
+    exigirCentavos(valor, campo);
+  }
+  if (
+    entrada.liquidoCentavos !==
+    entrada.proventosCentavos - entrada.descontosCentavos
+  ) {
+    throw new Error("O líquido da Folha diverge dos proventos menos descontos.");
+  }
+  const retencoesTributariasCentavos =
+    entrada.inssCentavos + entrada.irrfCentavos;
+  if (retencoesTributariasCentavos > entrada.descontosCentavos) {
+    throw new Error("Retenções tributárias superam os descontos da Folha.");
+  }
+  return {
+    valorBrutoCentavos:
+      entrada.liquidoCentavos + retencoesTributariasCentavos,
+    retencoesTributariasCentavos,
+    descontosNaoTributariosCentavos:
+      entrada.descontosCentavos - retencoesTributariasCentavos,
+    valorLiquidoCentavos: entrada.liquidoCentavos,
+  };
+}
+
 export function validarClassificacaoLegado(entrada: {
   natureza: NaturezaOperacional;
   status: "PENDENTE" | "CONFIRMADA" | "REJEITADA";

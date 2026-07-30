@@ -17,6 +17,7 @@ import {
   ListChecks,
   LogOut,
   ReceiptText,
+  Rows3,
   Settings2,
   ShieldCheck,
   UsersRound,
@@ -119,6 +120,9 @@ export function NavegacaoPrincipal({
       <NavLink item={{ href: ROTAS.inicio, label: "Visão geral", icon: Gauge }} />
       <NavLink
         item={{ href: ROTAS.folhaMensal, label: "Folhas mensais", icon: BadgeDollarSign }}
+      />
+      <NavLink
+        item={{ href: ROTAS.demonstrativos, label: "Demonstrativo mensal", icon: Rows3 }}
       />
       <GrupoNavegacao
         label="Pessoas e vínculos"

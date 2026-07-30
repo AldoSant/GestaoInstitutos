@@ -23,6 +23,7 @@ const paginas = [
   "/eventos",
   "/folhas",
   "/folhas/nova?competencia=2026-06",
+  "/demonstrativos?competencia=2026-06",
   "/obrigacoes?competencia=2026-06",
   "/fgts?competencia=2026-06",
   "/fechamento-mensal?competencia=2026-06",
@@ -168,6 +169,11 @@ test("menu, títulos e URLs usam a mesma linguagem operacional", async ({ page }
   await autenticar(page);
   const destinos = [
     { href: "/folhas", menu: "Folhas mensais", titulo: "Folhas mensais" },
+    {
+      href: "/demonstrativos",
+      menu: "Demonstrativo mensal",
+      titulo: "Demonstrativo mensal",
+    },
     { href: "/cadastros", menu: "Cadastros", titulo: "Cadastros" },
     { href: "/termos-e-metas", menu: "Termos e metas", titulo: "Termos e metas" },
     {

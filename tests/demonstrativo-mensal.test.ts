@@ -1,9 +1,42 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  derivarPagamentoFolhaPf,
   validarClassificacaoLegado,
   validarPagamentoDemonstrativo,
 } from "../lib/demonstrativo-mensal";
+
+test("deriva pagamento PF sem tratar desconto não tributário como retenção fiscal", () => {
+  assert.deepEqual(
+    derivarPagamentoFolhaPf({
+      proventosCentavos: 100_000,
+      descontosCentavos: 15_000,
+      inssCentavos: 10_000,
+      irrfCentavos: 2_000,
+      liquidoCentavos: 85_000,
+    }),
+    {
+      valorBrutoCentavos: 97_000,
+      retencoesTributariasCentavos: 12_000,
+      descontosNaoTributariosCentavos: 3_000,
+      valorLiquidoCentavos: 85_000,
+    },
+  );
+});
+
+test("recusa Folha cuja composição monetária não fecha", () => {
+  assert.throws(
+    () =>
+      derivarPagamentoFolhaPf({
+        proventosCentavos: 100_000,
+        descontosCentavos: 15_000,
+        inssCentavos: 10_000,
+        irrfCentavos: 2_000,
+        liquidoCentavos: 86_000,
+      }),
+    /líquido da Folha diverge/,
+  );
+});
 
 test("aceita pagamento PF calculado pela folha", () => {
   const resultado = validarPagamentoDemonstrativo({

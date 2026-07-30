@@ -1,6 +1,7 @@
 export const ROTAS = Object.freeze({
   inicio: "/",
   folhaMensal: "/folhas",
+  demonstrativos: "/demonstrativos",
   pessoas: "/cadastros",
   prestadores: "/prestadores",
   vinculos: "/vinculos",
