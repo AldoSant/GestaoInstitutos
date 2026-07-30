@@ -146,7 +146,12 @@ export default async function FgtsPage({
             </p>
           </div>
         </div>
-        <div className="table-wrap">
+        <div
+          className="table-wrap"
+          tabIndex={0}
+          role="region"
+          aria-label="Categorias encontradas na folha"
+        >
           <table>
             <thead>
               <tr>

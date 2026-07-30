@@ -273,8 +273,8 @@ export default async function ObrigacoesPage({
             </div>
           </div>
           <dl className="large-reconciliation">
-            <div><dt>Retenção dos segurados</dt><dd>{moeda(item.segurado)}</dd><small>Alíquota conforme o regime congelado</small></div>
-            <div><dt>Contribuição patronal</dt><dd>{moeda(item.patronal)}</dd><small>20% no regime geral ou zero na imunidade validada</small></div>
+            <div><dt>Retenção dos segurados</dt><dd>{moeda(item.segurado)}<small>Alíquota conforme o regime congelado</small></dd></div>
+            <div><dt>Contribuição patronal</dt><dd>{moeda(item.patronal)}<small>20% no regime geral ou zero na imunidade validada</small></dd></div>
             <div className={item.status === "EMITIDA" ? "" : "danger"}>
               <dt>Conciliação DCTFWeb</dt>
               <dd>
@@ -287,8 +287,8 @@ export default async function ObrigacoesPage({
                     : item.diferenca
                       ? `Diferença ${moeda(item.diferenca)}`
                       : "Pendente"}
+                <small>{item.bloqueio_motivo ?? "Documento verificado e conciliado."}</small>
               </dd>
-              <small>{item.bloqueio_motivo ?? "Documento verificado e conciliado."}</small>
             </div>
           </dl>
           {item.status !== "CANCELADA" && (
