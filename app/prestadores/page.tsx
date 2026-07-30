@@ -113,11 +113,27 @@ export default async function PrestadoresPage({
       outrasFontes = null;
     }
   }
-  const pessoasDisponiveis = dados.pessoas.filter(
+  const pessoasElegiveis = dados.pessoas.filter(
     (item) =>
       (!item.prestadorId || item.prestadorId === prestadorEditado?.id) &&
       (item.ativo || item.id === prestadorEditado?.pessoaId),
   );
+  const pessoasDisponiveis =
+    prestadorEditado &&
+    !pessoasElegiveis.some((item) => item.id === prestadorEditado.pessoaId)
+      ? [
+          {
+            id: prestadorEditado.pessoaId,
+            nome: prestadorEditado.nome,
+            tipo: prestadorEditado.tipo,
+            cpf: prestadorEditado.cpf,
+            cnpj: prestadorEditado.cnpj,
+            ativo: true,
+            prestadorId: prestadorEditado.id,
+          },
+          ...pessoasElegiveis,
+        ]
+      : pessoasElegiveis;
 
   return (
     <AppShell

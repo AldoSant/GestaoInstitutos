@@ -47,7 +47,7 @@ test("todas as páginas e seus controles básicos estão operacionais", async ({
     await test.step(caminho, async () => {
       const resposta = await page.goto(caminho);
       expect(resposta?.status(), `${caminho} não respondeu`).toBeLessThan(400);
-      await expect(page.locator("main h1").first()).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
       await expect(page.locator(".feedback-banner.error")).toHaveCount(0);
 
       const formularios = page.locator("form");
