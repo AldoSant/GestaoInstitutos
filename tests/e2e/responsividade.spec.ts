@@ -20,10 +20,24 @@ async function semEstouroHorizontal(page: Page) {
   const dimensoes = await page.evaluate(() => ({
     largura: document.documentElement.clientWidth,
     conteudo: document.documentElement.scrollWidth,
+    excedentes: Array.from(document.querySelectorAll<HTMLElement>("body *"))
+      .map((elemento) => {
+        const caixa = elemento.getBoundingClientRect();
+        return {
+          seletor: `${elemento.tagName.toLowerCase()}${elemento.id ? `#${elemento.id}` : ""}${Array.from(elemento.classList)
+            .map((classe) => `.${classe}`)
+            .join("")}`,
+          esquerda: Math.round(caixa.left),
+          direita: Math.round(caixa.right),
+          largura: Math.round(caixa.width),
+        };
+      })
+      .filter((item) => item.esquerda < -1 || item.direita > document.documentElement.clientWidth + 1)
+      .slice(0, 8),
   }));
   expect(
     dimensoes.conteudo,
-    `A página excede a largura móvel: ${dimensoes.conteudo}px para ${dimensoes.largura}px.`,
+    `A página excede a largura móvel: ${dimensoes.conteudo}px para ${dimensoes.largura}px. Elementos: ${JSON.stringify(dimensoes.excedentes)}`,
   ).toBeLessThanOrEqual(dimensoes.largura);
 }
 

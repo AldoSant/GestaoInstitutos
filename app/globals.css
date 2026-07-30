@@ -387,6 +387,8 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
   .detail-summary > div:nth-child(-n+4) { border-bottom: 1px solid var(--line); }
   .panel { padding: 16px; }
   .panel-header { align-items: stretch; flex-direction: column; }
+  .panel-header > .row-actions { width: 100%; flex-wrap: wrap; }
+  .panel-header > .row-actions .button { flex: 1 1 auto; }
   .search-field { min-width: 0; width: 100%; }
   .summary-strip { align-items: flex-start; flex-direction: column; gap: 6px; }
   .feedback-banner { align-items: flex-start; flex-direction: column; }
