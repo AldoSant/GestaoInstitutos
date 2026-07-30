@@ -85,9 +85,16 @@ flowchart LR
 
 ## Próximos cortes
 
-1. Repositório transacional que monta o rascunho a partir das Folhas PF fechadas.
-2. Cadastro em modal de pagamento PJ com documento e retenções informadas.
-3. Tela de conferência por natureza e exportação CSV/PDF.
-4. Classificador assistido dos registros GIW, com fila de pendências.
-5. Matriz fiscal por serviço, regime, município e documento, somente após homologação.
+Concluídos:
 
+- repositório transacional que monta o rascunho a partir das Folhas PF fechadas;
+- cadastro em modal de pagamento PJ com documento e retenções informadas;
+- tela mensal com separação visível entre pagamentos, retenções e guias;
+- prova em PostgreSQL de que descontos comuns da Folha não viram retenções fiscais.
+
+Próximos:
+
+1. Conferência formal, fechamento com hash e nova revisão.
+2. Exportação CSV/PDF do demonstrativo.
+3. Classificador assistido dos registros GIW, com fila de pendências.
+4. Matriz fiscal por serviço, regime, município e documento, somente após homologação.

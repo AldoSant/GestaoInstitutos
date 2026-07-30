@@ -12,6 +12,11 @@ O desenho, limites e aceite estão em
 registrada em
 [ADR-0004](decisoes/ADR-0004-demonstrativo-pagamentos-retencoes-guias.md).
 
+O fluxo `/demonstrativos` já materializa pagamentos PF de Folhas fechadas, preserva
+descontos não tributários no snapshot, cria INSS/IRRF como retenções, vincula as guias
+da competência e permite registrar PJ por documento em modal. A prova transacional
+foi executada no PostgreSQL 16 descartável.
+
 ## Visão geral
 
 **Estimativa do MVP ampliado: 72% concluído. Prontidão operacional com dados reais:
