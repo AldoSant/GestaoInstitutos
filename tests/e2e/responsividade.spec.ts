@@ -6,7 +6,7 @@ const senha = process.env.E2E_PASSWORD;
 test.skip(!login || !senha, "Defina E2E_LOGIN e E2E_PASSWORD.");
 
 async function abrirMenu(page: Page) {
-  const menu = page.getByRole("button", { name: "Abrir menu" });
+  const menu = page.locator('summary[aria-label="Abrir menu"]');
   await expect(menu).toBeVisible();
   await menu.click();
   await expect(page.getByRole("navigation", { name: "Navegação principal" })).toBeVisible();
