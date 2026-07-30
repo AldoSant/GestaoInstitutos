@@ -13,7 +13,6 @@ import {
   FileText,
   Gauge,
   GitMerge,
-  History,
   Link2,
   ListChecks,
   LogOut,
@@ -40,11 +39,9 @@ const pessoas: ItemNavegacao[] = [
   { href: "/eventos", label: "Eventos e lançamentos", icon: ReceiptText },
 ];
 
-const administracao: ItemNavegacao[] = [
+const conferencia: ItemNavegacao[] = [
   { href: "/homologacoes", label: "Fechamento mensal", icon: ClipboardCheck },
   { href: "/consolidacoes", label: "Conferência entre folhas", icon: GitMerge },
-  { href: "/migracoes", label: "Importação do GIW", icon: History },
-  { href: "/parametros", label: "Parâmetros fiscais", icon: Settings2 },
 ];
 
 function estaAtivo(pathname: string, href: string) {
@@ -110,7 +107,11 @@ export function Logo() {
   );
 }
 
-export function NavegacaoPrincipal() {
+export function NavegacaoPrincipal({
+  administrador = false,
+}: {
+  administrador?: boolean;
+}) {
   return (
     <nav className="nav-list" aria-label="Navegação principal">
       <span className="nav-section-label">Operação</span>
@@ -131,10 +132,22 @@ export function NavegacaoPrincipal() {
         }}
       />
       <GrupoNavegacao
-        label="Administração"
-        icon={Settings2}
-        itens={administracao}
+        label="Conferência"
+        icon={ClipboardCheck}
+        itens={conferencia}
       />
+      {administrador && (
+        <>
+          <span className="nav-section-label nav-admin-label">Gestão</span>
+          <NavLink
+            item={{
+              href: "/administracao",
+              label: "Administração",
+              icon: Settings2,
+            }}
+          />
+        </>
+      )}
     </nav>
   );
 }
@@ -144,11 +157,13 @@ export function BarraLateral({
   login,
   perfil,
   iniciais,
+  administrador,
 }: {
   organization: string;
   login: string;
   perfil: string;
   iniciais: string;
+  administrador: boolean;
 }) {
   return (
     <aside className="sidebar">
@@ -160,7 +175,7 @@ export function BarraLateral({
           <strong>{organization}</strong>
         </span>
       </div>
-      <NavegacaoPrincipal />
+      <NavegacaoPrincipal administrador={administrador} />
       <div className="sidebar-bottom">
         <Link href="/ajuda" className="nav-link">
           <CircleHelp size={19} />

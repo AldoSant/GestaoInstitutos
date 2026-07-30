@@ -44,7 +44,8 @@ export async function AppShell({
   const jar = await cookies();
   const sessao = lerTokenSessao(jar.get(COOKIE_SESSAO)?.value);
   const login = sessao?.login ?? "Usuário";
-  const perfil = sessao?.perfil === "ADMINISTRADOR" ? "Administrador" : "Operador";
+  const administrador = sessao?.perfil === "ADMINISTRADOR";
+  const perfil = administrador ? "Administrador" : "Operador";
   const selecionada =
     primeiraCompetencia(jar.get(COOKIE_COMPETENCIA)?.value) ??
     competenciaCalendario();
@@ -66,6 +67,7 @@ export async function AppShell({
         login={login}
         perfil={perfil}
         iniciais={iniciais(login)}
+        administrador={administrador}
       />
 
       <div className="main-column">
@@ -76,7 +78,7 @@ export async function AppShell({
             </summary>
             <div className="mobile-menu-panel">
               <Logo />
-              <NavegacaoPrincipal />
+              <NavegacaoPrincipal administrador={administrador} />
             </div>
           </details>
           <div className="page-heading">

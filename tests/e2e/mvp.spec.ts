@@ -31,6 +31,22 @@ test("jornada não destrutiva do MVP publicado", async ({ page }) => {
     await expect(page.getByRole("link", { name: /Nova folha/i })).toBeVisible();
   });
 
+  await test.step("confirmar o isolamento da administração e do legado", async () => {
+    await expect(
+      page.getByRole("link", { name: "Importação do GIW" }),
+    ).toHaveCount(0);
+    await page.getByRole("link", { name: "Administração" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Administração" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /Importação do GIW/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /Parâmetros fiscais/ }),
+    ).toBeVisible();
+  });
+
   await test.step("consultar obrigações e o diagnóstico de FGTS", async () => {
     await page.goto("obrigacoes");
     await expect(page.getByRole("heading", { name: "Obrigações" })).toBeVisible();

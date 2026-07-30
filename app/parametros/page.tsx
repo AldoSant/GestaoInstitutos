@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { listarEnquadramentos } from "@/db/enquadramentos";
 import { listarRegrasFiscais } from "@/db/regras";
+import { exigirAdministrador } from "@/lib/autorizacao";
 import { salvarEnquadramento } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +50,7 @@ export default async function ParametrosPage({
 }: {
   searchParams: SearchParams;
 }) {
+  await exigirAdministrador();
   const params = await searchParams;
   const erro = primeiro(params.erro);
   const sucesso = primeiro(params.sucesso);

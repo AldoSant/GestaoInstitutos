@@ -14,6 +14,7 @@ import {
   carregarCoberturaMigracao,
   carregarMigracaoHistorica,
 } from "@/db/migracoes-historicas";
+import { exigirAdministrador } from "@/lib/autorizacao";
 import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 
 export const dynamic = "force-dynamic";
@@ -65,6 +66,7 @@ export default async function MigracoesPage({
 }: {
   searchParams: SearchParams;
 }) {
+  await exigirAdministrador();
   const params = await searchParams;
   const competencia = await lerCompetenciaContexto(params.competencia);
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;

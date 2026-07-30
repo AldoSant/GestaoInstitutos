@@ -323,3 +323,18 @@ O MVP estará concluído somente quando:
 10. homologação com RH.
 
 Novos módulos não entram antes da conclusão dos itens 1 a 6.
+
+## Estado da execução
+
+| Item | Situação | Evidência |
+|---|---|---|
+| 1. Shell, navegação e linguagem | Concluído | Navegação orientada à rotina, identidade real da sessão e textos operacionais. |
+| 2. Competência global | Concluído | Seletor persistente compartilhado por folha, obrigações, medições e consolidação. |
+| 3. Paginação e filtro de ativos | Concluído | Pessoas ativas por padrão, busca, situação, contagem e paginação real. |
+| 4. Ficha completa de pessoa | Concluído | Identificação, contato, endereço, conta, previdência e dependentes editáveis. |
+| 5. Prontidão e fluxo da folha | Concluído | Diagnóstico anterior ao cálculo e jornada guiada até pagamentos. |
+| 6. Atualização automática | Concluído | Acompanhamento de tarefa, falha compreensível e retentativa segura. |
+| 7. Obrigações por competência | Concluído para o núcleo previdenciário | Cadeia de folha fechada, apuração, totalizador, recibo e DARF. |
+| 8. Isolamento do legado | Concluído na navegação | Importação e parâmetros foram removidos da rotina principal e concentrados em Administração. |
+| 9. Testes E2E | Em andamento | Jornada não destrutiva criada e exigida no CI; falta executar também contra o commit implantado na VPS. |
+| 10. Homologação com RH | Pendente | Depende do deploy e da execução assistida em competência controlada. |

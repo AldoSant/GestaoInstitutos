@@ -15,6 +15,10 @@ npm run test:e2e:mvp
 
 As credenciais não são gravadas no repositório nem no relatório.
 
+A mesma jornada roda automaticamente no CI com organização e credenciais
+exclusivamente sintéticas. A execução na VPS continua obrigatória porque também
+valida proxy, caminho-base, ambiente e revisão efetivamente implantada.
+
 ## Jornada automatizada
 
 O teste confere:
@@ -23,8 +27,9 @@ O teste confere:
 2. seletor global de competência;
 3. cadastros filtrados por ativos;
 4. acesso às folhas e à criação guiada;
-5. fluxo previdenciário até o DARF;
-6. diagnóstico de elegibilidade para FGTS.
+5. isolamento da administração e do histórico do GIW;
+6. fluxo previdenciário até o DARF;
+7. diagnóstico de elegibilidade para FGTS.
 
 ## Jornada funcional com o RH
 
