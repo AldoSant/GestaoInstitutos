@@ -495,6 +495,7 @@ export const vinculos = pgTable(
       .notNull(),
     cargaHoraria: numeric("carga_horaria", { precision: 10, scale: 2 }),
     exigeMedicaoMensal: boolean("exige_medicao_mensal").notNull().default(false),
+    participaFolha: boolean("participa_folha").notNull().default(true),
     descontaInss: boolean("desconta_inss").notNull().default(true),
     descontaIrrf: boolean("desconta_irrf").notNull().default(true),
     ativo: boolean("ativo").notNull().default(true),

@@ -9,11 +9,13 @@ import {
   atividades,
   lotacoes,
   metas,
+  pessoas,
   prestadores,
   termos,
   vinculos,
 } from "@/db/schema";
 import { idCadastroValido } from "@/lib/cadastros";
+import { determinarParticipacaoFolha } from "@/lib/elegibilidade-folha";
 import { validarVinculoCadastro } from "@/lib/vinculos";
 
 function destino(mensagem: string, erro = false) {
@@ -59,8 +61,9 @@ export async function salvarVinculo(formData: FormData) {
     const dados = validacao.dados;
     const [prestador, instrumento, atividade, lotacao] = await Promise.all([
       db
-        .select({ id: prestadores.id })
+        .select({ id: prestadores.id, tipoPessoa: sql<"FISICA" | "JURIDICA">`pessoa.tipo` })
         .from(prestadores)
+        .innerJoin(pessoas, and(eq(pessoas.id, prestadores.pessoaId), eq(pessoas.empresaId, prestadores.empresaId)))
         .where(
           and(
             eq(prestadores.id, dados.prestadorId),
@@ -143,6 +146,7 @@ export async function salvarVinculo(formData: FormData) {
       valorRetribuicao: dados.valorRetribuicao,
       cargaHoraria: dados.cargaHoraria,
       exigeMedicaoMensal: dados.exigeMedicaoMensal,
+      participaFolha: determinarParticipacaoFolha(prestador[0].tipoPessoa),
       descontaInss: dados.descontaInss,
       descontaIrrf: dados.descontaIrrf,
       atualizadoEm: new Date(),

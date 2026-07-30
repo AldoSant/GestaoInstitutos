@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, or, sql } from "drizzle-orm";
+import { correspondeBuscaTextual } from "@/lib/busca-textual";
 import { getDb } from "./index";
 import {
   atividades,
@@ -15,18 +16,17 @@ export async function carregarVinculos(busca = "") {
   const db = getDb();
   const empresa = await resolverEmpresaAtiva();
   const textoBusca = busca.trim();
-  const termoBusca = `%${textoBusca}%`;
   const filtro = textoBusca
     ? and(
         eq(vinculos.empresaId, empresa.id),
         or(
-          ilike(pessoas.nomeRazaoSocial, termoBusca),
-          ilike(prestadores.matricula, termoBusca),
-          ilike(vinculos.numeroContrato, termoBusca),
-          ilike(termos.numero, termoBusca),
-          ilike(metas.descricao, termoBusca),
-          ilike(atividades.descricao, termoBusca),
-          ilike(lotacoes.descricao, termoBusca),
+          correspondeBuscaTextual(pessoas.nomeRazaoSocial, textoBusca),
+          correspondeBuscaTextual(prestadores.matricula, textoBusca),
+          correspondeBuscaTextual(vinculos.numeroContrato, textoBusca),
+          correspondeBuscaTextual(termos.numero, textoBusca),
+          correspondeBuscaTextual(metas.descricao, textoBusca),
+          correspondeBuscaTextual(atividades.descricao, textoBusca),
+          correspondeBuscaTextual(lotacoes.descricao, textoBusca),
         ),
       )
     : eq(vinculos.empresaId, empresa.id);
@@ -47,11 +47,13 @@ export async function carregarVinculos(busca = "") {
           valorRetribuicao: vinculos.valorRetribuicao,
           cargaHoraria: vinculos.cargaHoraria,
           exigeMedicaoMensal: vinculos.exigeMedicaoMensal,
+          participaFolha: vinculos.participaFolha,
           descontaInss: vinculos.descontaInss,
           descontaIrrf: vinculos.descontaIrrf,
           ativo: vinculos.ativo,
           prestadorNome: pessoas.nomeRazaoSocial,
           matricula: prestadores.matricula,
+          tipo: pessoas.tipo,
           termoNumero: termos.numero,
           metaCodigo: metas.codigo,
           metaDescricao: metas.descricao,

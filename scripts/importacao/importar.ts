@@ -771,6 +771,7 @@ async function importarVinculo(
 
   const dependencias = await client.query<{
     pessoa_id: string | null;
+    pessoa_tipo: "FISICA" | "JURIDICA" | null;
     termo_id: string | null;
     meta_id: string | null;
     atividade_id: string | null;
@@ -783,6 +784,10 @@ async function importarVinculo(
           from legado_chave lc join pessoa p on p.id = lc.destino_id
          where lc.empresa_id = $1 and lc.origem = 'GIW' and lc.entidade = 'pessoas'
            and lc.legacy_id = $2 and p.empresa_id = $1 limit 1) pessoa_id,
+       (select p.tipo
+          from legado_chave lc join pessoa p on p.id = lc.destino_id
+         where lc.empresa_id = $1 and lc.origem = 'GIW' and lc.entidade = 'pessoas'
+           and lc.legacy_id = $2 and p.empresa_id = $1 limit 1) pessoa_tipo,
        (select t.id
           from legado_chave lc join termo t on t.id = lc.destino_id
          where lc.empresa_id = $1 and lc.origem = 'GIW' and lc.entidade = 'termos'
@@ -930,6 +935,7 @@ async function importarVinculo(
     vinculo.descontaInss,
     vinculo.descontaIrrf,
     vinculo.ativo,
+    refs.pessoa_tipo === "FISICA",
   ];
   if (destinoId) {
     await client.query(
@@ -938,6 +944,7 @@ async function importarVinculo(
               lotacao_id = $7, numero_contrato = $8, atividade = $9, lotacao = $10,
               inicio = $11, fim = $12, valor_retribuicao = $13, carga_horaria = $14,
               desconta_inss = $15, desconta_irrf = $16, ativo = $17,
+              participa_folha = $18,
               atualizado_em = now()
         where id = $1 and empresa_id = $2`,
       [destinoId, ...values],
@@ -948,8 +955,8 @@ async function importarVinculo(
       `insert into prestador_vinculo
          (empresa_id, prestador_id, termo_id, meta_id, atividade_id, lotacao_id,
           numero_contrato, atividade, lotacao, inicio, fim, valor_retribuicao,
-          carga_horaria, desconta_inss, desconta_irrf, ativo)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+          carga_horaria, desconta_inss, desconta_irrf, ativo, participa_folha)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        returning id`,
       values,
     );

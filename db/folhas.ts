@@ -251,7 +251,8 @@ async function prevalidarCriacaoFolha(
          on mm.empresa_id = v.empresa_id and mm.vinculo_id = v.id
         and mm.competencia = $4::date
       where v.empresa_id = $1 and v.termo_id = $2 and v.meta_id = $3
-        and v.ativo and v.inicio <= $4::date
+        and v.ativo and v.participa_folha and p.tipo = 'FISICA'
+        and v.inicio <= $4::date
         and (v.fim is null or v.fim >= $4::date)
       order by p.nome_razao_social`,
     [empresaId, termoId, metaId, competencia],
@@ -342,7 +343,7 @@ async function validarPessoaEmFolhaUnicaNaCompetencia(
          on vinculo_existente.empresa_id = f.empresa_id
         and vinculo_existente.termo_id = f.termo_id
         and vinculo_existente.meta_id = f.meta_id
-        and vinculo_existente.ativo
+        and vinculo_existente.ativo and vinculo_existente.participa_folha
         and vinculo_existente.inicio <= f.competencia
         and (
           vinculo_existente.fim is null
@@ -357,7 +358,7 @@ async function validarPessoaEmFolhaUnicaNaCompetencia(
       where vinculo_atual.empresa_id = $1
         and vinculo_atual.termo_id = $2
         and vinculo_atual.meta_id = $3
-        and vinculo_atual.ativo
+        and vinculo_atual.ativo and vinculo_atual.participa_folha
         and vinculo_atual.inicio <= $4::date
         and (
           vinculo_atual.fim is null
@@ -421,7 +422,7 @@ async function validarConsolidacaoProdutivaFechamento(
        join prestador_vinculo todos
          on todos.empresa_id = prestador_todos.empresa_id
         and todos.prestador_id = prestador_todos.id
-        and todos.ativo and todos.inicio <= $2::date
+        and todos.ativo and todos.participa_folha and todos.inicio <= $2::date
         and (todos.fim is null or todos.fim >= $2::date)
       where item.folha_id = $1
       group by pessoa.id
@@ -458,7 +459,7 @@ async function validarConsolidacaoProdutivaFechamento(
           and item.folha_id = folha_origem.id
           and item.vinculo_id = vinculo.id
         where vinculo.empresa_id = $1 and prestador.pessoa_id = $2
-          and prestador.ativo and vinculo.ativo
+          and prestador.ativo and vinculo.ativo and vinculo.participa_folha
           and vinculo.inicio <= $3::date
           and (vinculo.fim is null or vinculo.fim >= $3::date)
           and (
@@ -707,6 +708,7 @@ export async function processarFolha(
                  where prestador_pessoa.empresa_id = v.empresa_id
                    and prestador_pessoa.pessoa_id = p.id
                    and prestador_pessoa.ativo and vinculo_pessoa.ativo
+                   and vinculo_pessoa.participa_folha
                    and vinculo_pessoa.inicio <= f.competencia
                    and (
                      vinculo_pessoa.fim is null
@@ -855,10 +857,11 @@ export async function processarFolha(
          join prestador_vinculo v
            on v.empresa_id = f.empresa_id
           and v.termo_id = f.termo_id and v.meta_id = f.meta_id
-          and v.ativo and v.inicio <= f.competencia
+          and v.ativo and v.participa_folha
+          and v.inicio <= f.competencia
           and (v.fim is null or v.fim >= f.competencia)
          join prestador pr on pr.id = v.prestador_id and pr.ativo
-         join pessoa p on p.id = pr.pessoa_id and p.ativo
+         join pessoa p on p.id = pr.pessoa_id and p.ativo and p.tipo = 'FISICA'
          join termo t on t.id = v.termo_id
          join termo_meta m on m.id = v.meta_id and m.termo_id = t.id
          left join medicao_mensal mm
@@ -1666,7 +1669,7 @@ export async function listarOpcoesNovaFolha(
          on v.empresa_id = t.empresa_id
         and v.termo_id = t.id
         and v.meta_id = m.id
-        and v.ativo
+        and v.ativo and v.participa_folha
         and v.inicio <= $2::date
         and (v.fim is null or v.fim >= $2::date)
        left join prestador pr

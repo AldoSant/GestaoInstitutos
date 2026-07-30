@@ -164,7 +164,7 @@ export default async function VinculosPage({
         <div>
           <span className="section-kicker">Contrato operacional</span>
           <h2>Vínculos dos prestadores</h2>
-          <p>Vigência, retribuição e incidências usadas posteriormente no cálculo da folha.</p>
+            <p>Vigência, retribuição e incidências. Só pessoas físicas participam da folha; PJs ficam no fluxo financeiro/fiscal.</p>
         </div>
         <form action={caminhoAplicacao("/vinculos")} method="get" className="search-field">
           <Search size={17} />
@@ -204,7 +204,7 @@ export default async function VinculosPage({
 
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Prestador</th><th>Instrumento</th><th>Atividade / lotação</th><th>Vigência</th><th>Retribuição</th><th>Incidências</th><th>Situação</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Prestador</th><th>Instrumento</th><th>Atividade / lotação</th><th>Vigência</th><th>Retribuição</th><th>Folha e incidências</th><th>Situação</th><th>Ações</th></tr></thead>
             <tbody>
               {dados.vinculos.map((item) => (
                 <tr key={item.id}>
@@ -213,7 +213,7 @@ export default async function VinculosPage({
                   <td>{item.atividadeDescricao ?? "Atividade não localizada"}<small>{item.lotacaoDescricao ?? "Lotação não localizada"}</small></td>
                   <td>{data(item.inicio)}<small>até {data(item.fim)}</small></td>
                   <td><strong>{moeda(item.valorRetribuicao)}</strong><small>{item.exigeMedicaoMensal ? "medição mensal obrigatória" : item.cargaHoraria ? `${item.cargaHoraria} h` : "carga não informada"}</small></td>
-                  <td><StatusBadge tone={item.descontaInss ? "info" : "neutral"}>{item.descontaInss ? "INSS" : "Sem INSS"}</StatusBadge><small>{item.descontaIrrf ? "Com IRRF" : "Sem IRRF"}</small></td>
+                  <td>{item.participaFolha ? <><StatusBadge tone={item.descontaInss ? "info" : "neutral"}>{item.descontaInss ? "INSS" : "Sem INSS"}</StatusBadge><small>{item.descontaIrrf ? "Com IRRF" : "Sem IRRF"}</small></> : <><StatusBadge tone="neutral">Fora da folha</StatusBadge><small>fluxo financeiro/fiscal</small></>}</td>
                   <td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativo" : "Inativo"}</StatusBadge></td>
                   <td><div className="row-actions"><Link className="row-text-action" href={`/vinculos?editar=${item.id}`}><Pencil size={13} /> Editar</Link><AcaoSituacao id={item.id} ativo={item.ativo} /></div></td>
                 </tr>

@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, or, sql } from "drizzle-orm";
+import { correspondeBuscaTextual } from "@/lib/busca-textual";
 import { resolverEmpresaAtiva } from "./cadastros";
 import { getDb } from "./index";
 import { metas, termos } from "./schema";
@@ -7,14 +8,13 @@ export async function carregarInstrumentos(busca = "") {
   const db = getDb();
   const empresa = await resolverEmpresaAtiva();
   const textoBusca = busca.trim();
-  const termoBusca = `%${textoBusca}%`;
   const filtroTermo = textoBusca
     ? and(
         eq(termos.empresaId, empresa.id),
         or(
-          ilike(termos.numero, termoBusca),
-          ilike(termos.descricao, termoBusca),
-          ilike(termos.modalidade, termoBusca),
+          correspondeBuscaTextual(termos.numero, textoBusca),
+          correspondeBuscaTextual(termos.descricao, textoBusca),
+          correspondeBuscaTextual(termos.modalidade, textoBusca),
         ),
       )
     : eq(termos.empresaId, empresa.id);
@@ -22,10 +22,10 @@ export async function carregarInstrumentos(busca = "") {
     ? and(
         eq(termos.empresaId, empresa.id),
         or(
-          ilike(metas.codigo, termoBusca),
-          ilike(metas.descricao, termoBusca),
-          ilike(termos.numero, termoBusca),
-          ilike(termos.descricao, termoBusca),
+          correspondeBuscaTextual(metas.codigo, textoBusca),
+          correspondeBuscaTextual(metas.descricao, textoBusca),
+          correspondeBuscaTextual(termos.numero, textoBusca),
+          correspondeBuscaTextual(termos.descricao, textoBusca),
         ),
       )
     : eq(termos.empresaId, empresa.id);

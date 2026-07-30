@@ -1,4 +1,5 @@
 import { and, asc, eq, ilike, or, sql } from "drizzle-orm";
+import { correspondeBuscaTextual } from "@/lib/busca-textual";
 import { getDb } from "./index";
 import {
   atividades,
@@ -47,7 +48,6 @@ export async function carregarCadastrosBase(
   const db = getDb();
   const empresa = await resolverEmpresaAtiva();
   const textoBusca = busca.trim();
-  const termo = `%${textoBusca}%`;
   const digitos = textoBusca.replace(/\D/g, "");
   const situacao = opcoes.situacao ?? "ativas";
   const pagina = Math.max(1, Math.trunc(opcoes.pagina ?? 1));
@@ -70,7 +70,7 @@ export async function carregarCadastrosBase(
     filtroSituacaoPessoa,
     textoBusca
       ? or(
-          ilike(pessoas.nomeRazaoSocial, termo),
+          correspondeBuscaTextual(pessoas.nomeRazaoSocial, textoBusca),
           ...(digitos
             ? [ilike(pessoas.cpf, `%${digitos}%`), ilike(pessoas.cnpj, `%${digitos}%`)]
             : []),
@@ -81,14 +81,14 @@ export async function carregarCadastrosBase(
     eq(atividades.empresaId, empresa.id),
     filtroSituacaoAtividade,
     textoBusca
-      ? or(ilike(atividades.codigo, termo), ilike(atividades.descricao, termo))
+      ? or(correspondeBuscaTextual(atividades.codigo, textoBusca), correspondeBuscaTextual(atividades.descricao, textoBusca))
       : undefined,
   );
   const filtroLotacao = and(
     eq(lotacoes.empresaId, empresa.id),
     filtroSituacaoLotacao,
     textoBusca
-      ? or(ilike(lotacoes.codigo, termo), ilike(lotacoes.descricao, termo))
+      ? or(correspondeBuscaTextual(lotacoes.codigo, textoBusca), correspondeBuscaTextual(lotacoes.descricao, textoBusca))
       : undefined,
   );
 

@@ -239,6 +239,20 @@
       "when": 1786077600000,
       "tag": "0033_expand_social_security_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1786111200000,
+      "tag": "0034_payroll-eligibility",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1786114200000,
+      "tag": "0035_text-search-tolerance",
+      "breakpoints": true
     }
   ]
 }

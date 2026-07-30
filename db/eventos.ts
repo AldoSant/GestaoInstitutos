@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, or, sql } from "drizzle-orm";
+import { correspondeBuscaTextual } from "@/lib/busca-textual";
 import { resolverEmpresaAtiva } from "./cadastros";
 import { getDb } from "./index";
 import {
@@ -15,23 +16,22 @@ export async function carregarEventos(busca = "") {
   const db = getDb();
   const empresa = await resolverEmpresaAtiva();
   const textoBusca = busca.trim();
-  const termoBusca = `%${textoBusca}%`;
   const filtroEvento = textoBusca
     ? and(
         eq(eventos.empresaId, empresa.id),
-        or(ilike(eventos.codigo, termoBusca), ilike(eventos.descricao, termoBusca)),
+        or(correspondeBuscaTextual(eventos.codigo, textoBusca), correspondeBuscaTextual(eventos.descricao, textoBusca)),
       )
     : eq(eventos.empresaId, empresa.id);
   const filtroRecorrente = textoBusca
     ? and(
         eq(eventosRecorrentes.empresaId, empresa.id),
         or(
-          ilike(eventos.codigo, termoBusca),
-          ilike(eventos.descricao, termoBusca),
-          ilike(pessoas.nomeRazaoSocial, termoBusca),
-          ilike(prestadores.matricula, termoBusca),
-          ilike(termos.numero, termoBusca),
-          ilike(metas.descricao, termoBusca),
+          correspondeBuscaTextual(eventos.codigo, textoBusca),
+          correspondeBuscaTextual(eventos.descricao, textoBusca),
+          correspondeBuscaTextual(pessoas.nomeRazaoSocial, textoBusca),
+          correspondeBuscaTextual(prestadores.matricula, textoBusca),
+          correspondeBuscaTextual(termos.numero, textoBusca),
+          correspondeBuscaTextual(metas.descricao, textoBusca),
         ),
       )
     : eq(eventosRecorrentes.empresaId, empresa.id);

@@ -1,4 +1,5 @@
 import { and, asc, eq, ilike, or, sql } from "drizzle-orm";
+import { correspondeBuscaTextual } from "@/lib/busca-textual";
 import { getDb } from "./index";
 import { chavesLegado, pessoas, prestadores } from "./schema";
 import { resolverEmpresaAtiva } from "./cadastros";
@@ -7,15 +8,14 @@ export async function carregarPrestadores(busca = "") {
   const db = getDb();
   const empresa = await resolverEmpresaAtiva();
   const textoBusca = busca.trim();
-  const termo = `%${textoBusca}%`;
   const digitos = textoBusca.replace(/\D/g, "");
   const filtro = textoBusca
     ? and(
         eq(prestadores.empresaId, empresa.id),
         or(
-          ilike(prestadores.matricula, termo),
-          ilike(prestadores.nitPisPasep, termo),
-          ilike(pessoas.nomeRazaoSocial, termo),
+          correspondeBuscaTextual(prestadores.matricula, textoBusca),
+          correspondeBuscaTextual(prestadores.nitPisPasep, textoBusca),
+          correspondeBuscaTextual(pessoas.nomeRazaoSocial, textoBusca),
           ...(digitos
             ? [ilike(pessoas.cpf, `%${digitos}%`), ilike(pessoas.cnpj, `%${digitos}%`)]
             : []),
