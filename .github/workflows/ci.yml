@@ -187,8 +187,9 @@ jobs:
           E2E_BASE_URL: http://127.0.0.1:3010/gestao-institutos
           E2E_LOGIN: ci-admin
           E2E_PASSWORD: ci-password-not-used-outside-tests
+          PORT: 3010
         run: |
-          npm start -- --port 3010 > /tmp/gestao-institutos-base-path.log 2>&1 &
+          node .next/standalone/server.js > /tmp/gestao-institutos-base-path.log 2>&1 &
           APP_PID=$!
           trap 'kill $APP_PID 2>/dev/null || true' EXIT
           for attempt in $(seq 1 30); do
