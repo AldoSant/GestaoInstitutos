@@ -152,7 +152,7 @@ export default async function EventosPage({
 
       <section className="panel cadastro-section" id="cadastro">
         <div className="panel-header"><div><span className="section-kicker">Rubrica</span><h2>{eventoEditado ? "Editar Evento" : "Novo Evento"}</h2><p>Cadastre o significado da rubrica antes de informar valores.</p></div><StatusBadge tone="info">{dados.eventos.length} exibidos</StatusBadge></div>
-        <form action={salvarEvento} className="crud-form evento-form">
+        <form key={eventoEditado?.id ?? "novo-evento"} action={salvarEvento} className="crud-form evento-form">
           <input type="hidden" name="id" value={eventoEditado?.id ?? ""} />
           <label><span>Código</span><input name="codigo" required maxLength={40} defaultValue={eventoEditado?.codigo ?? ""} /></label>
           <label className="field-wide"><span>Descrição</span><input name="descricao" required maxLength={180} defaultValue={eventoEditado?.descricao ?? ""} /></label>
@@ -171,7 +171,7 @@ export default async function EventosPage({
 
       <section className="panel cadastro-section" id="recorrentes">
         <div className="panel-header"><div><span className="section-kicker">Vigência mensal</span><h2>{recorrenteEditado ? "Editar recorrência" : "Novo lançamento recorrente"}</h2><p>O mesmo Evento não pode possuir vigências ativas sobrepostas no Vínculo.</p></div><StatusBadge tone={recorrenciaDisponivel ? "success" : "warning"}>{recorrenciaDisponivel ? "Cadastros prontos" : "Cadastre Evento e Vínculo"}</StatusBadge></div>
-        <form action={salvarEventoRecorrente} className="crud-form recorrente-form">
+        <form key={recorrenteEditado?.id ?? "nova-recorrencia"} action={salvarEventoRecorrente} className="crud-form recorrente-form">
           <input type="hidden" name="id" value={recorrenteEditado?.id ?? ""} />
           <label className="field-wide"><span>Vínculo</span><select name="vinculoId" required defaultValue={recorrenteEditado?.vinculoId ?? ""}><option value="" disabled>Selecione um Vínculo</option>{dados.opcoesVinculos.map((item) => <option key={item.id} value={item.id}>{item.prestadorNome} · {item.matricula} · Termo {item.termoNumero}/{item.metaCodigo}</option>)}</select></label>
           <label className="field-wide"><span>Evento</span><select name="eventoId" required defaultValue={recorrenteEditado?.eventoId ?? ""}><option value="" disabled>Selecione um Evento</option>{dados.opcoesEventos.map((item) => <option key={item.id} value={item.id}>{item.codigo} · {item.descricao} · {item.tipoCalculo === "PERCENTUAL" ? "%" : "R$"}</option>)}</select></label>

@@ -215,7 +215,7 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
             {dados.paginacaoPessoas.total} encontrada(s)
           </StatusBadge>
         </div>
-        <form action={salvarPessoa} className="crud-form">
+        <form key={pessoaEditada?.id ?? "nova-pessoa"} action={salvarPessoa} className="crud-form">
           <input type="hidden" name="id" value={pessoaEditada?.id ?? ""} />
           <label><span>Natureza</span><select name="tipo" defaultValue={pessoaEditada?.tipo ?? "FISICA"}><option value="FISICA">Pessoa física</option><option value="JURIDICA">Pessoa jurídica</option></select></label>
           <label className="field-wide"><span>Nome ou razão social</span><input name="nome" required maxLength={180} defaultValue={pessoaEditada?.nome ?? ""} /></label>
@@ -252,7 +252,7 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
 
       <section className="panel cadastro-section" id="atividades">
         <div className="panel-header"><div><span className="section-kicker">Execução</span><h2>Atividades</h2><p>Funções, carga horária e valor de referência.</p></div><StatusBadge tone="info">{dados.atividades.length} exibidas</StatusBadge></div>
-        <form action={salvarAtividade} className="crud-form">
+        <form key={atividadeEditada?.id ?? "nova-atividade"} action={salvarAtividade} className="crud-form">
           <input type="hidden" name="id" value={atividadeEditada?.id ?? ""} />
           <label><span>Código</span><input name="codigo" required maxLength={40} defaultValue={atividadeEditada?.codigo ?? ""} /></label>
           <label className="field-wide"><span>Descrição</span><input name="descricao" required maxLength={180} defaultValue={atividadeEditada?.descricao ?? ""} /></label>
@@ -269,7 +269,7 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
 
       <section className="panel cadastro-section" id="lotacoes">
         <div className="panel-header"><div><span className="section-kicker">Organização</span><h2>Lotações</h2><p>Unidades e locais usados nos vínculos.</p></div><StatusBadge tone="info">{dados.lotacoes.length} exibidas</StatusBadge></div>
-        <form action={salvarLotacao} className="crud-form">
+        <form key={lotacaoEditada?.id ?? "nova-lotacao"} action={salvarLotacao} className="crud-form">
           <input type="hidden" name="id" value={lotacaoEditada?.id ?? ""} />
           <label><span>Código</span><input name="codigo" required maxLength={40} defaultValue={lotacaoEditada?.codigo ?? ""} /></label>
           <label className="field-wide"><span>Descrição</span><input name="descricao" required maxLength={160} defaultValue={lotacaoEditada?.descricao ?? ""} /></label>

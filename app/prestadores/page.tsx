@@ -194,7 +194,7 @@ export default async function PrestadoresPage({
           <div><span className="section-kicker">Dados funcionais</span><h2>{prestadorEditado ? "Editar prestador" : "Novo prestador"}</h2><p>A Pessoa deve existir antes de ser promovida a Prestador.</p></div>
           <StatusBadge tone="info">{pessoasDisponiveis.length} pessoas disponíveis</StatusBadge>
         </div>
-        <form action={salvarPrestador} className="crud-form prestador-form">
+        <form key={prestadorEditado?.id ?? "novo"} action={salvarPrestador} className="crud-form prestador-form">
           <input type="hidden" name="id" value={prestadorEditado?.id ?? ""} />
           <label className="field-wide"><span>Pessoa</span><select key={prestadorEditado?.id ?? "novo"} name="pessoaId" required defaultValue={prestadorEditado?.pessoaId ?? ""}>{!prestadorEditado && <option value="" disabled>Selecione uma pessoa</option>}{pessoasDisponiveis.map((item) => <option key={item.id} value={item.id}>{item.nome} · {item.tipo === "FISICA" ? "PF" : "PJ"}{item.ativo ? "" : " · inativa"}</option>)}</select></label>
           <label><span>Matrícula</span><input name="matricula" required maxLength={40} defaultValue={prestadorEditado?.matricula ?? ""} /></label>

@@ -150,7 +150,7 @@ export default async function VinculosPage({
           </StatusBadge>
         </div>
 
-        <form action={salvarVinculo} className="crud-form vinculo-form">
+        <form key={editado?.id ?? "novo"} action={salvarVinculo} className="crud-form vinculo-form">
           <input type="hidden" name="id" value={editado?.id ?? ""} />
           <label className="field-wide"><span>Prestador</span><select name="prestadorId" required defaultValue={editado?.prestadorId ?? ""}><option value="" disabled>Selecione um prestador</option>{dados.prestadores.map((item) => <option key={item.id} value={item.id}>{item.nome} · matrícula {item.matricula}</option>)}</select></label>
           <label className="field-wide"><span>Termo e meta</span><select name="instrumento" required defaultValue={editado ? `${editado.termoId}:${editado.metaId}` : ""}><option value="" disabled>Selecione termo e meta</option>{dados.instrumentos.map((item) => <option key={item.metaId} value={`${item.termoId}:${item.metaId}`}>Termo {item.termoNumero} · {item.metaCodigo} — {item.metaDescricao}</option>)}</select></label>

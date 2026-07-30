@@ -97,9 +97,12 @@ test("todas as páginas e seus controles básicos estão operacionais", async ({
   }
 
   for (const destino of destinosInternos) {
-    const resposta = await page.request.get(destino);
+    const status = await page.evaluate(async (url) => {
+      const resposta = await fetch(url, { credentials: "same-origin" });
+      return resposta.status;
+    }, destino);
     expect(
-      resposta.status(),
+      status,
       `Link interno indisponível: ${destino}`,
     ).toBeLessThan(400);
   }

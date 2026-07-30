@@ -144,7 +144,7 @@ export default async function InstrumentosPage({
 
       <section className="panel cadastro-section" id="termos">
         <div className="panel-header"><div><span className="section-kicker">Instrumento</span><h2>{termoEditado ? "Editar termo" : "Novo termo"}</h2><p>Número, modalidade, vigência e limite financeiro.</p></div><StatusBadge tone="info">{dados.termos.length} exibidos</StatusBadge></div>
-        <form action={salvarTermo} className="crud-form termo-form">
+        <form key={termoEditado?.id ?? "novo-termo"} action={salvarTermo} className="crud-form termo-form">
           <input type="hidden" name="id" value={termoEditado?.id ?? ""} />
           <label><span>Número</span><input name="numero" required maxLength={60} defaultValue={termoEditado?.numero ?? ""} /></label>
           <label className="field-wide"><span>Descrição</span><input name="descricao" required maxLength={255} defaultValue={termoEditado?.descricao ?? ""} /></label>
@@ -163,7 +163,7 @@ export default async function InstrumentosPage({
 
       <section className="panel cadastro-section" id="metas">
         <div className="panel-header"><div><span className="section-kicker">Objeto e orçamento</span><h2>{metaEditada ? "Editar meta" : "Nova meta"}</h2><p>A meta será selecionada no vínculo do prestador.</p></div><StatusBadge tone="info">{dados.metas.length} exibidas</StatusBadge></div>
-        <form action={salvarMeta} className="crud-form meta-form">
+        <form key={metaEditada?.id ?? "nova-meta"} action={salvarMeta} className="crud-form meta-form">
           <input type="hidden" name="id" value={metaEditada?.id ?? ""} />
           <label className="field-wide"><span>Termo</span><select name="termoId" required defaultValue={metaEditada?.termoId ?? ""}><option value="" disabled>Selecione um termo ativo</option>{opcoesTermos.map((item) => <option key={item.id} value={item.id}>{item.numero} · {item.descricao}{item.ativo ? "" : " · inativo"}</option>)}</select></label>
           <label><span>Código</span><input name="codigo" required maxLength={40} defaultValue={metaEditada?.codigo ?? ""} /></label>
