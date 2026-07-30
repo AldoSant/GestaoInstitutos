@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-A rota `/homologacoes` reúne em um único dossiê os controles necessários para
+A rota `/fechamento-mensal` reúne em um único dossiê os controles necessários para
 homologar uma competência e conduzir o período paralelo antes do corte do GIW. Ela não
 repete cálculos: lê as evidências produzidas pelos módulos operacionais, classifica a
 prontidão e congela uma versão reproduzível.
@@ -108,7 +108,7 @@ HTTP. Ele pode ser arquivado com as evidências do RH e da contabilidade.
 3. Processar, conferir e fechar todas as Folhas.
 4. Importar a referência do GIW/RH em cada Folha e resolver divergências.
 5. Apurar a obrigação e registrar os documentos verificados.
-6. Abrir `/homologacoes` e recalcular o diagnóstico.
+6. Abrir `/fechamento-mensal` e recalcular o diagnóstico.
 7. Corrigir todo item `PENDENTE` ou `BLOQUEIO`.
 8. Congelar os oito controles.
 9. Registrar a versão como `EM_ANALISE`.

@@ -177,11 +177,11 @@ export default async function InstrumentosPage({
           <label className="sr-only" htmlFor="busca-instrumentos">Buscar termos e metas</label>
           <input id="busca-instrumentos" name="busca" type="search" defaultValue={busca} placeholder="Número, descrição, modalidade ou meta" />
           {busca && <Link href="/termos-e-metas" aria-label="Limpar busca"><X size={15} /></Link>}
-          <button type="submit" aria-label="Buscar instrumentos"><Search size={15} /></button>
+          <button type="submit" aria-label="Buscar termos e metas"><Search size={15} /></button>
         </form>
       </section>
 
-      <section className="metrics-grid" aria-label="Resumo dos instrumentos">
+      <section className="metrics-grid" aria-label="Resumo dos termos e metas">
         <article className="metric-card"><div className="metric-icon"><FileText size={21} /></div><div className="metric-copy"><span>Termos</span><strong>{dados.totais.termos_total}</strong><small>{dados.totais.termos_ativos} ativos</small></div></article>
         <article className="metric-card"><div className="metric-icon blue"><Target size={21} /></div><div className="metric-copy"><span>Metas</span><strong>{dados.totais.metas_total}</strong><small>{dados.totais.metas_ativas} ativas</small></div></article>
         <article className="metric-card"><div className="metric-icon amber"><TriangleAlert size={21} /></div><div className="metric-copy"><span>Termos sem meta</span><strong>{dados.totais.termos_sem_meta}</strong><small>não aptos a vínculos</small></div></article>

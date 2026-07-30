@@ -25,10 +25,10 @@ flowchart LR
   G -- "sim" --> F["Processamento e fechamento da Folha"]
 ```
 
-1. `/consolidacoes` detecta a mesma Pessoa em múltiplos Vínculos.
+1. `/conferencia-entre-folhas` detecta a mesma Pessoa em múltiplos Vínculos.
 2. O operador congela as fontes; o RH decide `RATEIO_NECESSARIO` ou
    `UNIFICAR_VINCULOS`.
-3. `/consolidacoes/simulacoes` recarrega Vínculos, medições, Eventos, dependentes,
+3. `/conferencia-entre-folhas/simulacoes` recarrega Vínculos, medições, Eventos, dependentes,
    outras fontes, regra fiscal e enquadramento previdenciário.
 4. O motor calcula a base mensal da Pessoa e rateia os resultados.
 5. A versão é encaminhada ao RH e pode ser homologada, rejeitada ou invalidada.

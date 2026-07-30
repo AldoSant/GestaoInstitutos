@@ -73,7 +73,7 @@ test("ações cadastrais permanecem operáveis em tela estreita", async ({
   for (const cenário of [
     { pagina: "prestadores", ação: "Novo prestador", titulo: "Cadastrar prestador" },
     { pagina: "vinculos", ação: "Novo vínculo", titulo: "Cadastrar vínculo" },
-    { pagina: "instrumentos", ação: "Novo termo", titulo: "Cadastrar termo" },
+    { pagina: "termos-e-metas", ação: "Novo termo", titulo: "Cadastrar termo" },
     { pagina: "eventos", ação: "Novo evento", titulo: "Cadastrar evento" },
   ]) {
     await page.goto(cenário.pagina);

@@ -21,7 +21,8 @@ antes de sua futura ativação produtiva.
 
 ## Fluxo operacional implementado
 
-As rotas `/consolidacoes` e `/consolidacoes/simulacoes` executam três camadas:
+As rotas `/conferencia-entre-folhas` e
+`/conferencia-entre-folhas/simulacoes` executam três camadas:
 
 1. **Diagnóstico vivo:** consulta os cadastros e movimentos atuais, sem gravar nem
    calcular tributos.

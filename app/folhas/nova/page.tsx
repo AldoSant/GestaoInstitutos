@@ -41,7 +41,7 @@ export default async function NovaFolhaPage({
         <Link href="/folhas" className="back-link"><ArrowLeft size={16} /> Voltar</Link>
         <section className="alert-box danger">
           <Database size={22} />
-          <div><strong>Cadastro indisponível</strong><p>Não foi possível carregar os instrumentos disponíveis.</p></div>
+          <div><strong>Cadastro indisponível</strong><p>Não foi possível carregar os termos e metas disponíveis.</p></div>
         </section>
       </AppShell>
     );
