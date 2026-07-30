@@ -336,5 +336,5 @@ Novos módulos não entram antes da conclusão dos itens 1 a 6.
 | 6. Atualização automática | Concluído | Acompanhamento de tarefa, falha compreensível e retentativa segura. |
 | 7. Obrigações por competência | Concluído para o núcleo previdenciário | Cadeia de folha fechada, apuração, totalizador, recibo e DARF. |
 | 8. Isolamento do legado | Concluído na navegação | Importação e parâmetros foram removidos da rotina principal e concentrados em Administração. |
-| 9. Testes E2E | Em andamento | Jornada não destrutiva criada e exigida no CI; falta executar também contra o commit implantado na VPS. |
+| 9. Testes E2E | Em andamento | Jornada não destrutiva e auditoria WCAG exigidas no CI; falta executar também contra o commit implantado na VPS. |
 | 10. Homologação com RH | Pendente | Depende do deploy e da execução assistida em competência controlada. |

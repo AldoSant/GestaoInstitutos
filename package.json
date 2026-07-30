@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "test": "tsx --test tests/**/*.test.ts",
-    "test:e2e:mvp": "playwright test tests/e2e/mvp.spec.ts",
+    "test:e2e:mvp": "playwright test tests/e2e",
     "typecheck": "tsc --noEmit --incremental false",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "validate": "npm run lint && npm run typecheck && npm test && npm run db:check && npm run build",
@@ -46,6 +46,7 @@
     "react-dom": "19.2.6"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/pg": "8.11.10",
