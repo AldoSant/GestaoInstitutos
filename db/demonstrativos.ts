@@ -70,6 +70,7 @@ export async function materializarDemonstrativoFolhas({
   const controlaTransacao = clientInformado === undefined;
   try {
     if (controlaTransacao) await client.query("begin");
+    if (!controlaTransacao) await client.query("set constraints all deferred");
     await client.query(
       `select pg_advisory_xact_lock(hashtextextended($1, 0))`,
       [`demonstrativo:${empresaId}:${mes}`],
@@ -214,6 +215,7 @@ export async function materializarDemonstrativoFolhas({
     );
     await atualizarTotais(client, demonstrativoId);
     await client.query("set constraints all immediate");
+    if (!controlaTransacao) await client.query("set constraints all deferred");
     if (controlaTransacao) await client.query("commit");
     return {
       demonstrativoId,
