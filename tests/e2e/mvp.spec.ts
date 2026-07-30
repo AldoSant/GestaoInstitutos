@@ -21,7 +21,9 @@ test("jornada não destrutiva do MVP publicado", async ({ page }) => {
     await page.goto("cadastros");
     await expect(page.getByRole("heading", { name: "Cadastros" })).toBeVisible();
     await expect(page.getByLabel("Filtrar situação")).toHaveValue("ativas");
-    await expect(page.getByRole("heading", { name: "Pessoas" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Pessoas", exact: true }),
+    ).toBeVisible();
   });
 
   await test.step("consultar o fluxo mensal da folha", async () => {
