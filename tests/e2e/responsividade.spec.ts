@@ -79,3 +79,34 @@ test("jornada principal permanece operável no celular", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Administração" })).toBeVisible();
   await semEstouroHorizontal(page);
 });
+
+test("cabeçalho preserva contexto e não quebra com título longo", async ({
+  page,
+}) => {
+  await page.goto("login");
+  await page.getByLabel("Login").fill(login!);
+  await page.getByLabel("Senha").fill(senha!);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
+
+  await page.goto("cadastros");
+  const primeiraFicha = page.locator('a[href*="/cadastros/pessoas/"]');
+  expect(await primeiraFicha.count()).toBeGreaterThan(0);
+  await primeiraFicha.first().click();
+
+  const titulo = page.locator(".page-heading h1");
+  await expect(titulo).toBeVisible();
+  const dimensoes = await titulo.evaluate((elemento) => ({
+    altura: elemento.getBoundingClientRect().height,
+    linha: Number.parseFloat(getComputedStyle(elemento).lineHeight),
+  }));
+  expect(dimensoes.altura).toBeLessThanOrEqual(dimensoes.linha + 1);
+
+  const seletor = page.getByRole("combobox", { name: "Competência em foco" });
+  await expect(seletor).toBeVisible();
+  const caminhoAntes = new URL(page.url()).pathname;
+  await seletor.selectOption("2026-05");
+  await expect(page).toHaveURL(/competencia=2026-05/);
+  expect(new URL(page.url()).pathname).toBe(caminhoAntes);
+  await semEstouroHorizontal(page);
+});
