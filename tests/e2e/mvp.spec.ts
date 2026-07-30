@@ -44,7 +44,7 @@ test("jornada não destrutiva do MVP publicado", async ({ page }) => {
       page.getByRole("heading", { name: "Administração" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { name: /Importação do GIW/ }),
+      page.getByRole("link", { name: /Migração histórica/ }),
     ).toBeVisible();
     await expect(
       page.getByRole("link", { name: /Parâmetros fiscais/ }),

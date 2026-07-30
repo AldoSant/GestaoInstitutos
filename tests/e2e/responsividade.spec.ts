@@ -63,7 +63,7 @@ test("jornada principal permanece operável no celular", async ({ page }) => {
 
   menu = await abrirMenu(page);
   await menu.getByText("Pessoas e vínculos", { exact: true }).click();
-  await menu.getByRole("link", { name: "Pessoas", exact: true }).click();
+  await menu.getByRole("link", { name: "Cadastros", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Cadastros" })).toBeVisible();
   await semEstouroHorizontal(page);
 
