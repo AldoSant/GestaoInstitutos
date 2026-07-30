@@ -9,7 +9,11 @@ async function abrirMenu(page: Page) {
   const menu = page.locator('summary[aria-label="Abrir menu"]');
   await expect(menu).toBeVisible();
   await menu.click();
-  await expect(page.getByRole("navigation", { name: "Navegação principal" })).toBeVisible();
+  const painel = page.locator(".mobile-menu-panel");
+  await expect(
+    painel.getByRole("navigation", { name: "Navegação principal" }),
+  ).toBeVisible();
+  return painel;
 }
 
 async function semEstouroHorizontal(page: Page) {
@@ -36,24 +40,24 @@ test("jornada principal permanece operável no celular", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
   await semEstouroHorizontal(page);
 
-  await abrirMenu(page);
-  await page.getByRole("link", { name: "Folha mensal" }).click();
+  let menu = await abrirMenu(page);
+  await menu.getByRole("link", { name: "Folha mensal" }).click();
   await expect(page.getByRole("heading", { name: "Folhas" })).toBeVisible();
   await semEstouroHorizontal(page);
 
-  await abrirMenu(page);
-  await page.getByText("Pessoas e vínculos", { exact: true }).click();
-  await page.getByRole("link", { name: "Pessoas", exact: true }).click();
+  menu = await abrirMenu(page);
+  await menu.getByText("Pessoas e vínculos", { exact: true }).click();
+  await menu.getByRole("link", { name: "Pessoas", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Cadastros" })).toBeVisible();
   await semEstouroHorizontal(page);
 
-  await abrirMenu(page);
-  await page.getByRole("link", { name: "Obrigações e guias" }).click();
+  menu = await abrirMenu(page);
+  await menu.getByRole("link", { name: "Obrigações e guias" }).click();
   await expect(page.getByRole("heading", { name: "Obrigações" })).toBeVisible();
   await semEstouroHorizontal(page);
 
-  await abrirMenu(page);
-  await page.getByRole("link", { name: "Administração" }).click();
+  menu = await abrirMenu(page);
+  await menu.getByRole("link", { name: "Administração" }).click();
   await expect(page.getByRole("heading", { name: "Administração" })).toBeVisible();
   await semEstouroHorizontal(page);
 });
