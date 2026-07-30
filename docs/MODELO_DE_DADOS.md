@@ -2,7 +2,7 @@
 
 ## Modelo implementado
 
-As migrações Drizzle criam 56 tabelas, agrupadas em:
+As migrações Drizzle criam 57 tabelas, agrupadas em:
 
 - organização e acesso: `empresa`, `usuario`, `usuario_empresa`;
 - pessoas: `pessoa`, `pessoa_endereco`, `pessoa_conta_bancaria`, `dependente`,
@@ -19,7 +19,8 @@ As migrações Drizzle criam 56 tabelas, agrupadas em:
   `obrigacao_fiscal_item`, `obrigacao_fiscal_documento`;
 - demonstrativo financeiro: `demonstrativo_mensal`, `pagamento_prestador`,
   `pagamento_retencao`, `demonstrativo_obrigacao`,
-  `demonstrativo_conferencia`, `classificacao_operacional_legado`;
+  `demonstrativo_conferencia`, `demonstrativo_revisao_historico`,
+  `classificacao_operacional_legado`;
 - FGTS e eSocial: `fgts_apuracao`, `fgts_apuracao_item`,
   `integracao_esocial_evento`, `fgts_guia`;
 - migração: `importacao_execucao`, `importacao_registro`, `legado_chave`,
@@ -76,6 +77,7 @@ erDiagram
   EMPRESA ||--o{ DEMONSTRATIVO_MENSAL : consolida
   DEMONSTRATIVO_MENSAL ||--o{ PAGAMENTO_PRESTADOR : apresenta
   DEMONSTRATIVO_MENSAL ||--o{ DEMONSTRATIVO_CONFERENCIA : decide
+  DEMONSTRATIVO_MENSAL ||--o{ DEMONSTRATIVO_REVISAO_HISTORICO : preserva
   PRESTADOR o|--o{ PAGAMENTO_PRESTADOR : recebe
   PAGAMENTO_PRESTADOR ||--o{ PAGAMENTO_RETENCAO : sofre
   DEMONSTRATIVO_MENSAL ||--o{ DEMONSTRATIVO_OBRIGACAO : inclui

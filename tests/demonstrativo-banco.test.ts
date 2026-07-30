@@ -3,6 +3,7 @@ import { randomInt, randomUUID } from "node:crypto";
 import test from "node:test";
 import pg from "pg";
 import {
+  abrirNovaRevisaoDemonstrativo,
   fecharDemonstrativo,
   materializarDemonstrativoFolhas,
   registrarConferenciaDemonstrativo,
@@ -284,6 +285,79 @@ test(
         /Demonstrativo fechado é imutável/,
       );
       await client.query("rollback to savepoint demonstrativo_fechado");
+      const novaRevisao = await abrirNovaRevisaoDemonstrativo({
+        empresaId,
+        demonstrativoId: resultado.demonstrativoId,
+        motivo:
+          "Correção formal solicitada após o fechamento sintético da competência.",
+        responsavel: "Gerente do RH",
+        client,
+      });
+      assert.equal(novaRevisao.revisao_origem, 1);
+      assert.equal(novaRevisao.revisao_destino, 2);
+      assert.equal(novaRevisao.hash_resultado, conferencia.hash);
+      const reaberto = await client.query<{
+        revisao: number;
+        status: string;
+        hash_resultado: string | null;
+        fechado_em: Date | null;
+      }>(
+        `select revisao, status, hash_resultado, fechado_em
+           from demonstrativo_mensal where id = $1`,
+        [resultado.demonstrativoId],
+      );
+      assert.deepEqual(reaberto.rows[0], {
+        revisao: 2,
+        status: "RASCUNHO",
+        hash_resultado: null,
+        fechado_em: null,
+      });
+      const historico = await client.query<{
+        hash_resultado: string;
+        snapshot_anterior: {
+          conteudo: { demonstrativo: { revisao: number } };
+          conferencia: { resultado: string };
+        };
+      }>(
+        `select hash_resultado, snapshot_anterior
+           from demonstrativo_revisao_historico
+          where demonstrativo_id = $1`,
+        [resultado.demonstrativoId],
+      );
+      assert.equal(historico.rows[0].hash_resultado, conferencia.hash);
+      assert.equal(
+        historico.rows[0].snapshot_anterior.conteudo.demonstrativo.revisao,
+        1,
+      );
+      assert.equal(
+        historico.rows[0].snapshot_anterior.conferencia.resultado,
+        "APROVADA",
+      );
+      await client.query("savepoint historico_revisao");
+      await assert.rejects(
+        client.query(
+          `update demonstrativo_revisao_historico
+              set motivo = motivo || ' alterado'
+            where demonstrativo_id = $1`,
+          [resultado.demonstrativoId],
+        ),
+        /Histórico de revisão do demonstrativo é imutável/,
+      );
+      await client.query("rollback to savepoint historico_revisao");
+      await materializarDemonstrativoFolhas({
+        empresaId,
+        competencia: "2026-06",
+        client,
+      });
+      const revisaoAposAtualizacao = await client.query<{ revisao: number }>(
+        `select revisao from demonstrativo_mensal where id = $1`,
+        [resultado.demonstrativoId],
+      );
+      assert.equal(
+        revisaoAposAtualizacao.rows[0].revisao,
+        2,
+        "Atualizar as fontes não pode criar uma revisão formal silenciosa.",
+      );
       await client.query("rollback");
     } finally {
       client.release();

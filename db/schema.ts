@@ -2568,6 +2568,67 @@ export const conferenciasDemonstrativos = pgTable(
   ],
 );
 
+export const historicosRevisoesDemonstrativos = pgTable(
+  "demonstrativo_revisao_historico",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
+    demonstrativoId: uuid("demonstrativo_id").notNull(),
+    revisaoOrigem: integer("revisao_origem").notNull(),
+    revisaoDestino: integer("revisao_destino").notNull(),
+    hashResultado: varchar("hash_resultado", { length: 64 }).notNull(),
+    motivo: text("motivo").notNull(),
+    responsavel: varchar("responsavel", { length: 160 }).notNull(),
+    snapshotAnterior: jsonb("snapshot_anterior").notNull(),
+    criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("uq_demonstrativo_revisao_origem").on(
+      table.demonstrativoId,
+      table.revisaoOrigem,
+    ),
+    uniqueIndex("uq_demonstrativo_revisao_destino").on(
+      table.demonstrativoId,
+      table.revisaoDestino,
+    ),
+    index("ix_demonstrativo_revisao_empresa_data").on(
+      table.empresaId,
+      table.criadoEm,
+    ),
+    foreignKey({
+      columns: [table.empresaId],
+      foreignColumns: [empresas.id],
+      name: "fk_demonstrativo_revisao_empresa",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.demonstrativoId],
+      foreignColumns: [demonstrativosMensais.empresaId, demonstrativosMensais.id],
+      name: "fk_demonstrativo_revisao_empresa_demonstrativo",
+    }).onDelete("cascade"),
+    check(
+      "ck_demonstrativo_revisao_sequencia",
+      sql`${table.revisaoOrigem} > 0
+          and ${table.revisaoDestino} = ${table.revisaoOrigem} + 1`,
+    ),
+    check(
+      "ck_demonstrativo_revisao_hash",
+      sql`${table.hashResultado} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "ck_demonstrativo_revisao_motivo",
+      sql`length(btrim(${table.motivo})) between 20 and 3000`,
+    ),
+    check(
+      "ck_demonstrativo_revisao_responsavel",
+      sql`length(btrim(${table.responsavel})) between 3 and 160`,
+    ),
+    check(
+      "ck_demonstrativo_revisao_snapshot",
+      sql`jsonb_typeof(${table.snapshotAnterior}) = 'object'`,
+    ),
+  ],
+);
+
 export const pagamentosPrestadores = pgTable(
   "pagamento_prestador",
   {

@@ -3,6 +3,7 @@ import { decimalParaInteiro } from "@/lib/dinheiro";
 import { numeroDecimalBrasileiro } from "@/lib/importacao-giw";
 import { normalizarConferenciaDemonstrativo } from "@/lib/conferencia-demonstrativo";
 import { hashJson } from "@/lib/json-canonico";
+import { normalizarAberturaRevisaoDemonstrativo } from "@/lib/revisao-demonstrativo";
 import type { PoolClient } from "pg";
 
 const UUID =
@@ -127,7 +128,7 @@ export async function materializarDemonstrativoFolhas({
     } else {
       await client.query(
         `update demonstrativo_mensal
-            set revisao = revisao + 1, status = 'RASCUNHO',
+            set status = 'RASCUNHO',
                 hash_resultado = null, fechado_em = null, fechado_por = null,
                 atualizado_em = now()
           where id = $1`,
@@ -466,18 +467,157 @@ async function conteudoHashDemonstrativo(
   if (pagamentos.rowCount === 0) {
     throw new Error("O demonstrativo não possui pagamentos para conferência.");
   }
+  const snapshot = {
+    demonstrativo: cabecalho.rows[0],
+    pagamentos: pagamentos.rows,
+    retencoes: retencoes.rows,
+    obrigacoes: obrigacoes.rows,
+    documentos: documentos.rows,
+  };
   return {
-    hash: hashJson({
-      demonstrativo: cabecalho.rows[0],
-      pagamentos: pagamentos.rows,
-      retencoes: retencoes.rows,
-      obrigacoes: obrigacoes.rows,
-      documentos: documentos.rows,
-    }),
+    hash: hashJson(snapshot),
+    snapshot,
     pagamentos: pagamentos.rowCount ?? 0,
     retencoes: retencoes.rowCount ?? 0,
     guias: obrigacoes.rowCount ?? 0,
   };
+}
+
+export async function abrirNovaRevisaoDemonstrativo({
+  empresaId,
+  demonstrativoId,
+  motivo,
+  responsavel,
+  client: clientInformado,
+}: {
+  empresaId: string;
+  demonstrativoId: string;
+  motivo: unknown;
+  responsavel: unknown;
+  client?: PoolClient;
+}) {
+  validarId(empresaId, "Empresa");
+  validarId(demonstrativoId, "Demonstrativo");
+  const solicitacao = normalizarAberturaRevisaoDemonstrativo({
+    motivo,
+    responsavel,
+  });
+  const client = clientInformado ?? (await getPool().connect());
+  const controlaTransacao = clientInformado === undefined;
+  try {
+    if (controlaTransacao) await client.query("begin");
+    await client.query(
+      `select pg_advisory_xact_lock(hashtextextended($1, 0))`,
+      [`demonstrativo-revisao:${empresaId}:${demonstrativoId}`],
+    );
+    await client.query(
+      `select set_config('app.ator', $1, true),
+              set_config('app.motivo', $2, true)`,
+      [solicitacao.responsavel, solicitacao.motivo],
+    );
+    const atual = await client.query<{
+      revisao: number;
+      status: string;
+      hash_resultado: string | null;
+      fechado_em: Date | null;
+      fechado_por: string | null;
+    }>(
+      `select revisao, status, hash_resultado, fechado_em, fechado_por
+         from demonstrativo_mensal
+        where id = $1 and empresa_id = $2
+        for update`,
+      [demonstrativoId, empresaId],
+    );
+    const demonstrativo = atual.rows[0];
+    if (!demonstrativo) throw new Error("Demonstrativo não encontrado.");
+    if (demonstrativo.status !== "FECHADO" || !demonstrativo.hash_resultado) {
+      throw new Error(
+        "Somente um demonstrativo fechado pode abrir uma nova revisão.",
+      );
+    }
+    const conteudo = await conteudoHashDemonstrativo(
+      client,
+      empresaId,
+      demonstrativoId,
+    );
+    if (conteudo.hash !== demonstrativo.hash_resultado) {
+      throw new Error(
+        "O conteúdo fechado diverge do hash registrado. A nova revisão foi bloqueada.",
+      );
+    }
+    const conferencia = await client.query(
+      `select revisao, hash_resultado, resultado, conferente,
+              confirmou_pagamentos, confirmou_retencoes, confirmou_guias,
+              observacao, criado_em
+         from demonstrativo_conferencia
+        where empresa_id = $1 and demonstrativo_id = $2
+          and revisao = $3 and hash_resultado = $4
+        order by criado_em desc, id desc
+        limit 1`,
+      [
+        empresaId,
+        demonstrativoId,
+        demonstrativo.revisao,
+        demonstrativo.hash_resultado,
+      ],
+    );
+    if (conferencia.rows[0]?.resultado !== "APROVADA") {
+      throw new Error(
+        "O fechamento anterior não possui uma aprovação válida para ser congelada.",
+      );
+    }
+    const revisaoDestino = demonstrativo.revisao + 1;
+    const snapshotAnterior = {
+      conteudo: conteudo.snapshot,
+      fechamento: {
+        hashResultado: demonstrativo.hash_resultado,
+        fechadoEm: demonstrativo.fechado_em,
+        fechadoPor: demonstrativo.fechado_por,
+      },
+      conferencia: conferencia.rows[0],
+    };
+    const historico = await client.query<{
+      id: string;
+      revisao_origem: number;
+      revisao_destino: number;
+      hash_resultado: string;
+    }>(
+      `insert into demonstrativo_revisao_historico (
+         empresa_id, demonstrativo_id, revisao_origem, revisao_destino,
+         hash_resultado, motivo, responsavel, snapshot_anterior
+       ) values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
+       returning id, revisao_origem, revisao_destino, hash_resultado`,
+      [
+        empresaId,
+        demonstrativoId,
+        demonstrativo.revisao,
+        revisaoDestino,
+        demonstrativo.hash_resultado,
+        solicitacao.motivo,
+        solicitacao.responsavel,
+        JSON.stringify(snapshotAnterior),
+      ],
+    );
+    await client.query(
+      `update demonstrativo_mensal
+          set revisao = $2, status = 'RASCUNHO', hash_resultado = null,
+              fechado_em = null, fechado_por = null, atualizado_em = now()
+        where id = $1`,
+      [demonstrativoId, revisaoDestino],
+    );
+    if (controlaTransacao) await client.query("commit");
+    return {
+      ...historico.rows[0],
+      demonstrativoId,
+      motivo: solicitacao.motivo,
+      responsavel: solicitacao.responsavel,
+    };
+  } catch (error) {
+    if (controlaTransacao) await client.query("rollback");
+    throw error;
+  } finally {
+    if (controlaTransacao) client.release();
+  }
 }
 
 export async function registrarConferenciaDemonstrativo({
@@ -670,6 +810,7 @@ export async function carregarDemonstrativo(
     prestadoresPj,
     pendencias,
     conferencias,
+    revisoes,
   ] =
     await Promise.all([
       getPool().query(
@@ -752,6 +893,17 @@ export async function carregarDemonstrativo(
           limit 30`,
         [empresaId, mes],
       ),
+      getPool().query(
+        `select h.id, h.revisao_origem, h.revisao_destino,
+                h.hash_resultado, h.motivo, h.responsavel, h.criado_em
+           from demonstrativo_revisao_historico h
+           join demonstrativo_mensal d on d.id = h.demonstrativo_id
+          where d.empresa_id = $1 and d.competencia = $2::date
+            and d.status <> 'CANCELADO'
+          order by h.revisao_origem desc, h.criado_em desc
+          limit 30`,
+        [empresaId, mes],
+      ),
     ]);
   return {
     demonstrativo: demonstrativo.rows[0] ?? null,
@@ -760,5 +912,6 @@ export async function carregarDemonstrativo(
     prestadoresPj: prestadoresPj.rows,
     pendencias: pendencias.rows[0]?.total ?? 0,
     conferencias: conferencias.rows,
+    revisoes: revisoes.rows,
   };
 }

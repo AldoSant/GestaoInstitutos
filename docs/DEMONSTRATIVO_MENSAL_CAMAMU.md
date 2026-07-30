@@ -40,6 +40,7 @@ erDiagram
   REGRA_CALCULO_VERSAO o|--o{ PAGAMENTO_RETENCAO : fundamenta
   DEMONSTRATIVO_MENSAL ||--o{ DEMONSTRATIVO_OBRIGACAO : inclui
   OBRIGACAO_FISCAL ||--o{ DEMONSTRATIVO_OBRIGACAO : recolhe
+  DEMONSTRATIVO_MENSAL ||--o{ DEMONSTRATIVO_REVISAO_HISTORICO : preserva
   EMPRESA ||--o{ CLASSIFICACAO_OPERACIONAL_LEGADO : revisa
 ```
 
@@ -94,10 +95,12 @@ Concluídos:
 - conferência imutável vinculada à revisão e ao SHA-256 do conteúdo;
 - fechamento que recalcula o hash e recusa qualquer fonte alterada;
 - exportação CSV separando pagamento, retenções e guia, com proteção para planilhas.
+- nova revisão formal com motivo e responsável, snapshot integral imutável do
+  fechamento anterior e avanço explícito da versão;
+- atualização de PF e guias sem criar uma revisão formal silenciosa.
 
 Próximos:
 
-1. Nova revisão formal de um demonstrativo já fechado.
-2. Relatório PDF imprimível do demonstrativo.
-3. Classificador assistido dos registros GIW, com fila de pendências.
-4. Matriz fiscal por serviço, regime, município e documento, somente após homologação.
+1. Relatório PDF imprimível do demonstrativo.
+2. Classificador assistido dos registros GIW, com fila de pendências.
+3. Matriz fiscal por serviço, regime, município e documento, somente após homologação.

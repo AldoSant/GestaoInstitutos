@@ -7,6 +7,7 @@ import {
   Database,
   Download,
   FileCheck2,
+  FileClock,
   LockKeyhole,
   Plus,
   ReceiptText,
@@ -22,6 +23,7 @@ import { carregarDemonstrativo } from "@/db/demonstrativos";
 import { caminhoAplicacao } from "@/lib/base-path";
 import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 import {
+  abrirRevisaoDemonstrativo,
   gerarRascunhoDemonstrativo,
   conferirDemonstrativo,
   concluirDemonstrativo,
@@ -38,6 +40,7 @@ type SearchParams = Promise<{
   sucesso?: string | string[];
   conferir?: string | string[];
   fechar?: string | string[];
+  revisar?: string | string[];
 }>;
 
 type Retencao = {
@@ -77,6 +80,7 @@ export default async function DemonstrativosPage({
   const novoPj = primeiro(params.novo) === "pj";
   const abrirConferencia = primeiro(params.conferir) === "1";
   const abrirFechamento = primeiro(params.fechar) === "1";
+  const abrirRevisao = primeiro(params.revisar) === "1";
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
   let dados: Awaited<ReturnType<typeof carregarDemonstrativo>>;
   try {
@@ -275,6 +279,54 @@ export default async function DemonstrativosPage({
             </div>
             <button className="button primary" type="submit">
               <LockKeyhole size={16} /> Confirmar fechamento
+            </button>
+            <Link className="button secondary" href={fecharModal}>Cancelar</Link>
+          </form>
+        </ModalShell>
+      )}
+
+      {abrirRevisao && demonstrativo && fechado && (
+        <ModalShell
+          title="Abrir nova revisão"
+          description={`A revisão ${demonstrativo.revisao} permanecerá congelada. A nova revisão começará como rascunho e exigirá nova conferência.`}
+          closeHref={fecharModal}
+        >
+          <form action={abrirRevisaoDemonstrativo} className="crud-form">
+            <input type="hidden" name="competencia" value={competencia} />
+            <input type="hidden" name="demonstrativoId" value={demonstrativo.id} />
+            <label className="field-wide">
+              <span>Responsável pela retificação</span>
+              <input
+                name="responsavel"
+                required
+                minLength={3}
+                maxLength={160}
+                defaultValue={demonstrativo.fechado_por ?? ""}
+              />
+            </label>
+            <label className="field-wide">
+              <span>Motivo da nova revisão</span>
+              <textarea
+                name="motivo"
+                required
+                minLength={20}
+                maxLength={3000}
+                rows={5}
+                placeholder="Descreva o erro, a evidência recebida e o que precisa ser corrigido."
+              />
+            </label>
+            <div className="alert-box warning field-wide">
+              <FileClock size={19} />
+              <div>
+                <strong>Histórico preservado</strong>
+                <p>
+                  Pagamentos, retenções, guias, documentos, aprovação e hash do
+                  fechamento atual serão armazenados em snapshot imutável.
+                </p>
+              </div>
+            </div>
+            <button className="button primary" type="submit">
+              <FileClock size={16} /> Abrir revisão {demonstrativo.revisao + 1}
             </button>
             <Link className="button secondary" href={fecharModal}>Cancelar</Link>
           </form>
@@ -482,6 +534,17 @@ export default async function DemonstrativosPage({
                   <LockKeyhole size={15} /> Fechar demonstrativo
                 </Link>
               )}
+              {fechado && (
+                <Link
+                  className="button secondary"
+                  href={`/demonstrativos?${new URLSearchParams({
+                    competencia,
+                    revisar: "1",
+                  }).toString()}`}
+                >
+                  <FileClock size={15} /> Abrir nova revisão
+                </Link>
+              )}
             </div>
           </div>
           {conferenciaAtual ? (
@@ -517,6 +580,38 @@ export default async function DemonstrativosPage({
                       <td>{item.conferente}</td>
                       <td>{item.confirmou_pagamentos && item.confirmou_retencoes && item.confirmou_guias ? "3 de 3" : "Parcial"}</td>
                       <td>{item.observacao || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {dados.revisoes.length > 0 && (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Retificação</th>
+                    <th>Responsável</th>
+                    <th>Motivo</th>
+                    <th>Fechamento preservado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dados.revisoes.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <strong>v{item.revisao_origem} → v{item.revisao_destino}</strong>
+                        <small>
+                          {new Intl.DateTimeFormat("pt-BR", {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          }).format(new Date(item.criado_em))}
+                        </small>
+                      </td>
+                      <td>{item.responsavel}</td>
+                      <td>{item.motivo}</td>
+                      <td><small>{item.hash_resultado}</small></td>
                     </tr>
                   ))}
                 </tbody>

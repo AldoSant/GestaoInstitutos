@@ -17,7 +17,10 @@ descontos não tributários no snapshot, cria INSS/IRRF como retenções, vincul
 da competência e permite registrar PJ por documento em modal. A prova transacional
 foi executada no PostgreSQL 16 descartável. A migração `0035` acrescenta conferência
 imutável por revisão/hash; o fechamento recalcula pagamentos, retenções, obrigações e
-documentos e recusa fonte alterada. O CSV operacional preserva as três naturezas.
+documentos e recusa fonte alterada. A migração `0036` preserva integralmente cada
+fechamento antes de abrir uma nova revisão, com motivo, responsável, aprovação e
+snapshot imutável. Atualizações comuns de PF e guias não incrementam mais a revisão.
+O CSV operacional preserva as três naturezas.
 
 ## Visão geral
 

@@ -34,7 +34,7 @@ test(
           where table_schema = 'public'
             and table_type = 'BASE TABLE'`,
       );
-      assert.equal(Number(tabelas.rows[0].total), 56);
+      assert.equal(Number(tabelas.rows[0].total), 57);
 
       const restricoes = await client.query<{ conname: string }>(
         `select conname
@@ -255,10 +255,17 @@ test(
             'ck_demonstrativo_conferencia_hash',
             'ck_demonstrativo_conferencia_conferente',
             'ck_demonstrativo_conferencia_aprovacao',
-            'ck_demonstrativo_conferencia_rejeicao'
+            'ck_demonstrativo_conferencia_rejeicao',
+            'fk_demonstrativo_revisao_empresa',
+            'fk_demonstrativo_revisao_empresa_demonstrativo',
+            'ck_demonstrativo_revisao_sequencia',
+            'ck_demonstrativo_revisao_hash',
+            'ck_demonstrativo_revisao_motivo',
+            'ck_demonstrativo_revisao_responsavel',
+            'ck_demonstrativo_revisao_snapshot'
           )`,
       );
-      assert.equal(restricoes.rowCount, 216);
+      assert.equal(restricoes.rowCount, 223);
 
       const gatilhos = await client.query<{ tgname: string }>(
         `select tgname
@@ -314,10 +321,12 @@ test(
               'ct_demonstrativo_total_pagamentos',
               'tr_pagamento_demonstrativo_fechado',
               'tr_retencao_demonstrativo_fechado',
-              'tr_proteger_demonstrativo_conferencia'
+              'tr_proteger_demonstrativo_conferencia',
+              'tr_proteger_demonstrativo_revisao',
+              'tr_auditar_demonstrativo_revisao'
             )`,
       );
-      assert.equal(gatilhos.rowCount, 50);
+      assert.equal(gatilhos.rowCount, 52);
 
       const auditoriaImportacao = await client.query<{
         dry_runs: number;

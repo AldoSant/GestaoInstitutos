@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import {
   adicionarPagamentoPj,
+  abrirNovaRevisaoDemonstrativo,
   excluirPagamentoPj,
   fecharDemonstrativo,
   materializarDemonstrativoFolhas,
@@ -200,6 +201,42 @@ export async function concluirDemonstrativo(formData: FormData) {
           error instanceof Error
             ? error.message
             : "Não foi possível fechar o demonstrativo.",
+      }),
+    );
+  }
+}
+
+export async function abrirRevisaoDemonstrativo(formData: FormData) {
+  const competencia = String(formData.get("competencia") ?? "");
+  try {
+    const empresa = await resolverEmpresaAtiva();
+    const resultado = await abrirNovaRevisaoDemonstrativo({
+      empresaId: empresa.id,
+      demonstrativoId: String(formData.get("demonstrativoId") ?? ""),
+      motivo: formData.get("motivo"),
+      responsavel: formData.get("responsavel"),
+    });
+    revalidatePath("/demonstrativos");
+    redirect(
+      destino(competencia, {
+        sucesso: `Revisão ${resultado.revisao_destino} aberta. A revisão ${resultado.revisao_origem} foi preservada no hash ${resultado.hash_resultado.slice(0, 12)}.`,
+      }),
+    );
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      String(error.digest).startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+    redirect(
+      destino(competencia, {
+        erro:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível abrir a nova revisão.",
       }),
     );
   }
