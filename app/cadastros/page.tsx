@@ -7,6 +7,7 @@ import {
   Pencil,
   Power,
   Search,
+  UserRound,
   UsersRound,
   X,
 } from "lucide-react";
@@ -27,6 +28,8 @@ type SearchParams = Promise<{
   busca?: string | string[];
   editar?: string | string[];
   erro?: string | string[];
+  pagina?: string | string[];
+  situacao?: string | string[];
   sucesso?: string | string[];
 }>;
 
@@ -87,26 +90,31 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
   const editar = primeiro(params.editar);
   const erro = primeiro(params.erro);
   const sucesso = primeiro(params.sucesso);
+  const situacaoInformada = primeiro(params.situacao);
+  const situacao = ["ativas", "inativas", "todas"].includes(situacaoInformada)
+    ? (situacaoInformada as "ativas" | "inativas" | "todas")
+    : "ativas";
+  const paginaInformada = Number(primeiro(params.pagina));
+  const pagina =
+    Number.isInteger(paginaInformada) && paginaInformada > 0
+      ? paginaInformada
+      : 1;
 
   let dados: Awaited<ReturnType<typeof carregarCadastrosBase>>;
   try {
-    dados = await carregarCadastrosBase(busca);
-  } catch (error) {
+    dados = await carregarCadastrosBase(busca, { situacao, pagina });
+  } catch {
     return (
       <AppShell
         title="Cadastros"
-        eyebrow="PostgreSQL"
+        eyebrow="Pessoas e estrutura"
         organization="Não configurada"
-        notice={{
-          label: "Configuração necessária",
-          text: "Esta área consulta dados persistidos e requer banco e empresa ativa.",
-        }}
       >
         <section className="alert-box danger">
           <Database size={22} />
           <div>
             <strong>Cadastros indisponíveis</strong>
-            <p>{error instanceof Error ? error.message : "Não foi possível consultar o banco."}</p>
+            <p>Não foi possível carregar os cadastros. Tente novamente.</p>
           </div>
         </section>
       </AppShell>
@@ -122,16 +130,27 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
       : null;
   const lotacaoEditada =
     editarTipo === "lotacao" ? dados.lotacoes.find((item) => item.id === editarId) : null;
+  function hrefCadastro(
+    alteracoes: Record<string, string | number | undefined> = {},
+    ancora = "",
+  ) {
+    const query = new URLSearchParams();
+    if (busca) query.set("busca", busca);
+    if (situacao !== "ativas") query.set("situacao", situacao);
+    if (pagina > 1) query.set("pagina", String(pagina));
+    for (const [chave, valor] of Object.entries(alteracoes)) {
+      if (valor === undefined || valor === "") query.delete(chave);
+      else query.set(chave, String(valor));
+    }
+    const texto = query.toString();
+    return `/cadastros${texto ? `?${texto}` : ""}${ancora}`;
+  }
 
   return (
     <AppShell
       title="Cadastros"
-      eyebrow="Dados persistidos"
+      eyebrow="Pessoas e estrutura"
       organization={dados.empresa.nomeFantasia ?? dados.empresa.razaoSocial}
-      notice={{
-        label: "Operacional",
-        text: `Alterações são gravadas no PostgreSQL da organização ${dados.empresa.nomeFantasia ?? dados.empresa.razaoSocial}.`,
-      }}
     >
       {(erro || sucesso) && (
         <section className={`feedback-banner ${erro ? "error" : "success"}`} role="status">
@@ -146,7 +165,7 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
           <h2>Pessoas, atividades e lotações</h2>
           <p>Registros importados do GIW aparecem com o código de origem.</p>
         </div>
-        <form action="/cadastros" method="get" className="search-field">
+        <form action="/cadastros" method="get" className="search-field cadastro-filters">
           <Search size={17} />
           <label className="sr-only" htmlFor="busca-cadastros">Buscar cadastros</label>
           <input
@@ -156,7 +175,21 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
             defaultValue={busca}
             placeholder="Nome, documento, código ou descrição"
           />
-          {busca && <Link href="/cadastros" aria-label="Limpar busca"><X size={15} /></Link>}
+          <label className="sr-only" htmlFor="situacao-cadastros">Situação</label>
+          <select
+            id="situacao-cadastros"
+            name="situacao"
+            defaultValue={situacao}
+            aria-label="Filtrar situação"
+          >
+            <option value="ativas">Ativos</option>
+            <option value="inativas">Inativos</option>
+            <option value="todas">Todos</option>
+          </select>
+          <button className="button secondary" type="submit">Filtrar</button>
+          {(busca || situacao !== "ativas") && (
+            <Link href="/cadastros" aria-label="Limpar filtros"><X size={15} /></Link>
+          )}
         </form>
       </section>
 
@@ -178,7 +211,9 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
       <section className="panel cadastro-section" id="pessoas">
         <div className="panel-header">
           <div><span className="section-kicker">Identidade</span><h2>Pessoas</h2><p>Base para prestadores, parceiros e vínculos.</p></div>
-          <StatusBadge tone="info">{dados.pessoas.length} exibidas</StatusBadge>
+          <StatusBadge tone="info">
+            {dados.paginacaoPessoas.total} encontrada(s)
+          </StatusBadge>
         </div>
         <form action={salvarPessoa} className="crud-form">
           <input type="hidden" name="id" value={pessoaEditada?.id ?? ""} />
@@ -189,9 +224,30 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
           {pessoaEditada && <Link className="button secondary" href="/cadastros#pessoas">Cancelar</Link>}
         </form>
         <div className="table-wrap"><table><thead><tr><th>Código GIW</th><th>Nome</th><th>Documento</th><th>Contato</th><th>Ficha migrada</th><th>Situação</th><th>Ações</th></tr></thead><tbody>
-          {dados.pessoas.map((item) => <tr key={item.id}><td>{item.legacyId ?? "Local"}</td><td><strong>{item.nome}</strong><small>{item.tipo === "FISICA" ? "Pessoa física" : "Pessoa jurídica"}{item.nascimento ? ` · Nasc. ${item.nascimento}` : ""}</small></td><td>{documento(item.cpf, item.cnpj)}<small>{item.inscricaoInss ? `INSS ${item.inscricaoInss}` : "Inscrição INSS não informada"}</small></td><td>{item.email ?? item.celular ?? item.telefone ?? "Não informado"}<small>{item.email && (item.celular || item.telefone) ? item.celular ?? item.telefone : "—"}</small></td><td><StatusBadge tone={item.temEndereco && item.temContaBancaria ? "success" : "warning"}>{item.temEndereco ? "Endereço" : "Sem endereço"} · {item.temContaBancaria ? "Conta" : "Sem conta"}</StatusBadge><small>{item.dependentes} dependente(s){item.papelPrestador ? " · Prestador" : ""}</small></td><td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativa" : "Inativa"}</StatusBadge></td><td><div className="row-actions"><Link className="row-text-action" href={`/cadastros?editar=pessoa:${item.id}#pessoas`}><Pencil size={13} /> Editar</Link><AcaoSituacao entidade="pessoa" id={item.id} ativo={item.ativo} /></div></td></tr>)}
+          {dados.pessoas.map((item) => <tr key={item.id}><td>{item.legacyId ?? "Local"}</td><td><strong>{item.nome}</strong><small>{item.tipo === "FISICA" ? "Pessoa física" : "Pessoa jurídica"}{item.nascimento ? ` · Nasc. ${item.nascimento}` : ""}</small></td><td>{documento(item.cpf, item.cnpj)}<small>{item.inscricaoInss ? `INSS ${item.inscricaoInss}` : "Inscrição INSS não informada"}</small></td><td>{item.email ?? item.celular ?? item.telefone ?? "Não informado"}<small>{item.email && (item.celular || item.telefone) ? item.celular ?? item.telefone : "—"}</small></td><td><StatusBadge tone={item.temEndereco && item.temContaBancaria ? "success" : "warning"}>{item.temEndereco ? "Endereço" : "Sem endereço"} · {item.temContaBancaria ? "Conta" : "Sem conta"}</StatusBadge><small>{item.dependentes} dependente(s){item.papelPrestador ? " · Prestador" : ""}</small></td><td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativa" : "Inativa"}</StatusBadge></td><td><div className="row-actions"><Link className="row-text-action" href={`/cadastros/pessoas/${item.id}`}><UserRound size={13} /> Abrir ficha</Link><AcaoSituacao entidade="pessoa" id={item.id} ativo={item.ativo} /></div></td></tr>)}
           {dados.pessoas.length === 0 && <tr><td colSpan={7} className="empty-cell">Nenhuma pessoa encontrada.</td></tr>}
         </tbody></table></div>
+        {dados.paginacaoPessoas.totalPaginas > 1 && (
+          <nav className="pagination" aria-label="Paginação de pessoas">
+            <Link
+              className={`button secondary ${pagina <= 1 ? "disabled" : ""}`}
+              href={hrefCadastro({ pagina: Math.max(1, pagina - 1), editar: undefined }, "#pessoas")}
+              aria-disabled={pagina <= 1}
+            >
+              Anterior
+            </Link>
+            <span>
+              Página {pagina} de {dados.paginacaoPessoas.totalPaginas}
+            </span>
+            <Link
+              className={`button secondary ${pagina >= dados.paginacaoPessoas.totalPaginas ? "disabled" : ""}`}
+              href={hrefCadastro({ pagina: Math.min(dados.paginacaoPessoas.totalPaginas, pagina + 1), editar: undefined }, "#pessoas")}
+              aria-disabled={pagina >= dados.paginacaoPessoas.totalPaginas}
+            >
+              Próxima
+            </Link>
+          </nav>
+        )}
       </section>
 
       <section className="panel cadastro-section" id="atividades">

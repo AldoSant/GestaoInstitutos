@@ -15,6 +15,7 @@ import {
   listarCasosConsolidacao,
 } from "@/db/consolidacoes";
 import { rotuloDecisao } from "@/lib/caso-consolidacao";
+import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 import { congelarDiagnostico, revisarCaso } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -58,8 +59,7 @@ export default async function ConsolidacoesPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
-  const competencia =
-    primeiro(params.competencia) || new Date().toISOString().slice(0, 7);
+  const competencia = await lerCompetenciaContexto(params.competencia);
   const sucesso = primeiro(params.sucesso);
   let erro = primeiro(params.erro);
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;

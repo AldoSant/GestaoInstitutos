@@ -11,6 +11,7 @@ import {
   reabrirFolha,
   registrarConferenciaFolha,
   solicitarReprocessamentoFolha,
+  tentarNovamenteProcessamentoFolha,
 } from "@/db/folhas";
 import { registrarHomologacaoFolha } from "@/db/homologacoes";
 
@@ -64,6 +65,25 @@ export async function solicitarReprocessamento(formData: FormData) {
     destino(
       folhaId,
       erro || "Nova revisão enviada para processamento.",
+      Boolean(erro),
+    ),
+  );
+}
+
+export async function tentarNovamenteProcessamento(formData: FormData) {
+  const folhaId = String(formData.get("folhaId") ?? "");
+  let erro = "";
+  try {
+    await tentarNovamenteProcessamentoFolha(folhaId);
+  } catch (error) {
+    erro = mensagem(error);
+  }
+  revalidatePath("/folhas");
+  revalidatePath(`/folhas/${folhaId}`);
+  redirect(
+    destino(
+      folhaId,
+      erro || "Nova tentativa enviada para a fila de processamento.",
       Boolean(erro),
     ),
   );

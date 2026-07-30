@@ -19,6 +19,7 @@ import {
   type CompetenciaDashboard,
 } from "@/db/dashboard";
 import { diagnosticarHomologacaoCompetencia } from "@/db/homologacoes-competencia";
+import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,7 @@ function bloqueioAtual(item: CompetenciaDashboard) {
   if (item.pagamentos_total !== item.pagamentos_conformes) {
     return {
       titulo: "Relação de pagamentos bloqueada",
-      texto: `${item.pagamentos_total - item.pagamentos_conformes} pagamento(s) possuem conta incompleta ou snapshot anterior ao controle bancário.`,
+      texto: `${item.pagamentos_total - item.pagamentos_conformes} pagamento(s) possuem dados bancários incompletos ou precisam ser atualizados.`,
       href: `/homologacoes?competencia=${item.competencia.slice(0, 7)}`,
       acao: "Abrir fechamento",
     };
@@ -74,7 +75,7 @@ function bloqueioAtual(item: CompetenciaDashboard) {
   if (item.homologacao_status !== "APROVADA") {
     return {
       titulo: "Decisão mensal pendente",
-      texto: "Os controles operacionais precisam ser congelados e aprovados na mesma versão.",
+      texto: "A competência está pronta para a conferência e decisão final do RH.",
       href: `/homologacoes?competencia=${item.competencia.slice(0, 7)}`,
       acao: "Abrir homologação",
     };
@@ -87,7 +88,15 @@ function bloqueioAtual(item: CompetenciaDashboard) {
   };
 }
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ competencia?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const competenciaSelecionada = await lerCompetenciaContexto(
+    params.competencia,
+  );
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
   let dados: Awaited<ReturnType<typeof carregarDashboardOperacional>>;
   let diagnosticoAtual: Awaited<
@@ -95,14 +104,20 @@ export default async function Home() {
   > | null = null;
   try {
     empresa = await resolverEmpresaAtiva();
-    dados = await carregarDashboardOperacional(empresa.id);
-    if (dados.competencias[0]) {
+    dados = await carregarDashboardOperacional(
+      empresa.id,
+      competenciaSelecionada,
+    );
+    const competenciaEmFoco = dados.competencias.find(
+      (item) => item.competencia.slice(0, 7) === competenciaSelecionada,
+    );
+    if (competenciaEmFoco) {
       diagnosticoAtual = await diagnosticarHomologacaoCompetencia(
         empresa.id,
-        dados.competencias[0].competencia.slice(0, 7),
+        competenciaSelecionada,
       );
     }
-  } catch (error) {
+  } catch {
     return (
       <AppShell
         title="Visão geral"
@@ -113,36 +128,38 @@ export default async function Home() {
           <AlertTriangle size={22} />
           <div>
             <strong>Painel operacional indisponível</strong>
-            <p>
-              {error instanceof Error
-                ? error.message
-                : "Não foi possível consultar o PostgreSQL."}
-            </p>
+            <p>Não foi possível carregar os dados operacionais. Tente novamente.</p>
           </div>
         </section>
       </AppShell>
     );
   }
 
-  const competenciaMaisRecente = dados.competencias[0];
-  if (!competenciaMaisRecente) {
+  const competenciaEmFoco = dados.competencias.find(
+    (item) => item.competencia.slice(0, 7) === competenciaSelecionada,
+  );
+  if (!competenciaEmFoco) {
     return (
       <AppShell
         title="Visão geral"
         eyebrow="Folha de prestadores"
         organization={empresa.nomeFantasia ?? empresa.razaoSocial}
         actions={
-          <Link href="/folhas/nova" className="button primary">
+          <Link
+            href={`/folhas/nova?competencia=${competenciaSelecionada}`}
+            className="button primary"
+          >
             Nova Folha
           </Link>
         }
       >
         <section className="empty-state">
           <BadgeDollarSign size={30} />
-          <strong>Nenhuma competência processada</strong>
+          <strong>
+            Nenhuma folha em {competencia(competenciaSelecionada)}
+          </strong>
           <p>
-            Cadastre vínculos e crie a primeira Folha. Este painel não usa dados
-            demonstrativos.
+            Selecione outro mês ou crie a primeira folha desta competência.
           </p>
         </section>
       </AppShell>
@@ -150,12 +167,12 @@ export default async function Home() {
   }
 
   const versaoMensalAtual =
-    diagnosticoAtual?.hashFontes === competenciaMaisRecente.homologacao_hash &&
+    diagnosticoAtual?.hashFontes === competenciaEmFoco.homologacao_hash &&
     diagnosticoAtual.resumo.pronta;
   const atual: CompetenciaDashboard = {
-    ...competenciaMaisRecente,
+    ...competenciaEmFoco,
     homologacao_status: versaoMensalAtual
-      ? competenciaMaisRecente.homologacao_status
+      ? competenciaEmFoco.homologacao_status
       : null,
   };
   const bloqueio = bloqueioAtual(atual);
@@ -168,20 +185,23 @@ export default async function Home() {
       eyebrow="Fechamento operacional"
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
       actions={
-        <Link href="/folhas/nova" className="button primary">
+        <Link
+          href={`/folhas/nova?competencia=${competenciaAtual}`}
+          className="button primary"
+        >
           Nova Folha
         </Link>
       }
     >
       <section className="hero-row">
         <div>
-          <p className="section-kicker">Competência mais recente</p>
+          <p className="section-kicker">Competência em foco</p>
           <h2>
             {competencia(atual.competencia)} · {statusOperacional(atual)}
           </h2>
           <p>
-            Informações calculadas diretamente do PostgreSQL. A competência só é
-            concluída quando os oito controles usam a mesma versão de fontes.
+            Acompanhe valores, pendências e liberações até a conclusão do
+            fechamento mensal.
           </p>
         </div>
         <div className="hero-status">
@@ -233,7 +253,7 @@ export default async function Home() {
         <article className="panel span-2">
           <div className="panel-header">
             <div>
-              <span className="section-kicker">Histórico real</span>
+              <span className="section-kicker">Histórico</span>
               <h3>Últimas competências</h3>
             </div>
             <Link href="/folhas" className="text-link">
@@ -334,11 +354,11 @@ export default async function Home() {
       <section className="workflow-panel">
         <div className="panel-header">
           <div>
-            <span className="section-kicker">Cadeia auditável</span>
-            <h3>Da entrada ao fechamento</h3>
+            <span className="section-kicker">Etapas do mês</span>
+            <h3>Da preparação ao fechamento</h3>
           </div>
           <StatusBadge tone="info">
-            <LockKeyhole size={14} /> Fontes versionadas
+            <LockKeyhole size={14} /> Controles atualizados
           </StatusBadge>
         </div>
         <ol className="workflow">
@@ -408,16 +428,16 @@ export default async function Home() {
         <Link href="/folhas" className="quick-card">
           <BadgeDollarSign />
           <span>
-            <strong>Auditar Folhas</strong>
-            <small>Memórias, pagamentos e relatórios</small>
+            <strong>Conferir folhas</strong>
+            <small>Valores, pagamentos e relatórios</small>
           </span>
           <ArrowRight />
         </Link>
         <Link href="/obrigacoes" className="quick-card">
           <FileCheck2 />
           <span>
-            <strong>Conciliar obrigação</strong>
-            <small>Totalizador, recibo e DARF</small>
+            <strong>Conferir obrigações</strong>
+            <small>Apuração, documentos e pagamento</small>
           </span>
           <ArrowRight />
         </Link>
@@ -428,7 +448,7 @@ export default async function Home() {
           <ClipboardCheck />
           <span>
             <strong>Fechar competência</strong>
-            <small>Oito controles e decisão final</small>
+            <small>Checklist e decisão final do RH</small>
           </span>
           <ArrowRight />
         </Link>

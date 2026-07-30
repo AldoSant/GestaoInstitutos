@@ -69,22 +69,18 @@ export default async function VinculosPage({
   let dados: Awaited<ReturnType<typeof carregarVinculos>>;
   try {
     dados = await carregarVinculos(busca);
-  } catch (error) {
+  } catch {
     return (
       <AppShell
         title="Vínculos"
-        eyebrow="PostgreSQL"
+        eyebrow="Cadeia contratual"
         organization="Não configurada"
-        notice={{
-          label: "Configuração necessária",
-          text: "Esta área requer banco migrado, empresa ativa e cadastros-base.",
-        }}
       >
         <section className="alert-box danger">
           <Database size={22} />
           <div>
             <strong>Vínculos indisponíveis</strong>
-            <p>{error instanceof Error ? error.message : "Não foi possível consultar o banco."}</p>
+            <p>Não foi possível carregar os vínculos. Tente novamente.</p>
           </div>
         </section>
       </AppShell>

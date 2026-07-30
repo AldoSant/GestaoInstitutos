@@ -1,19 +1,25 @@
 import Link from "next/link";
 import {
   AlertTriangle,
+  Calculator,
   CheckCircle2,
   Database,
   Download,
   FileCheck2,
   FileText,
+  ReceiptText,
   ShieldAlert,
   RotateCcw,
   XCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { StatusBadge } from "@/components/ui";
+import { MetricCard, StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
-import { listarObrigacoes } from "@/db/obrigacoes";
+import {
+  diagnosticarCompetenciaObrigacao,
+  listarObrigacoes,
+} from "@/db/obrigacoes";
+import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 import {
   apurarObrigacao,
   cancelarObrigacaoFiscal,
@@ -24,6 +30,7 @@ import {
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{
+  competencia?: string | string[];
   erro?: string | string[];
   sucesso?: string | string[];
 }>;
@@ -43,6 +50,15 @@ function competencia(valor: string) {
   return valor.slice(0, 7).split("-").reverse().join("/");
 }
 
+function nomeStatus(status: string) {
+  if (status === "RASCUNHO") return "Em preparação";
+  if (status === "BLOQUEADA") return "Conciliação pendente";
+  if (status === "APURADA") return "Totalizador conciliado";
+  if (status === "EMITIDA") return "DARF registrado";
+  if (status === "CANCELADA") return "Cancelada";
+  return status.replaceAll("_", " ");
+}
+
 export default async function ObrigacoesPage({
   searchParams,
 }: {
@@ -51,21 +67,41 @@ export default async function ObrigacoesPage({
   const params = await searchParams;
   const erro = primeiro(params.erro);
   const sucesso = primeiro(params.sucesso);
+  const competenciaSelecionada = await lerCompetenciaContexto(
+    params.competencia,
+  );
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
   let obrigacoes: Awaited<ReturnType<typeof listarObrigacoes>>;
+  let diagnostico: Awaited<
+    ReturnType<typeof diagnosticarCompetenciaObrigacao>
+  >;
   try {
     empresa = await resolverEmpresaAtiva();
-    obrigacoes = await listarObrigacoes(empresa.id);
-  } catch (error) {
+    [obrigacoes, diagnostico] = await Promise.all([
+      listarObrigacoes(empresa.id, competenciaSelecionada),
+      diagnosticarCompetenciaObrigacao(empresa.id, competenciaSelecionada),
+    ]);
+  } catch {
     return (
-      <AppShell title="Obrigações" eyebrow="PostgreSQL" organization="Não configurada">
+      <AppShell title="Obrigações" eyebrow="Apuração previdenciária" organization="Não configurada">
         <section className="alert-box danger">
           <Database size={22} />
-          <div><strong>Apuração indisponível</strong><p>{error instanceof Error ? error.message : "Falha ao consultar o banco."}</p></div>
+          <div><strong>Apuração indisponível</strong><p>Não foi possível carregar as obrigações. Tente novamente.</p></div>
         </section>
       </AppShell>
     );
   }
+  const obrigacaoAtual =
+    obrigacoes.find((item) => item.status !== "CANCELADA") ?? obrigacoes[0];
+  const documentoVerificado = (tipo: string) =>
+    Boolean(
+      obrigacaoAtual?.documentos.some(
+        (documento) => documento.tipo === tipo && documento.verificado,
+      ),
+    );
+  const totalizador = documentoVerificado("TOTALIZADOR_DCTFWEB");
+  const recibo = documentoVerificado("RECIBO_DCTFWEB");
+  const darf = documentoVerificado("DARF");
 
   return (
     <AppShell
@@ -84,18 +120,128 @@ export default async function ObrigacoesPage({
         </section>
       )}
 
+      <section className="metrics-grid" aria-label="Resumo previdenciário">
+        <MetricCard
+          label="Folhas fechadas"
+          value={`${diagnostico.folhas_fechadas}/${diagnostico.folhas_total}`}
+          detail={
+            diagnostico.folhas_pendentes
+              ? `${diagnostico.folhas_pendentes} pendente(s)`
+              : "nenhuma folha pendente"
+          }
+          icon={CheckCircle2}
+          tone={diagnostico.folhas_pendentes ? "amber" : "teal"}
+        />
+        <MetricCard
+          label="Prestadores apuráveis"
+          value={String(diagnostico.itens_fechados)}
+          detail={`competência ${competencia(competenciaSelecionada)}`}
+          icon={Calculator}
+          tone="blue"
+        />
+        <MetricCard
+          label="INSS dos segurados"
+          value={moeda(diagnostico.inss_segurado)}
+          detail="conforme memórias das folhas fechadas"
+          icon={ReceiptText}
+        />
+        <MetricCard
+          label="Documento para pagar"
+          value={darf ? "Registrado" : "Pendente"}
+          detail="DARF oficial da DCTFWeb"
+          icon={FileCheck2}
+          tone={darf ? "teal" : "amber"}
+        />
+      </section>
+
+      <section className="panel process-panel" aria-label="Etapas da obrigação">
+        <div className="panel-header">
+          <div>
+            <span className="section-kicker">Fluxo previdenciário</span>
+            <h2>Da folha fechada ao DARF para pagamento</h2>
+            <p>
+              O sistema apura e concilia; os documentos oficiais continuam vindo
+              da DCTFWeb.
+            </p>
+          </div>
+          <StatusBadge tone={darf ? "success" : "warning"}>
+            {darf ? "Pronta para pagamento" : "Documentação pendente"}
+          </StatusBadge>
+        </div>
+        <ol className="process-steps obligation-steps">
+          {[
+            [
+              "1. Folhas",
+              diagnostico.apta_apuracao,
+              `${diagnostico.folhas_fechadas} fechada(s)`,
+            ],
+            [
+              "2. Apuração",
+              Boolean(obrigacaoAtual),
+              obrigacaoAtual ? moeda(obrigacaoAtual.total) : "Não executada",
+            ],
+            [
+              "3. Totalizador",
+              totalizador,
+              totalizador ? "Conferido" : "Pendente",
+            ],
+            ["4. Recibo", recibo, recibo ? "Conferido" : "Pendente"],
+            ["5. DARF", darf, darf ? "Registrado" : "Pendente"],
+          ].map(([titulo, concluida, detalhe], indice, etapas) => {
+            const anteriorConcluida =
+              indice === 0 || Boolean(etapas[indice - 1][1]);
+            return (
+              <li
+                key={String(titulo)}
+                className={
+                  concluida ? "done" : anteriorConcluida ? "current" : "pending"
+                }
+              >
+                <span>
+                  {concluida ? (
+                    <CheckCircle2 size={17} />
+                  ) : (
+                    <FileCheck2 size={17} />
+                  )}
+                </span>
+                <div>
+                  <strong>{titulo}</strong>
+                  <small>{detalhe}</small>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+
       <section className="panel cadastro-section">
         <div className="panel-header">
           <div>
             <span className="section-kicker">Folhas fechadas</span>
             <h2>Apurar retenções dos segurados</h2>
-            <p>O processo exige todas as Folhas fechadas e recompõe segurado e patronal com origem, enquadramento e snapshot. Reapurar invalida conferências documentais anteriores.</p>
+            <p>O processo exige todas as folhas fechadas e calcula os valores do segurado e da organização. Uma nova apuração exige nova conferência dos documentos.</p>
           </div>
-          <StatusBadge tone="warning"><ShieldAlert size={14} /> Guia ainda bloqueada</StatusBadge>
+          <StatusBadge tone={diagnostico.apta_apuracao ? "success" : "warning"}>
+            {diagnostico.apta_apuracao ? (
+              <CheckCircle2 size={14} />
+            ) : (
+              <ShieldAlert size={14} />
+            )}
+            {diagnostico.apta_apuracao
+              ? "Pronta para apurar"
+              : "Fechamento pendente"}
+          </StatusBadge>
         </div>
         <form action={apurarObrigacao} className="crud-form">
-          <label><span>Competência</span><input name="competencia" type="month" required /></label>
-          <button className="button primary" type="submit"><FileCheck2 size={16} /> Apurar competência</button>
+          <label><span>Competência</span><input name="competencia" type="month" required defaultValue={competenciaSelecionada} /></label>
+          <button
+            className="button primary"
+            type="submit"
+            disabled={!diagnostico.apta_apuracao}
+          >
+            <FileCheck2 size={16} />{" "}
+            {obrigacaoAtual ? "Reapurar competência" : "Apurar competência"}
+          </button>
         </form>
       </section>
 
@@ -122,7 +268,7 @@ export default async function ObrigacoesPage({
               </Link>
               <StatusBadge tone={item.status === "BLOQUEADA" ? "danger" : item.status === "EMITIDA" ? "success" : item.status === "CANCELADA" ? "warning" : "info"}>
                 {item.status === "BLOQUEADA" ? <AlertTriangle size={14} /> : <FileCheck2 size={14} />}
-                {item.status}
+                {nomeStatus(item.status)}
               </StatusBadge>
             </div>
           </div>

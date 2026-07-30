@@ -86,22 +86,18 @@ export default async function PrestadoresPage({
   let dados: Awaited<ReturnType<typeof carregarPrestadores>>;
   try {
     dados = await carregarPrestadores(busca);
-  } catch (error) {
+  } catch {
     return (
       <AppShell
         title="Prestadores"
-        eyebrow="PostgreSQL"
+        eyebrow="Pessoas e vínculos"
         organization="Não configurada"
-        notice={{
-          label: "Configuração necessária",
-          text: "Esta área consulta dados persistidos e requer banco e empresa ativa.",
-        }}
       >
         <section className="alert-box danger">
           <Database size={22} />
           <div>
             <strong>Prestadores indisponíveis</strong>
-            <p>{error instanceof Error ? error.message : "Não foi possível consultar o banco."}</p>
+            <p>Não foi possível carregar os prestadores. Tente novamente.</p>
           </div>
         </section>
       </AppShell>
@@ -128,10 +124,6 @@ export default async function PrestadoresPage({
       title="Prestadores"
       eyebrow="Pessoas e vínculos"
       organization={dados.empresa.nomeFantasia ?? dados.empresa.razaoSocial}
-      notice={{
-        label: "Operacional",
-        text: "Prestadores são gravados no PostgreSQL; vínculos contratuais serão o próximo elo persistente.",
-      }}
     >
       {(erro || sucesso) && (
         <section className={`feedback-banner ${erro ? "error" : "success"}`} role="status">

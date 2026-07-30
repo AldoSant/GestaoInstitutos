@@ -79,22 +79,18 @@ export default async function InstrumentosPage({
   let dados: Awaited<ReturnType<typeof carregarInstrumentos>>;
   try {
     dados = await carregarInstrumentos(busca);
-  } catch (error) {
+  } catch {
     return (
       <AppShell
         title="Termos e metas"
-        eyebrow="PostgreSQL"
+        eyebrow="Instrumentos contratuais"
         organization="Não configurada"
-        notice={{
-          label: "Configuração necessária",
-          text: "Esta área consulta dados persistidos e requer banco e empresa ativa.",
-        }}
       >
         <section className="alert-box danger">
           <Database size={22} />
           <div>
             <strong>Instrumentos indisponíveis</strong>
-            <p>{error instanceof Error ? error.message : "Não foi possível consultar o banco."}</p>
+            <p>Não foi possível carregar termos e metas. Tente novamente.</p>
           </div>
         </section>
       </AppShell>
@@ -117,10 +113,6 @@ export default async function InstrumentosPage({
       title="Termos e metas"
       eyebrow="Instrumentos contratuais"
       organization={dados.empresa.nomeFantasia ?? dados.empresa.razaoSocial}
-      notice={{
-        label: "Operacional",
-        text: "Termos e metas são gravados no PostgreSQL e formarão a base dos vínculos.",
-      }}
     >
       {(erro || sucesso) && (
         <section className={`feedback-banner ${erro ? "error" : "success"}`} role="status">

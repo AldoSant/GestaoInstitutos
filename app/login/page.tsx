@@ -9,11 +9,11 @@ export default async function LoginPage({
   const { erro } = await searchParams;
   return (
     <main className="login-page">
-      <section className="login-brand"><div className="login-mark"><ShieldCheck size={28} /></div><span className="section-kicker">Instituto Folha</span><h1>Folha e obrigações com memória verificável.</h1><p>Primeiro incremento local da substituição do sistema legado.</p><ul><li>Regras versionadas por vigência</li><li>Consolidação mensal por pessoa</li><li>Bloqueios automáticos de divergência</li></ul></section>
+      <section className="login-brand"><div className="login-mark"><ShieldCheck size={28} /></div><span className="section-kicker">Gestão Institutos</span><h1>Folha de pagamento com clareza do início ao fechamento.</h1><p>Centralize cadastros, cálculos, conferências e obrigações em uma única rotina.</p><ul><li>Dados reais organizados por competência</li><li>Pendências com orientação para correção</li><li>Histórico preservado para conferência</li></ul></section>
       <section className="login-card">
         <span className="section-kicker">Acesso protegido</span>
         <h2>Entrar</h2>
-        <p>Use as credenciais administrativas configuradas no servidor.</p>
+        <p>Acesse com seu usuário e senha.</p>
         {erro && <p className="form-error" role="alert">{erro}</p>}
         <form action={entrar} className="login-form">
           <label>
@@ -28,7 +28,7 @@ export default async function LoginPage({
             Entrar <ArrowRight size={17} />
           </button>
         </form>
-        <small className="security-note">A sessão expira após 8 horas.</small>
+        <small className="security-note">Acesso exclusivo para usuários autorizados.</small>
       </section>
     </main>
   );

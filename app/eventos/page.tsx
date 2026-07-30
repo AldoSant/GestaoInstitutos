@@ -94,20 +94,16 @@ export default async function EventosPage({
   let dados: Awaited<ReturnType<typeof carregarEventos>>;
   try {
     dados = await carregarEventos(busca);
-  } catch (error) {
+  } catch {
     return (
       <AppShell
         title="Eventos"
-        eyebrow="PostgreSQL"
+        eyebrow="Rubricas e lançamentos"
         organization="Não configurada"
-        notice={{
-          label: "Configuração necessária",
-          text: "Esta área requer a migração de Eventos e uma empresa ativa.",
-        }}
       >
         <section className="alert-box danger">
           <Database size={22} />
-          <div><strong>Eventos indisponíveis</strong><p>{error instanceof Error ? error.message : "Não foi possível consultar o banco."}</p></div>
+          <div><strong>Eventos indisponíveis</strong><p>Não foi possível carregar rubricas e lançamentos.</p></div>
         </section>
       </AppShell>
     );
@@ -125,10 +121,6 @@ export default async function EventosPage({
       title="Eventos"
       eyebrow="Rubricas e recorrências"
       organization={dados.empresa.nomeFantasia ?? dados.empresa.razaoSocial}
-      notice={{
-        label: "Operacional",
-        text: "Eventos e lançamentos recorrentes ativos são congelados na memória de cada revisão da Folha.",
-      }}
     >
       {(erro || sucesso) && (
         <section className={`feedback-banner ${erro ? "error" : "success"}`} role="status">

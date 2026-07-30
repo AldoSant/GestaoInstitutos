@@ -21,6 +21,7 @@ import {
   rotuloItemCompetencia,
   type StatusChecklistCompetencia,
 } from "@/lib/homologacao-competencia";
+import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 import { congelarCompetencia, decidirCompetencia } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -66,8 +67,7 @@ export default async function HomologacoesPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
-  const competencia =
-    primeiro(params.competencia) || new Date().toISOString().slice(0, 7);
+  const competencia = await lerCompetenciaContexto(params.competencia);
   const sucesso = primeiro(params.sucesso);
   let erro = primeiro(params.erro);
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;

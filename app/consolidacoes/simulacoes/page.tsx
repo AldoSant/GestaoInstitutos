@@ -16,6 +16,7 @@ import { listarSimulacoesConsolidacaoFiscal } from "@/db/simulacoes-consolidacao
 import {
   avaliarAtivacaoConsolidacaoProdutiva,
 } from "@/lib/aplicacao-consolidacao";
+import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 import {
   rotuloStatusSimulacao,
   type StatusSimulacaoFiscal,
@@ -72,8 +73,7 @@ export default async function SimulacoesConsolidacaoPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
-  const competencia =
-    primeiro(params.competencia) || new Date().toISOString().slice(0, 7);
+  const competencia = await lerCompetenciaContexto(params.competencia);
   const sucesso = primeiro(params.sucesso);
   let erro = primeiro(params.erro);
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;

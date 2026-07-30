@@ -3,10 +3,10 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Instituto Folha",
-    template: "%s · Instituto Folha",
+    default: "Gestão Institutos",
+    template: "%s · Gestão Institutos",
   },
-  description: "Folha de prestadores e apuração previdenciária auditável.",
+  description: "Gestão de folha, cadastros e obrigações dos institutos.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

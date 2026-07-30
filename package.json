@@ -10,6 +10,7 @@
     "build": "next build",
     "start": "next start",
     "test": "tsx --test tests/**/*.test.ts",
+    "test:e2e:mvp": "playwright test tests/e2e/mvp.spec.ts",
     "typecheck": "tsc --noEmit --incremental false",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "validate": "npm run lint && npm run typecheck && npm test && npm run db:check && npm run build",

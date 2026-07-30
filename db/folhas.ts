@@ -222,6 +222,8 @@ async function prevalidarCriacaoFolha(
     matricula: string;
     nome: string;
     tipo_pessoa: "FISICA" | "JURIDICA";
+    cpf: string | null;
+    cnpj: string | null;
     categoria_contribuinte: string | null;
     nit_pis_pasep: string | null;
     exige_medicao_mensal: boolean;
@@ -229,7 +231,8 @@ async function prevalidarCriacaoFolha(
     pendencias_outras_fontes: number;
   }>(
     `select v.id vinculo_id, pr.matricula, p.nome_razao_social nome,
-             p.tipo tipo_pessoa, pr.categoria_contribuinte, pr.nit_pis_pasep,
+             p.tipo tipo_pessoa, p.cpf, p.cnpj,
+             pr.categoria_contribuinte, pr.nit_pis_pasep,
              v.exige_medicao_mensal, mm.id medicao_id,
             (
               select count(*)::int
@@ -267,6 +270,12 @@ async function prevalidarCriacaoFolha(
     if (!decisao.suportado) {
       problemas.push(`${identificacao}: ${decisao.motivo}`);
       continue;
+    }
+    if (
+      (candidato.tipo_pessoa === "FISICA" && !candidato.cpf) ||
+      (candidato.tipo_pessoa === "JURIDICA" && !candidato.cnpj)
+    ) {
+      problemas.push(`${identificacao}: documento fiscal não informado.`);
     }
     if (!candidato.nit_pis_pasep?.trim()) {
       problemas.push(`${identificacao}: NIT/PIS/PASEP não informado.`);
@@ -1176,6 +1185,70 @@ export async function solicitarReprocessamentoFolha(
   });
 }
 
+export async function tentarNovamenteProcessamentoFolha(
+  folhaId: string,
+  ator = "OPERADOR_INTERNO",
+) {
+  validarId(folhaId, "Folha");
+  return transacao(async (client) => {
+    await configurarAuditoria(
+      client,
+      ator,
+      "Nova tentativa solicitada após falha no processamento da Folha.",
+    );
+    await bloquearCompetenciaDaFolha(client, folhaId);
+    const atual = await client.query<LinhaFolha>(
+      `select id, empresa_id, termo_id, meta_id, regra_calculo_id,
+              enquadramento_previdenciario_id,
+              competencia::text, numero, revisao, status, processada_em,
+              fechada_em, hash_resultado
+         from folha
+        where id = $1
+        for update`,
+      [folhaId],
+    );
+    const folha = atual.rows[0];
+    if (!folha || folha.status !== "RASCUNHO") {
+      throw new Error(
+        "A nova tentativa só pode ser solicitada para uma Folha que falhou antes do cálculo.",
+      );
+    }
+    const tarefa = await client.query<{ id: string; status: string }>(
+      `select id, status
+         from tarefa_processamento
+        where empresa_id = $1
+          and tipo = 'PROCESSAR_FOLHA'
+          and payload ->> 'folhaId' = $2
+          and (payload ->> 'revisao')::int = $3
+        order by criado_em desc, id desc
+        limit 1
+        for update`,
+      [folha.empresa_id, folha.id, folha.revisao],
+    );
+    if (!tarefa.rows[0] || tarefa.rows[0].status !== "FALHA") {
+      throw new Error("Não há uma falha encerrada disponível para nova tentativa.");
+    }
+    await client.query(
+      `update tarefa_processamento
+          set status = 'CANCELADA', atualizado_em = now()
+        where id = $1`,
+      [tarefa.rows[0].id],
+    );
+    const chave = `folha:${folha.id}:revisao:${folha.revisao}:retentativa:${randomUUID()}`;
+    await client.query(
+      `insert into tarefa_processamento
+         (empresa_id, tipo, chave_idempotencia, prioridade, payload)
+       values ($1, 'PROCESSAR_FOLHA', $2, 20, $3)`,
+      [
+        folha.empresa_id,
+        chave,
+        { folhaId: folha.id, revisao: folha.revisao },
+      ],
+    );
+    return folha;
+  });
+}
+
 export async function fecharFolha(
   folhaId: string,
   ator = "OPERADOR_INTERNO",
@@ -1538,17 +1611,83 @@ export async function listarFolhas(empresaId: string) {
   return resultado.rows;
 }
 
-export async function listarOpcoesNovaFolha(empresaId: string) {
+export async function listarOpcoesNovaFolha(
+  empresaId: string,
+  competencia: string,
+) {
   validarId(empresaId, "Empresa");
+  const competenciaData = competenciaNormalizada(competencia);
   const resultado = await getPool().query(
     `select t.id termo_id, t.numero termo_numero, t.descricao termo_descricao,
             t.inicio::text termo_inicio, t.fim::text termo_fim,
-            m.id meta_id, m.codigo meta_codigo, m.descricao meta_descricao
+            m.id meta_id, m.codigo meta_codigo, m.descricao meta_descricao,
+            count(distinct v.id)::int vinculos,
+            count(distinct v.id) filter (
+              where p.tipo <> 'FISICA'
+                 or pr.categoria_contribuinte is distinct from '701'
+            )::int enquadramentos_pendentes,
+            count(distinct v.id) filter (
+              where nullif(btrim(pr.nit_pis_pasep), '') is null
+            )::int nit_pendente,
+            count(distinct v.id) filter (
+              where v.exige_medicao_mensal and mm.id is null
+            )::int medicoes_pendentes,
+            count(distinct v.id) filter (
+              where conta.id is null
+                 or nullif(btrim(conta.agencia), '') is null
+                 or nullif(btrim(conta.numero), '') is null
+                 or conta.tipo not in ('CORRENTE', 'POUPANCA')
+            )::int contas_pendentes,
+            count(distinct v.id) filter (
+              where (p.tipo = 'FISICA' and p.cpf is null)
+                 or (p.tipo = 'JURIDICA' and p.cnpj is null)
+            )::int documentos_pendentes,
+            count(distinct v.id) filter (
+              where exists (
+                select 1
+                  from contribuicao_outra_fonte cof
+                 where cof.empresa_id = v.empresa_id
+                   and cof.prestador_id = pr.id
+                   and cof.competencia = $2::date
+                   and not cof.comprovante_verificado
+              )
+            )::int outras_fontes_pendentes,
+            exists (
+              select 1 from folha existente
+               where existente.empresa_id = t.empresa_id
+                 and existente.termo_id = t.id
+                 and existente.meta_id = m.id
+                 and existente.competencia = $2::date
+                 and existente.status <> 'CANCELADA'
+            ) folha_existente
        from termo t
        join termo_meta m on m.termo_id = t.id
+       left join prestador_vinculo v
+         on v.empresa_id = t.empresa_id
+        and v.termo_id = t.id
+        and v.meta_id = m.id
+        and v.ativo
+        and v.inicio <= $2::date
+        and (v.fim is null or v.fim >= $2::date)
+       left join prestador pr
+         on pr.empresa_id = v.empresa_id
+        and pr.id = v.prestador_id
+        and pr.ativo
+       left join pessoa p
+         on p.empresa_id = v.empresa_id
+        and p.id = pr.pessoa_id
+        and p.ativo
+       left join pessoa_conta_bancaria conta
+         on conta.empresa_id = v.empresa_id
+        and conta.pessoa_id = p.id
+       left join medicao_mensal mm
+         on mm.empresa_id = v.empresa_id
+        and mm.vinculo_id = v.id
+        and mm.competencia = $2::date
       where t.empresa_id = $1 and t.ativo and m.ativo
+      group by t.id, m.id
       order by t.numero, m.codigo`,
-    [empresaId],
+    [empresaId, competenciaData],
   );
   return resultado.rows;
 }
@@ -1556,7 +1695,8 @@ export async function listarOpcoesNovaFolha(empresaId: string) {
 export async function carregarFolha(empresaId: string, folhaId: string) {
   validarId(empresaId, "Empresa");
   validarId(folhaId, "Folha");
-  const [cabecalho, itens, historico, conferencias] = await Promise.all([
+  const [cabecalho, itens, historico, conferencias, processamento] =
+    await Promise.all([
     getPool().query(
       `select f.id, f.competencia::text, f.numero, f.revisao, f.status,
               f.processada_em, f.fechada_em, f.hash_resultado,
@@ -1613,6 +1753,27 @@ export async function carregarFolha(empresaId: string, folhaId: string) {
         limit 50`,
       [folhaId, empresaId],
     ),
+    getPool().query<{
+      id: string;
+      status: "PENDENTE" | "EXECUTANDO" | "CONCLUIDA" | "FALHA" | "CANCELADA";
+      tentativas: number;
+      max_tentativas: number;
+      ultimo_erro: string | null;
+      criado_em: Date;
+      atualizado_em: Date;
+      iniciada_em: Date | null;
+      concluida_em: Date | null;
+    }>(
+      `select id, status, tentativas, max_tentativas, ultimo_erro,
+              criado_em, atualizado_em, iniciada_em, concluida_em
+         from tarefa_processamento
+        where empresa_id = $2
+          and tipo = 'PROCESSAR_FOLHA'
+          and payload ->> 'folhaId' = $1
+        order by criado_em desc, id desc
+        limit 1`,
+      [folhaId, empresaId],
+    ),
   ]);
   if (!cabecalho.rows[0]) throw new Error("Folha não encontrada.");
   return {
@@ -1620,5 +1781,6 @@ export async function carregarFolha(empresaId: string, folhaId: string) {
     itens: itens.rows,
     historico: historico.rows,
     conferencias: conferencias.rows,
+    processamento: processamento.rows[0] ?? null,
   };
 }
