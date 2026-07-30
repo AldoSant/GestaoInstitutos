@@ -100,6 +100,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
 .readiness-grid > *.ready { border-color: #c8e4d7; color: #176a4e; background: #f2faf6; }
 .readiness-grid > *.pending { border-color: #ecd9b9; color: #905208; background: #fffaf0; }
 .two-column-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.two-column-panels .crud-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 .status-badge { width: fit-content; min-height: 24px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; font-size: 10px; line-height: 1; font-weight: 800; white-space: nowrap; }
 .status-badge.success { color: #176a4e; background: #e3f4eb; }

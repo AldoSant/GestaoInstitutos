@@ -110,3 +110,19 @@ test("cabeçalho preserva contexto e não quebra com título longo", async ({
   expect(new URL(page.url()).pathname).toBe(caminhoAntes);
   await semEstouroHorizontal(page);
 });
+
+test("ficha completa não estoura a largura de notebook", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("login");
+  await page.getByLabel("Login").fill(login!);
+  await page.getByLabel("Senha").fill(senha!);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
+
+  await page.goto("cadastros");
+  const primeiraFicha = page.locator('a[href*="/cadastros/pessoas/"]');
+  expect(await primeiraFicha.count()).toBeGreaterThan(0);
+  await primeiraFicha.first().click();
+  await expect(page.locator(".person-form")).toBeVisible();
+  await semEstouroHorizontal(page);
+});
