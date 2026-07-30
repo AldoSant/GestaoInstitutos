@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { caminhoAplicacao } from "@/lib/base-path";
 import { COOKIE_SESSAO, lerTokenSessao } from "@/lib/sessao";
 
 export async function exigirAdministrador() {
@@ -8,10 +7,10 @@ export async function exigirAdministrador() {
   const sessao = lerTokenSessao(jar.get(COOKIE_SESSAO)?.value);
 
   if (!sessao) {
-    redirect(caminhoAplicacao("/login"));
+    redirect("/login");
   }
   if (sessao.perfil !== "ADMINISTRADOR") {
-    redirect(caminhoAplicacao("/"));
+    redirect("/");
   }
 
   return sessao;

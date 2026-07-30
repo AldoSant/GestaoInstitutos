@@ -181,6 +181,26 @@ jobs:
           NEXT_BASE_PATH: /gestao-institutos
         run: npm run build
 
+      - name: VPS base-path login journey
+        shell: bash
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3000/gestao-institutos
+          E2E_LOGIN: ci-admin
+          E2E_PASSWORD: ci-password-not-used-outside-tests
+        run: |
+          npm start > /tmp/gestao-institutos-base-path.log 2>&1 &
+          APP_PID=$!
+          trap 'kill $APP_PID 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/gestao-institutos/api/health > /dev/null; then
+              npx playwright test tests/e2e/base-path.spec.ts
+              exit $?
+            fi
+            sleep 1
+          done
+          cat /tmp/gestao-institutos-base-path.log
+          exit 1
+
       - name: Container images
         run: |
           docker build --target migrator -t gestao-institutos-migrator:ci .
