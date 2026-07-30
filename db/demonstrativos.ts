@@ -55,15 +55,18 @@ async function atualizarTotais(
 export async function materializarDemonstrativoFolhas({
   empresaId,
   competencia,
+  client: clientInformado,
 }: {
   empresaId: string;
   competencia: string;
+  client?: PoolClient;
 }) {
   validarId(empresaId, "Empresa");
   const mes = competenciaData(competencia);
-  const client = await getPool().connect();
+  const client = clientInformado ?? (await getPool().connect());
+  const controlaTransacao = clientInformado === undefined;
   try {
-    await client.query("begin");
+    if (controlaTransacao) await client.query("begin");
     await client.query(
       `select pg_advisory_xact_lock(hashtextextended($1, 0))`,
       [`demonstrativo:${empresaId}:${mes}`],
@@ -208,17 +211,17 @@ export async function materializarDemonstrativoFolhas({
     );
     await atualizarTotais(client, demonstrativoId);
     await client.query("set constraints all immediate");
-    await client.query("commit");
+    if (controlaTransacao) await client.query("commit");
     return {
       demonstrativoId,
       pagamentos: pagamentos.rowCount ?? 0,
       guias: guias.rowCount ?? 0,
     };
   } catch (error) {
-    await client.query("rollback");
+    if (controlaTransacao) await client.query("rollback");
     throw error;
   } finally {
-    client.release();
+    if (controlaTransacao) client.release();
   }
 }
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomInt, randomUUID } from "node:crypto";
 import test from "node:test";
 import pg from "pg";
+import { materializarDemonstrativoFolhas } from "../db/demonstrativos";
 
 const { Pool } = pg;
 const databaseUrl = process.env.DATABASE_URL;
@@ -100,6 +101,122 @@ test(
         /Demonstrativo fechado é imutável/,
       );
       await client.query("rollback to savepoint imutabilidade");
+      await client.query("rollback");
+    } finally {
+      client.release();
+      await pool.end();
+    }
+  },
+);
+
+test(
+  "materializa Folha PF fechada sem converter desconto comum em retenção",
+  { skip: !databaseUrl },
+  async () => {
+    const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      const empresaId = randomUUID();
+      const pessoaId = randomUUID();
+      const prestadorId = randomUUID();
+      const termoId = randomUUID();
+      const metaId = randomUUID();
+      const vinculoId = randomUUID();
+      const folhaId = randomUUID();
+      const itemId = randomUUID();
+      await client.query(
+        `insert into empresa (id, cnpj, razao_social) values ($1, $2, 'Empresa materialização')`,
+        [empresaId, String(randomInt(10 ** 13, 10 ** 14))],
+      );
+      await client.query(
+        `insert into pessoa (
+           id, empresa_id, tipo, nome_razao_social, cpf
+         ) values ($1, $2, 'FISICA', 'Prestador PF de teste', $3)`,
+        [pessoaId, empresaId, String(randomInt(10 ** 10, 10 ** 11))],
+      );
+      await client.query(
+        `insert into prestador (
+           id, empresa_id, pessoa_id, matricula
+         ) values ($1, $2, $3, 'PF-TESTE')`,
+        [prestadorId, empresaId, pessoaId],
+      );
+      await client.query(
+        `insert into termo (
+           id, empresa_id, numero, descricao, modalidade, inicio, valor_global
+         ) values ($1, $2, 'T-TESTE', 'Termo de teste', 'TESTE', '2026-01-01', 1000)`,
+        [termoId, empresaId],
+      );
+      await client.query(
+        `insert into termo_meta (id, termo_id, codigo, descricao)
+         values ($1, $2, 'M-TESTE', 'Meta de teste')`,
+        [metaId, termoId],
+      );
+      await client.query(
+        `insert into prestador_vinculo (
+           id, empresa_id, prestador_id, termo_id, meta_id,
+           atividade, inicio, valor_retribuicao
+         ) values ($1, $2, $3, $4, $5, 'Serviço de teste', '2026-01-01', 1000)`,
+        [vinculoId, empresaId, prestadorId, termoId, metaId],
+      );
+      await client.query(
+        `insert into folha (
+           id, empresa_id, termo_id, meta_id, competencia, numero, status
+         ) values ($1, $2, $3, $4, '2026-06-01', 1, 'ABERTA')`,
+        [folhaId, empresaId, termoId, metaId],
+      );
+      await client.query(
+        `insert into folha_item (
+           id, empresa_id, folha_id, vinculo_id,
+           total_proventos, total_descontos, base_inss, valor_inss,
+           base_irrf, irrf_bruto, irrf_reducao, valor_irrf, total_liquido,
+           snapshots, memoria
+         ) values (
+           $1, $2, $3, $4, 1000, 150, 1000, 100,
+           900, 20, 0, 20, 850,
+           '{"pessoa":{"nome":"Prestador PF de teste"},"prestador":{"matricula":"PF-TESTE"}}',
+           '{}'
+         )`,
+        [itemId, empresaId, folhaId, vinculoId],
+      );
+      await client.query(
+        `update folha
+            set status = 'FECHADA', fechada_em = now(),
+                hash_resultado = repeat('b', 64)
+          where id = $1`,
+        [folhaId],
+      );
+
+      const resultado = await materializarDemonstrativoFolhas({
+        empresaId,
+        competencia: "2026-06",
+        client,
+      });
+      assert.equal(resultado.pagamentos, 1);
+      const pagamento = await client.query<{
+        bruto: string;
+        retencoes: string;
+        liquido: string;
+        descontos_comuns: string;
+        itens_retencao: number;
+      }>(
+        `select p.valor_bruto::text bruto, p.total_retencoes::text retencoes,
+                p.valor_liquido::text liquido,
+                p.beneficiario_snapshot#>>'{folha,descontosNaoTributarios}' descontos_comuns,
+                count(r.id)::int itens_retencao
+           from pagamento_prestador p
+           left join pagamento_retencao r on r.pagamento_id = p.id
+          where p.demonstrativo_id = $1
+          group by p.id`,
+        [resultado.demonstrativoId],
+      );
+      assert.deepEqual(pagamento.rows[0], {
+        bruto: "970.00",
+        retencoes: "120.00",
+        liquido: "850.00",
+        descontos_comuns: "30.00",
+        itens_retencao: 2,
+      });
       await client.query("rollback");
     } finally {
       client.release();
