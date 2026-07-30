@@ -131,17 +131,34 @@ export default async function FichaPessoaPage({
 
       <section className="readiness-grid" aria-label="Prontidão cadastral">
         {[
-          ["Documento", dados.prontidao.documento],
-          ["Contato", dados.prontidao.contato],
-          ["Endereço", dados.prontidao.endereco],
-          ["Conta bancária", dados.prontidao.contaBancaria],
-          ["Prestador ativo", dados.prontidao.prestador],
-          ["Vínculo ativo", dados.prontidao.vinculo],
-        ].map(([rotulo, pronto]) => (
-          <article className={pronto ? "ready" : "pending"} key={String(rotulo)}>
+          { rotulo: "Documento", pronto: dados.prontidao.documento, href: "#identidade" },
+          { rotulo: "Contato", pronto: dados.prontidao.contato, href: "#identidade" },
+          { rotulo: "Endereço", pronto: dados.prontidao.endereco, href: "#endereco" },
+          { rotulo: "Conta bancária", pronto: dados.prontidao.contaBancaria, href: "#pagamento" },
+          {
+            rotulo: "Prestador ativo",
+            pronto: dados.prontidao.prestador,
+            href: dados.prestador
+              ? `/prestadores?editar=${dados.prestador.id}`
+              : `/prestadores?novo=1&pessoa=${dados.pessoa.id}`,
+          },
+          {
+            rotulo: "Vínculo ativo",
+            pronto: dados.prontidao.vinculo,
+            href: dados.prestador
+              ? `/vinculos?novo=1&prestador=${dados.prestador.id}`
+              : `/prestadores?novo=1&pessoa=${dados.pessoa.id}`,
+          },
+        ].map(({ rotulo, pronto, href }) => (
+          <Link
+            className={`${pronto ? "ready" : "pending"} readiness-action`}
+            href={href}
+            key={rotulo}
+          >
             {pronto ? <CheckCircle2 size={17} /> : <AlertTriangle size={17} />}
             <span>{rotulo}</span>
-          </article>
+            <small>{pronto ? "Revisar" : "Resolver"}</small>
+          </Link>
         ))}
       </section>
 

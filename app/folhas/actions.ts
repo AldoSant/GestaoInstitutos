@@ -46,7 +46,11 @@ export async function criarNovaFolha(formData: FormData) {
   } catch (error) {
     erro = mensagem(error);
   }
-  if (erro) redirect(`/folhas/nova?erro=${encodeURIComponent(erro)}`);
+  if (erro) {
+    const params = new URLSearchParams({ erro });
+    if (/^\d{4}-\d{2}$/.test(competencia)) params.set("competencia", competencia);
+    redirect(`/folhas/nova?${params}`);
+  }
   revalidatePath("/folhas");
   redirect(destino(folhaId, "Folha criada e enviada para processamento."));
 }

@@ -6,6 +6,7 @@ import {
   Database,
   Pencil,
   Percent,
+  Plus,
   Power,
   ReceiptText,
   Search,
@@ -13,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ModalShell } from "@/components/modal-shell";
 import { StatusBadge } from "@/components/ui";
 import { carregarEventos } from "@/db/eventos";
 import {
@@ -30,6 +32,7 @@ type SearchParams = Promise<{
   editarEvento?: string | string[];
   editarRecorrente?: string | string[];
   erro?: string | string[];
+  novo?: string | string[];
   sucesso?: string | string[];
 }>;
 
@@ -88,6 +91,7 @@ export default async function EventosPage({
   const busca = primeiro(params.busca).trim();
   const editarEventoId = primeiro(params.editarEvento);
   const editarRecorrenteId = primeiro(params.editarRecorrente);
+  const novo = primeiro(params.novo);
   const erro = primeiro(params.erro);
   const sucesso = primeiro(params.sucesso);
 
@@ -115,6 +119,10 @@ export default async function EventosPage({
   );
   const recorrenciaDisponivel =
     dados.opcoesEventos.length > 0 && dados.opcoesVinculos.length > 0;
+  const modalEventoAberto = Boolean(eventoEditado || novo === "evento");
+  const modalRecorrenteAberto = Boolean(
+    recorrenteEditado || novo === "recorrente",
+  );
 
   return (
     <AppShell
@@ -127,6 +135,45 @@ export default async function EventosPage({
           <strong>{erro ? "Operação não concluída" : "Operação concluída"}</strong>
           <span>{erro || sucesso}</span>
         </section>
+      )}
+
+      {modalEventoAberto && (
+        <ModalShell
+          title={eventoEditado ? "Editar evento" : "Cadastrar evento"}
+          description="Defina a rubrica, a natureza, o cálculo e as incidências antes de informar valores."
+          closeHref="/eventos#cadastro"
+        >
+          <form key={eventoEditado?.id ?? "novo-evento"} action={salvarEvento} className="crud-form evento-form">
+            <input type="hidden" name="id" value={eventoEditado?.id ?? ""} />
+            <label><span>Código</span><input name="codigo" required maxLength={40} defaultValue={eventoEditado?.codigo ?? ""} /></label>
+            <label className="field-wide"><span>Descrição</span><input name="descricao" required maxLength={180} defaultValue={eventoEditado?.descricao ?? ""} /></label>
+            <label><span>Natureza</span><select name="natureza" required defaultValue={eventoEditado?.natureza ?? "PROVENTO"}><option value="PROVENTO">Provento</option><option value="DESCONTO">Desconto</option><option value="INFORMATIVO">Informativo</option></select></label>
+            <label><span>Tipo de cálculo</span><select name="tipoCalculo" required defaultValue={eventoEditado?.tipoCalculo ?? "VALOR"}><option value="VALOR">Valor</option><option value="PERCENTUAL">Percentual</option></select></label>
+            <label className="checkbox-field"><input name="incideInss" type="checkbox" defaultChecked={eventoEditado?.incideInss ?? false} /><span>Compõe base de INSS</span></label>
+            <label className="checkbox-field"><input name="incideIrrf" type="checkbox" defaultChecked={eventoEditado?.incideIrrf ?? false} /><span>Compõe base de IRRF</span></label>
+            <button className="button primary" type="submit">{eventoEditado ? "Salvar Evento" : "Cadastrar Evento"}</button>
+            <Link className="button secondary" href="/eventos#cadastro">Cancelar</Link>
+          </form>
+        </ModalShell>
+      )}
+
+      {modalRecorrenteAberto && (
+        <ModalShell
+          title={recorrenteEditado ? "Editar recorrência" : "Cadastrar lançamento recorrente"}
+          description="Associe evento e vínculo, informe o valor e delimite a vigência mensal."
+          closeHref="/eventos#recorrentes"
+        >
+          <form key={recorrenteEditado?.id ?? "nova-recorrencia"} action={salvarEventoRecorrente} className="crud-form recorrente-form">
+            <input type="hidden" name="id" value={recorrenteEditado?.id ?? ""} />
+            <label className="field-wide"><span>Vínculo</span><select name="vinculoId" required defaultValue={recorrenteEditado?.vinculoId ?? ""}><option value="" disabled>Selecione um Vínculo</option>{dados.opcoesVinculos.map((item) => <option key={item.id} value={item.id}>{item.prestadorNome} · {item.matricula} · Termo {item.termoNumero}/{item.metaCodigo}</option>)}</select></label>
+            <label className="field-wide"><span>Evento</span><select name="eventoId" required defaultValue={recorrenteEditado?.eventoId ?? ""}><option value="" disabled>Selecione um Evento</option>{dados.opcoesEventos.map((item) => <option key={item.id} value={item.id}>{item.codigo} · {item.descricao} · {item.tipoCalculo === "PERCENTUAL" ? "%" : "R$"}</option>)}</select></label>
+            <label><span>Valor / percentual</span><input name="valor" required inputMode="decimal" placeholder="0,00" defaultValue={recorrenteEditado?.valor ?? ""} /></label>
+            <label><span>Competência inicial</span><input name="inicioCompetencia" type="month" required defaultValue={recorrenteEditado?.inicioCompetencia.slice(0, 7) ?? ""} /></label>
+            <label><span>Competência final</span><input name="fimCompetencia" type="month" defaultValue={recorrenteEditado?.fimCompetencia?.slice(0, 7) ?? ""} /></label>
+            <button className="button primary" type="submit" disabled={!recorrenciaDisponivel}>{recorrenteEditado ? "Salvar recorrência" : "Cadastrar recorrência"}</button>
+            <Link className="button secondary" href="/eventos#recorrentes">Cancelar</Link>
+          </form>
+        </ModalShell>
       )}
 
       <section className="cadastro-toolbar panel">
@@ -151,18 +198,7 @@ export default async function EventosPage({
       </section>
 
       <section className="panel cadastro-section" id="cadastro">
-        <div className="panel-header"><div><span className="section-kicker">Rubrica</span><h2>{eventoEditado ? "Editar Evento" : "Novo Evento"}</h2><p>Cadastre o significado da rubrica antes de informar valores.</p></div><StatusBadge tone="info">{dados.eventos.length} exibidos</StatusBadge></div>
-        <form key={eventoEditado?.id ?? "novo-evento"} action={salvarEvento} className="crud-form evento-form">
-          <input type="hidden" name="id" value={eventoEditado?.id ?? ""} />
-          <label><span>Código</span><input name="codigo" required maxLength={40} defaultValue={eventoEditado?.codigo ?? ""} /></label>
-          <label className="field-wide"><span>Descrição</span><input name="descricao" required maxLength={180} defaultValue={eventoEditado?.descricao ?? ""} /></label>
-          <label><span>Natureza</span><select name="natureza" required defaultValue={eventoEditado?.natureza ?? "PROVENTO"}><option value="PROVENTO">Provento</option><option value="DESCONTO">Desconto</option><option value="INFORMATIVO">Informativo</option></select></label>
-          <label><span>Tipo de cálculo</span><select name="tipoCalculo" required defaultValue={eventoEditado?.tipoCalculo ?? "VALOR"}><option value="VALOR">Valor</option><option value="PERCENTUAL">Percentual</option></select></label>
-          <label className="checkbox-field"><input name="incideInss" type="checkbox" defaultChecked={eventoEditado?.incideInss ?? false} /><span>Compõe base de INSS</span></label>
-          <label className="checkbox-field"><input name="incideIrrf" type="checkbox" defaultChecked={eventoEditado?.incideIrrf ?? false} /><span>Compõe base de IRRF</span></label>
-          <button className="button primary" type="submit">{eventoEditado ? "Salvar Evento" : "Cadastrar Evento"}</button>
-          {eventoEditado && <Link className="button secondary" href="/eventos#cadastro">Cancelar</Link>}
-        </form>
+        <div className="panel-header"><div><span className="section-kicker">Rubrica</span><h2>Eventos cadastrados</h2><p>Cadastre o significado da rubrica antes de informar valores.</p></div><div className="row-actions"><StatusBadge tone="info">{dados.eventos.length} exibidos</StatusBadge><Link className="button primary" href="/eventos?novo=evento#cadastro"><Plus size={16} /> Novo evento</Link></div></div>
         <div className="table-wrap"><table><thead><tr><th>Código</th><th>Descrição</th><th>Natureza</th><th>Cálculo</th><th>Incidências</th><th>Recorrências</th><th>Situação</th><th>Ações</th></tr></thead><tbody>
           {dados.eventos.map((item) => <tr key={item.id}><td><strong>{item.codigo}</strong></td><td>{item.descricao}</td><td><StatusBadge tone={item.natureza === "PROVENTO" ? "success" : item.natureza === "DESCONTO" ? "warning" : "neutral"}>{nomeNatureza(item.natureza)}</StatusBadge></td><td>{item.tipoCalculo === "PERCENTUAL" ? <><Percent size={13} /> Percentual</> : <><BadgeDollarSign size={13} /> Valor</>}</td><td>{item.incideInss ? "INSS" : "—"}<small>{item.incideIrrf ? "IRRF" : "Sem IRRF"}</small></td><td>{item.totalRecorrentes}</td><td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativo" : "Inativo"}</StatusBadge></td><td><div className="row-actions"><Link className="row-text-action" href={`/eventos?editarEvento=${item.id}#cadastro`}><Pencil size={13} /> Editar</Link><Alternar action={alternarEvento} id={item.id} ativo={item.ativo} /></div></td></tr>)}
           {dados.eventos.length === 0 && <tr><td colSpan={8} className="empty-cell">Nenhum Evento encontrado.</td></tr>}
@@ -170,17 +206,7 @@ export default async function EventosPage({
       </section>
 
       <section className="panel cadastro-section" id="recorrentes">
-        <div className="panel-header"><div><span className="section-kicker">Vigência mensal</span><h2>{recorrenteEditado ? "Editar recorrência" : "Novo lançamento recorrente"}</h2><p>O mesmo Evento não pode possuir vigências ativas sobrepostas no Vínculo.</p></div><StatusBadge tone={recorrenciaDisponivel ? "success" : "warning"}>{recorrenciaDisponivel ? "Cadastros prontos" : "Cadastre Evento e Vínculo"}</StatusBadge></div>
-        <form key={recorrenteEditado?.id ?? "nova-recorrencia"} action={salvarEventoRecorrente} className="crud-form recorrente-form">
-          <input type="hidden" name="id" value={recorrenteEditado?.id ?? ""} />
-          <label className="field-wide"><span>Vínculo</span><select name="vinculoId" required defaultValue={recorrenteEditado?.vinculoId ?? ""}><option value="" disabled>Selecione um Vínculo</option>{dados.opcoesVinculos.map((item) => <option key={item.id} value={item.id}>{item.prestadorNome} · {item.matricula} · Termo {item.termoNumero}/{item.metaCodigo}</option>)}</select></label>
-          <label className="field-wide"><span>Evento</span><select name="eventoId" required defaultValue={recorrenteEditado?.eventoId ?? ""}><option value="" disabled>Selecione um Evento</option>{dados.opcoesEventos.map((item) => <option key={item.id} value={item.id}>{item.codigo} · {item.descricao} · {item.tipoCalculo === "PERCENTUAL" ? "%" : "R$"}</option>)}</select></label>
-          <label><span>Valor / percentual</span><input name="valor" required inputMode="decimal" placeholder="0,00" defaultValue={recorrenteEditado?.valor ?? ""} /></label>
-          <label><span>Competência inicial</span><input name="inicioCompetencia" type="month" required defaultValue={recorrenteEditado?.inicioCompetencia.slice(0, 7) ?? ""} /></label>
-          <label><span>Competência final</span><input name="fimCompetencia" type="month" defaultValue={recorrenteEditado?.fimCompetencia?.slice(0, 7) ?? ""} /></label>
-          <button className="button primary" type="submit" disabled={!recorrenciaDisponivel}>{recorrenteEditado ? "Salvar recorrência" : "Cadastrar recorrência"}</button>
-          {recorrenteEditado && <Link className="button secondary" href="/eventos#recorrentes">Cancelar</Link>}
-        </form>
+        <div className="panel-header"><div><span className="section-kicker">Vigência mensal</span><h2>Lançamentos recorrentes</h2><p>O mesmo Evento não pode possuir vigências ativas sobrepostas no Vínculo.</p></div><div className="row-actions"><StatusBadge tone={recorrenciaDisponivel ? "success" : "warning"}>{recorrenciaDisponivel ? "Cadastros prontos" : "Cadastre Evento e Vínculo"}</StatusBadge><Link className="button primary" href="/eventos?novo=recorrente#recorrentes"><Plus size={16} /> Nova recorrência</Link></div></div>
         <div className="table-wrap"><table><thead><tr><th>Prestador</th><th>Instrumento</th><th>Evento</th><th>Valor</th><th>Vigência</th><th>Situação</th><th>Ações</th></tr></thead><tbody>
           {dados.recorrentes.map((item) => <tr key={item.id}><td><strong>{item.prestadorNome}</strong><small>Matrícula {item.matricula}</small></td><td>Termo {item.termoNumero}<small>Meta {item.metaCodigo}</small></td><td><strong>{item.eventoCodigo}</strong><small>{item.eventoDescricao}</small></td><td>{valor(item.valor, item.tipoCalculo)}</td><td>{competencia(item.inicioCompetencia)}<small>até {competencia(item.fimCompetencia)}</small></td><td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativo" : "Inativo"}</StatusBadge></td><td><div className="row-actions"><Link className="row-text-action" href={`/eventos?editarRecorrente=${item.id}#recorrentes`}><Pencil size={13} /> Editar</Link><Alternar action={alternarEventoRecorrente} id={item.id} ativo={item.ativo} /></div></td></tr>)}
           {dados.recorrentes.length === 0 && <tr><td colSpan={7} className="empty-cell">Nenhum lançamento recorrente encontrado.</td></tr>}

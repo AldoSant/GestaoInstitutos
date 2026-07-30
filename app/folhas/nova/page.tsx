@@ -56,6 +56,7 @@ export default async function NovaFolhaPage({
     return {
       ...item,
       bloqueios,
+      selecionavel: Number(item.vinculos) > 0 && !item.folha_existente,
       pronta:
         Number(item.vinculos) > 0 &&
         bloqueios === 0 &&
@@ -63,6 +64,7 @@ export default async function NovaFolhaPage({
     };
   });
   const opcoesProntas = opcoes.filter((item) => item.pronta);
+  const opcoesSelecionaveis = opcoes.filter((item) => item.selecionavel);
   const vinculos = opcoes.reduce(
     (total, item) => total + Number(item.vinculos),
     0,
@@ -71,7 +73,7 @@ export default async function NovaFolhaPage({
     (total, item) => total + Number(item.contas_pendentes),
     0,
   );
-  const primeiraOpcao = opcoesProntas[0];
+  const primeiraOpcao = opcoesProntas[0] ?? opcoesSelecionaveis[0];
 
   return (
       <AppShell
@@ -115,10 +117,10 @@ export default async function NovaFolhaPage({
               <h2>Selecionar competência e instrumento</h2>
               <p>Serão incluídos os vínculos ativos no primeiro dia da competência.</p>
             </div>
-            <StatusBadge tone={opcoesProntas.length ? "success" : "warning"}>
-              {opcoesProntas.length
-                ? `${opcoesProntas.length} pronta(s)`
-                : "Nenhuma opção pronta"}
+            <StatusBadge tone={opcoesSelecionaveis.length ? "info" : "warning"}>
+              {opcoesSelecionaveis.length
+                ? `${opcoesSelecionaveis.length} selecionável(is)`
+                : "Nenhuma opção disponível"}
             </StatusBadge>
           </div>
           <form action={criarNovaFolha} className="crud-form">
@@ -147,22 +149,22 @@ export default async function NovaFolhaPage({
                   <option
                     key={item.meta_id}
                     value={`${item.termo_id}:${item.meta_id}`}
-                    disabled={!item.pronta}
+                    disabled={!item.selecionavel}
                   >
                     Termo {item.termo_numero} · Meta {item.meta_codigo} —{" "}
                     {item.pronta
-                      ? `${item.vinculos} vínculo(s)`
+                      ? `${item.vinculos} vínculo(s) · pronta`
                       : item.folha_existente
                         ? "folha já criada"
                         : item.vinculos === 0
                           ? "sem vínculos"
-                          : `${item.bloqueios} pendência(s)`}
+                          : `${item.vinculos} vínculo(s) · ${item.bloqueios} pendência(s) para resolver`}
                   </option>
                 ))}
               </select>
             </label>
-            <button className="button primary" type="submit" disabled={!opcoesProntas.length}>
-              <PlayCircle size={16} /> Criar e processar
+            <button className="button primary" type="submit" disabled={!opcoesSelecionaveis.length}>
+              <PlayCircle size={16} /> Validar, criar e processar
             </button>
           </form>
         </section>
@@ -249,8 +251,8 @@ export default async function NovaFolhaPage({
               <div>
                 <strong>Há pré-requisitos pendentes</strong>
                 <p>
-                  Revise vínculos, fichas de pessoas e medições da competência
-                  antes de tentar novamente.
+                  Agora você pode selecionar o termo/meta para obter a validação
+                  nominal. Use os atalhos para corrigir os cadastros bloqueadores.
                 </p>
               </div>
               <Link className="button secondary" href="/vinculos">

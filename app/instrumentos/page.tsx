@@ -5,6 +5,7 @@ import {
   Database,
   FileText,
   Pencil,
+  Plus,
   Power,
   Search,
   Target,
@@ -12,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ModalShell } from "@/components/modal-shell";
 import { StatusBadge } from "@/components/ui";
 import { carregarInstrumentos } from "@/db/instrumentos";
 import { alternarInstrumento, salvarMeta, salvarTermo } from "./actions";
@@ -22,6 +24,7 @@ export const dynamic = "force-dynamic";
 type SearchParams = Promise<{
   busca?: string | string[];
   editar?: string | string[];
+  novo?: string | string[];
   erro?: string | string[];
   sucesso?: string | string[];
 }>;
@@ -73,6 +76,7 @@ export default async function InstrumentosPage({
   const params = await searchParams;
   const busca = primeiro(params.busca).trim();
   const editar = primeiro(params.editar);
+  const novo = primeiro(params.novo);
   const erro = primeiro(params.erro);
   const sucesso = primeiro(params.sucesso);
 
@@ -107,6 +111,8 @@ export default async function InstrumentosPage({
   const opcoesTermos = dados.opcoesTermos.filter(
     (item) => item.ativo || item.id === metaEditada?.termoId,
   );
+  const modalTipo = editarTipo || novo;
+  const fecharModal = modalTipo === "meta" ? "/instrumentos#metas" : "/instrumentos#termos";
 
   return (
     <AppShell
@@ -119,6 +125,45 @@ export default async function InstrumentosPage({
           <strong>{erro ? "Operação não concluída" : "Operação concluída"}</strong>
           <span>{erro || sucesso}</span>
         </section>
+      )}
+
+      {modalTipo === "termo" && (
+        <ModalShell
+          title={termoEditado ? "Editar termo" : "Cadastrar termo"}
+          description="Informe identificação, modalidade, vigência e limite financeiro do instrumento."
+          closeHref={fecharModal}
+        >
+          <form key={termoEditado?.id ?? "novo-termo"} action={salvarTermo} className="crud-form termo-form">
+            <input type="hidden" name="id" value={termoEditado?.id ?? ""} />
+            <label><span>Número</span><input name="numero" required maxLength={60} defaultValue={termoEditado?.numero ?? ""} /></label>
+            <label className="field-wide"><span>Descrição</span><input name="descricao" required maxLength={255} defaultValue={termoEditado?.descricao ?? ""} /></label>
+            <label><span>Modalidade</span><input name="modalidade" required maxLength={80} defaultValue={termoEditado?.modalidade ?? ""} /></label>
+            <label><span>Início</span><input name="inicio" type="date" required defaultValue={termoEditado?.inicio ?? ""} /></label>
+            <label><span>Fim</span><input name="fim" type="date" defaultValue={termoEditado?.fim ?? ""} /></label>
+            <label><span>Valor global</span><input name="valorGlobal" inputMode="decimal" required defaultValue={termoEditado?.valorGlobal ?? ""} /></label>
+            <button className="button primary" type="submit">{termoEditado ? "Salvar termo" : "Cadastrar termo"}</button>
+            <Link className="button secondary" href={fecharModal}>Cancelar</Link>
+          </form>
+        </ModalShell>
+      )}
+
+      {modalTipo === "meta" && (
+        <ModalShell
+          title={metaEditada ? "Editar meta" : "Cadastrar meta"}
+          description="Associe a meta ao termo e configure seu objeto e orçamento."
+          closeHref={fecharModal}
+        >
+          <form key={metaEditada?.id ?? "nova-meta"} action={salvarMeta} className="crud-form meta-form">
+            <input type="hidden" name="id" value={metaEditada?.id ?? ""} />
+            <label className="field-wide"><span>Termo</span><select name="termoId" required defaultValue={metaEditada?.termoId ?? ""}><option value="" disabled>Selecione um termo ativo</option>{opcoesTermos.map((item) => <option key={item.id} value={item.id}>{item.numero} · {item.descricao}{item.ativo ? "" : " · inativo"}</option>)}</select></label>
+            <label><span>Código</span><input name="codigo" required maxLength={40} defaultValue={metaEditada?.codigo ?? ""} /></label>
+            <label className="field-wide"><span>Descrição</span><input name="descricao" required maxLength={255} defaultValue={metaEditada?.descricao ?? ""} /></label>
+            <label><span>Tipo de cálculo</span><input name="tipoCalculo" maxLength={40} placeholder="Ex.: Mensal" defaultValue={metaEditada?.tipoCalculo ?? ""} /></label>
+            <label><span>Valor previsto</span><input name="valorPrevisto" inputMode="decimal" placeholder="0,00" defaultValue={metaEditada?.valorPrevisto ?? ""} /></label>
+            <button className="button primary" type="submit" disabled={opcoesTermos.length === 0}>{metaEditada ? "Salvar meta" : "Cadastrar meta"}</button>
+            <Link className="button secondary" href={fecharModal}>Cancelar</Link>
+          </form>
+        </ModalShell>
       )}
 
       <section className="cadastro-toolbar panel">
@@ -143,18 +188,7 @@ export default async function InstrumentosPage({
       </section>
 
       <section className="panel cadastro-section" id="termos">
-        <div className="panel-header"><div><span className="section-kicker">Instrumento</span><h2>{termoEditado ? "Editar termo" : "Novo termo"}</h2><p>Número, modalidade, vigência e limite financeiro.</p></div><StatusBadge tone="info">{dados.termos.length} exibidos</StatusBadge></div>
-        <form key={termoEditado?.id ?? "novo-termo"} action={salvarTermo} className="crud-form termo-form">
-          <input type="hidden" name="id" value={termoEditado?.id ?? ""} />
-          <label><span>Número</span><input name="numero" required maxLength={60} defaultValue={termoEditado?.numero ?? ""} /></label>
-          <label className="field-wide"><span>Descrição</span><input name="descricao" required maxLength={255} defaultValue={termoEditado?.descricao ?? ""} /></label>
-          <label><span>Modalidade</span><input name="modalidade" required maxLength={80} defaultValue={termoEditado?.modalidade ?? ""} /></label>
-          <label><span>Início</span><input name="inicio" type="date" required defaultValue={termoEditado?.inicio ?? ""} /></label>
-          <label><span>Fim</span><input name="fim" type="date" defaultValue={termoEditado?.fim ?? ""} /></label>
-          <label><span>Valor global</span><input name="valorGlobal" inputMode="decimal" required defaultValue={termoEditado?.valorGlobal ?? ""} /></label>
-          <button className="button primary" type="submit">{termoEditado ? "Salvar termo" : "Cadastrar termo"}</button>
-          {termoEditado && <Link className="button secondary" href="/instrumentos#termos">Cancelar</Link>}
-        </form>
+        <div className="panel-header"><div><span className="section-kicker">Instrumento</span><h2>Termos cadastrados</h2><p>Número, modalidade, vigência e limite financeiro.</p></div><div className="row-actions"><StatusBadge tone="info">{dados.termos.length} exibidos</StatusBadge><Link className="button primary" href="/instrumentos?novo=termo#termos"><Plus size={16} /> Novo termo</Link></div></div>
         <div className="table-wrap"><table><thead><tr><th>Número</th><th>Descrição</th><th>Modalidade</th><th>Vigência</th><th>Valor global</th><th>Metas</th><th>Vínculos</th><th>Situação</th><th>Ações</th></tr></thead><tbody>
           {dados.termos.map((item) => <tr key={item.id}><td><strong>{item.numero}</strong></td><td>{item.descricao}</td><td>{item.modalidade}</td><td>{data(item.inicio)} a {data(item.fim)}</td><td>{moeda(item.valorGlobal)}</td><td>{item.metasAtivas} ativas<small>{item.totalMetas} no total</small></td><td>{item.totalVinculos}</td><td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativo" : "Inativo"}</StatusBadge></td><td><div className="row-actions"><Link className="row-text-action" href={`/instrumentos?editar=termo:${item.id}#termos`}><Pencil size={13} /> Editar</Link><AcaoSituacao entidade="termo" id={item.id} ativo={item.ativo} /></div></td></tr>)}
           {dados.termos.length === 0 && <tr><td colSpan={9} className="empty-cell">Nenhum termo encontrado.</td></tr>}
@@ -162,17 +196,7 @@ export default async function InstrumentosPage({
       </section>
 
       <section className="panel cadastro-section" id="metas">
-        <div className="panel-header"><div><span className="section-kicker">Objeto e orçamento</span><h2>{metaEditada ? "Editar meta" : "Nova meta"}</h2><p>A meta será selecionada no vínculo do prestador.</p></div><StatusBadge tone="info">{dados.metas.length} exibidas</StatusBadge></div>
-        <form key={metaEditada?.id ?? "nova-meta"} action={salvarMeta} className="crud-form meta-form">
-          <input type="hidden" name="id" value={metaEditada?.id ?? ""} />
-          <label className="field-wide"><span>Termo</span><select name="termoId" required defaultValue={metaEditada?.termoId ?? ""}><option value="" disabled>Selecione um termo ativo</option>{opcoesTermos.map((item) => <option key={item.id} value={item.id}>{item.numero} · {item.descricao}{item.ativo ? "" : " · inativo"}</option>)}</select></label>
-          <label><span>Código</span><input name="codigo" required maxLength={40} defaultValue={metaEditada?.codigo ?? ""} /></label>
-          <label className="field-wide"><span>Descrição</span><input name="descricao" required maxLength={255} defaultValue={metaEditada?.descricao ?? ""} /></label>
-          <label><span>Tipo de cálculo</span><input name="tipoCalculo" maxLength={40} placeholder="Ex.: Mensal" defaultValue={metaEditada?.tipoCalculo ?? ""} /></label>
-          <label><span>Valor previsto</span><input name="valorPrevisto" inputMode="decimal" placeholder="0,00" defaultValue={metaEditada?.valorPrevisto ?? ""} /></label>
-          <button className="button primary" type="submit" disabled={opcoesTermos.length === 0}>{metaEditada ? "Salvar meta" : "Cadastrar meta"}</button>
-          {metaEditada && <Link className="button secondary" href="/instrumentos#metas">Cancelar</Link>}
-        </form>
+        <div className="panel-header"><div><span className="section-kicker">Objeto e orçamento</span><h2>Metas cadastradas</h2><p>A meta será selecionada no vínculo do prestador.</p></div><div className="row-actions"><StatusBadge tone="info">{dados.metas.length} exibidas</StatusBadge><Link className="button primary" href="/instrumentos?novo=meta#metas"><Plus size={16} /> Nova meta</Link></div></div>
         <div className="table-wrap"><table><thead><tr><th>Termo</th><th>Código</th><th>Descrição</th><th>Cálculo</th><th>Valor previsto</th><th>Vínculos</th><th>Situação</th><th>Ações</th></tr></thead><tbody>
           {dados.metas.map((item) => <tr key={item.id}><td><strong>{item.termoNumero}</strong><small>{item.termoDescricao}</small></td><td>{item.codigo}</td><td>{item.descricao}</td><td>{item.tipoCalculo ?? "Não informado"}</td><td>{item.valorPrevisto ? moeda(item.valorPrevisto) : "—"}</td><td>{item.totalVinculos}</td><td><StatusBadge tone={item.ativo && item.termoAtivo ? "success" : "neutral"}>{item.ativo && item.termoAtivo ? "Ativa" : "Inativa"}</StatusBadge></td><td><div className="row-actions"><Link className="row-text-action" href={`/instrumentos?editar=meta:${item.id}#metas`}><Pencil size={13} /> Editar</Link><AcaoSituacao entidade="meta" id={item.id} ativo={item.ativo} /></div></td></tr>)}
           {dados.metas.length === 0 && <tr><td colSpan={8} className="empty-cell">Nenhuma meta encontrada.</td></tr>}
