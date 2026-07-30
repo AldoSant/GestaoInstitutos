@@ -28,7 +28,9 @@ test("jornada não destrutiva do MVP publicado", async ({ page }) => {
 
   await test.step("consultar o fluxo mensal da folha", async () => {
     await page.goto("folhas");
-    await expect(page.getByRole("heading", { name: "Folhas" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Folhas mensais" }),
+    ).toBeVisible();
     await expect(page.getByText("Competências processadas")).toBeVisible();
     await expect(page.getByRole("link", { name: /Nova folha/i })).toBeVisible();
   });
@@ -51,7 +53,9 @@ test("jornada não destrutiva do MVP publicado", async ({ page }) => {
 
   await test.step("consultar obrigações e o diagnóstico de FGTS", async () => {
     await page.goto("obrigacoes");
-    await expect(page.getByRole("heading", { name: "Obrigações" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Obrigações e guias" }),
+    ).toBeVisible();
     await expect(
       page.getByText("Da folha fechada ao DARF para pagamento"),
     ).toBeVisible();

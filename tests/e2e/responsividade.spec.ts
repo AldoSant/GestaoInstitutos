@@ -55,8 +55,10 @@ test("jornada principal permanece operável no celular", async ({ page }) => {
   await semEstouroHorizontal(page);
 
   let menu = await abrirMenu(page);
-  await menu.getByRole("link", { name: "Folha mensal" }).click();
-  await expect(page.getByRole("heading", { name: "Folhas" })).toBeVisible();
+  await menu.getByRole("link", { name: "Folhas mensais" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Folhas mensais" }),
+  ).toBeVisible();
   await semEstouroHorizontal(page);
 
   menu = await abrirMenu(page);
@@ -67,7 +69,9 @@ test("jornada principal permanece operável no celular", async ({ page }) => {
 
   menu = await abrirMenu(page);
   await menu.getByRole("link", { name: "Obrigações e guias" }).click();
-  await expect(page.getByRole("heading", { name: "Obrigações" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Obrigações e guias" }),
+  ).toBeVisible();
   await semEstouroHorizontal(page);
 
   menu = await abrirMenu(page);
