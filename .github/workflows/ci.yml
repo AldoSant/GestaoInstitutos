@@ -189,6 +189,9 @@ jobs:
           E2E_PASSWORD: ci-password-not-used-outside-tests
           PORT: 3010
         run: |
+          cp -R public .next/standalone/public
+          mkdir -p .next/standalone/.next
+          cp -R .next/static .next/standalone/.next/static
           node .next/standalone/server.js > /tmp/gestao-institutos-base-path.log 2>&1 &
           APP_PID=$!
           trap 'kill $APP_PID 2>/dev/null || true' EXIT
