@@ -16,6 +16,7 @@ import { AppShell } from "@/components/app-shell";
 import { ModalShell } from "@/components/modal-shell";
 import { StatusBadge } from "@/components/ui";
 import { carregarCadastrosBase } from "@/db/cadastros";
+import { caminhoAplicacao } from "@/lib/base-path";
 import {
   alternarCadastro,
   salvarAtividade,
@@ -227,16 +228,18 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
           <h2>Pessoas, atividades e lotações</h2>
           <p>Registros importados do GIW aparecem com o código de origem.</p>
         </div>
-        <form action="/cadastros" method="get" className="search-field cadastro-filters">
-          <Search size={17} />
+        <form action={caminhoAplicacao("/cadastros")} method="get" className="cadastro-filters">
           <label className="sr-only" htmlFor="busca-cadastros">Buscar cadastros</label>
-          <input
-            id="busca-cadastros"
-            name="busca"
-            type="search"
-            defaultValue={busca}
-            placeholder="Nome, documento, código ou descrição"
-          />
+          <div className="cadastro-search-control">
+            <Search size={17} aria-hidden="true" />
+            <input
+              id="busca-cadastros"
+              name="busca"
+              type="search"
+              defaultValue={busca}
+              placeholder="Nome, documento, código ou descrição"
+            />
+          </div>
           <label className="sr-only" htmlFor="situacao-cadastros">Situação</label>
           <select
             id="situacao-cadastros"

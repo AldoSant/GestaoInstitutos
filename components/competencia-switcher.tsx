@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarDays } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import {
   COOKIE_COMPETENCIA,
@@ -17,6 +17,7 @@ export function CompetenciaSwitcher({
   selecionada: string;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const competenciaNaUrl = primeiraCompetencia(
     searchParams.get("competencia") ?? undefined,
@@ -38,7 +39,9 @@ export function CompetenciaSwitcher({
         onChange={(event) => {
           const competencia = event.target.value;
           document.cookie = `${COOKIE_COMPETENCIA}=${competencia}; Path=/; Max-Age=31536000; SameSite=Lax`;
-          router.push(`/?competencia=${competencia}`);
+          const params = new URLSearchParams(searchParams.toString());
+          params.set("competencia", competencia);
+          router.push(`${pathname}?${params.toString()}`);
         }}
       >
         {competencias.map((competencia) => (

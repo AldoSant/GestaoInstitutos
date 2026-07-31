@@ -79,3 +79,56 @@ test("jornada principal permanece operável no celular", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Administração" })).toBeVisible();
   await semEstouroHorizontal(page);
 });
+
+test("cabeçalho preserva contexto e não quebra com título longo", async ({
+  page,
+}) => {
+  await page.goto("login");
+  await page.getByLabel("Login").fill(login!);
+  await page.getByLabel("Senha").fill(senha!);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
+
+  await page.goto("cadastros");
+  const primeiraFicha = page.locator('a[href*="/cadastros/pessoas/"]');
+  expect(await primeiraFicha.count()).toBeGreaterThan(0);
+  await Promise.all([
+    page.waitForURL(/\/cadastros\/pessoas\/[^/]+$/),
+    primeiraFicha.first().click(),
+  ]);
+
+  const titulo = page.locator(".page-heading h1");
+  await expect(titulo).toBeVisible();
+  await expect(titulo).toHaveCSS("white-space", "nowrap");
+  await expect(titulo).toHaveCSS("text-overflow", "ellipsis");
+
+  const seletor = page.getByRole("combobox", { name: "Competência em foco" });
+  await expect(seletor).toBeVisible();
+  const caminhoAntes = new URL(page.url()).pathname;
+  const opcoes = await seletor.locator("option").evaluateAll((itens) =>
+    itens.map((item) => (item as HTMLOptionElement).value),
+  );
+  expect(opcoes.length).toBeGreaterThan(1);
+  const atual = await seletor.inputValue();
+  const destino = opcoes.find((opcao) => opcao !== atual)!;
+  await seletor.selectOption(destino);
+  await expect(page).toHaveURL(new RegExp(`competencia=${destino}`));
+  expect(new URL(page.url()).pathname).toBe(caminhoAntes);
+  await semEstouroHorizontal(page);
+});
+
+test("ficha completa não estoura a largura de notebook", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("login");
+  await page.getByLabel("Login").fill(login!);
+  await page.getByLabel("Senha").fill(senha!);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
+
+  await page.goto("cadastros");
+  const primeiraFicha = page.locator('a[href*="/cadastros/pessoas/"]');
+  expect(await primeiraFicha.count()).toBeGreaterThan(0);
+  await primeiraFicha.first().click();
+  await expect(page.locator(".person-form")).toBeVisible();
+  await semEstouroHorizontal(page);
+});

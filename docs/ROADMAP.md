@@ -2,11 +2,13 @@
 
 ## Prioridade operacional atual — conclusão funcional do MVP
 
-1. Validar Folha individual e consolidada em PostgreSQL e no fluxo do worker.
-2. Fechar apuração e reconciliação da obrigação previdenciária.
-3. Homologar produtividade, Eventos e enquadramento com RH/contabilidade.
-4. Executar três competências em paralelo e ensaiar reabertura/retificação.
-5. Comprovar backup/restauração e preparar o corte do legado.
+1. Validar a migração `0034` e montar o demonstrativo real de Camamu, separando
+   pagamentos PF/PJ, retenções e guias.
+2. Validar Folha individual e consolidada em PostgreSQL e no fluxo do worker.
+3. Fechar apuração e reconciliação da obrigação previdenciária.
+4. Homologar produtividade, Eventos e enquadramento com RH/contabilidade.
+5. Executar três competências em paralelo e ensaiar reabertura/retificação.
+6. Comprovar backup/restauração e preparar o corte do legado.
 
 A migração permanece disponível, mas não é o foco do caminho crítico desta etapa.
 

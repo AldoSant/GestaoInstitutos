@@ -21,7 +21,7 @@ import {
 } from "../../db/simulacoes-consolidacao";
 import {
   concluirTarefa,
-  reservarProximaTarefa,
+  reservarTarefaPorChave,
 } from "../../db/tarefas";
 import { handlers } from "../worker/handlers";
 
@@ -167,7 +167,12 @@ try {
     ator,
   });
 
-  const primeiraTarefa = await reservarProximaTarefa(ator, ["PROCESSAR_FOLHA"]);
+  const primeiraTarefa = await reservarTarefaPorChave({
+    trabalhadorId: ator,
+    empresaId: empresa.id,
+    tipo: "PROCESSAR_FOLHA",
+    chaveIdempotencia: `folha:${folhaPrincipal.id}:revisao:${folhaPrincipal.revisao}`,
+  });
   assert.ok(primeiraTarefa, "Primeira tarefa consolidada não foi enfileirada.");
   const primeiroResultado = await handlers.PROCESSAR_FOLHA(primeiraTarefa);
   await concluirTarefa(primeiraTarefa.id, ator, primeiroResultado);
@@ -195,7 +200,12 @@ try {
     /Todas as Folhas da Pessoa devem estar processadas/,
   );
 
-  const segundaTarefa = await reservarProximaTarefa(ator, ["PROCESSAR_FOLHA"]);
+  const segundaTarefa = await reservarTarefaPorChave({
+    trabalhadorId: ator,
+    empresaId: empresa.id,
+    tipo: "PROCESSAR_FOLHA",
+    chaveIdempotencia: `folha:${folhaSecundaria.id}:revisao:${folhaSecundaria.revisao}`,
+  });
   assert.ok(segundaTarefa, "Segunda tarefa consolidada não foi enfileirada.");
   const segundoResultado = await handlers.PROCESSAR_FOLHA(segundaTarefa);
   await concluirTarefa(segundaTarefa.id, ator, segundoResultado);

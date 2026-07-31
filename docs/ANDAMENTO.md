@@ -1,5 +1,29 @@
 # Andamento do MVP
 
+## Decisão prioritária de 30/07/2026
+
+Foi eliminada da linha oficial de desenvolvimento a proposta de excluir toda pessoa
+jurídica da Folha por uma chave binária. O domínio agora separa pagamento ao prestador,
+retenção tributária vinculada e guia/recolhimento. A migração `0034` introduz o
+demonstrativo mensal auditável sem alterar o motor previdenciário PF.
+
+O desenho, limites e aceite estão em
+[Demonstrativo mensal de Camamu](DEMONSTRATIVO_MENSAL_CAMAMU.md), e a decisão está
+registrada em
+[ADR-0004](decisoes/ADR-0004-demonstrativo-pagamentos-retencoes-guias.md).
+
+O fluxo `/demonstrativos` já materializa pagamentos PF de Folhas fechadas, preserva
+descontos não tributários no snapshot, cria INSS/IRRF como retenções, vincula as guias
+da competência e permite registrar PJ por documento em modal. A prova transacional
+foi executada no PostgreSQL 16 descartável. A migração `0035` acrescenta conferência
+imutável por revisão/hash; o fechamento recalcula pagamentos, retenções, obrigações e
+documentos e recusa fonte alterada. A migração `0036` preserva integralmente cada
+fechamento antes de abrir uma nova revisão, com motivo, responsável, aprovação e
+snapshot imutável. Atualizações comuns de PF e guias não incrementam mais a revisão.
+O CSV operacional preserva as três naturezas. O dossiê A4 recompõe a revisão atual
+ou um fechamento histórico, verifica novamente o SHA-256 e permite impressão ou
+salvamento como PDF sem confundir o relatório interno com a guia oficial.
+
 ## Visão geral
 
 **Estimativa do MVP ampliado: 72% concluído. Prontidão operacional com dados reais:
@@ -176,17 +200,21 @@ homologação. Interfaces demonstrativas contam apenas como descoberta de fluxo.
 
 ## Caminho crítico restante
 
-1. Homologar as fórmulas de produtividade/proporcionalização com contratos e RH.
-2. Executar as simulações mensais sobre três competências reais e homologar agregado,
+1. Aplicar a migração `0034` em PostgreSQL descartável e comprovar as travas de soma,
+   segregação e imutabilidade do demonstrativo.
+2. Montar uma competência de Camamu com pagamentos PF, PJ, retenções e guias e obter
+   a classificação das pendências com o RH/contabilidade.
+3. Homologar as fórmulas de produtividade/proporcionalização com contratos e RH.
+4. Executar as simulações mensais sobre três competências reais e homologar agregado,
    rateio, Folhas e obrigação por Pessoa.
-3. Ativar o consumo produtivo apenas para a empresa e a competência aprovadas, ensaiar
+5. Ativar o consumo produtivo apenas para a empresa e a competência aprovadas, ensaiar
    fechamento, reabertura e regressão e então avançar a competência inicial.
-4. Disponibilizar a homologação PostgreSQL descartável, aplicar a migração `0030`,
+6. Disponibilizar a homologação PostgreSQL descartável, aplicar a migração `0030`,
    importar Pessoas/cadastros/instrumentos e os 30 snapshots reconciliados em dry-run,
    repetir com aplicação e comprovar idempotência.
-5. Homologar o enquadramento real da entidade e reconciliar com eSocial/DCTFWeb reais.
-6. Três competências reais em paralelo, com diferenças explicadas.
-7. Backup/restauração, acesso, auditoria e corte controlado do GIW.
+7. Homologar o enquadramento real da entidade e reconciliar com eSocial/DCTFWeb reais.
+8. Três competências reais em paralelo, com diferenças explicadas.
+9. Backup/restauração, acesso, auditoria e corte controlado do GIW.
 
 ## Como o percentual será atualizado
 

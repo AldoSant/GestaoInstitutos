@@ -24,7 +24,7 @@ import { salvarMedicaoMensal } from "../../db/medicoes";
 import { getPool } from "../../db";
 import {
   concluirTarefa,
-  reservarProximaTarefa,
+  reservarTarefaPorChave,
 } from "../../db/tarefas";
 import { handlers } from "../worker/handlers";
 
@@ -95,7 +95,12 @@ try {
     competencia: "2026-06",
     ator: trabalhador,
   });
-  const tarefa = await reservarProximaTarefa(trabalhador, ["PROCESSAR_FOLHA"]);
+  const tarefa = await reservarTarefaPorChave({
+    trabalhadorId: trabalhador,
+    empresaId: empresa.id,
+    tipo: "PROCESSAR_FOLHA",
+    chaveIdempotencia: `folha:${folha.id}:revisao:${folha.revisao}`,
+  });
   assert.ok(tarefa, "Tarefa de Folha não foi enfileirada.");
   const resultado = await handlers.PROCESSAR_FOLHA(tarefa);
   await concluirTarefa(tarefa.id, trabalhador, resultado);

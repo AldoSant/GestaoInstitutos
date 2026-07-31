@@ -23,6 +23,21 @@ O demonstrativo individual preserva a memória do sistema. Ele não redefine a n
 jurídica do pagamento e não substitui documento fiscal exigido pelo contrato ou pela
 orientação contábil.
 
+## Dossiê do demonstrativo mensal
+
+O demonstrativo mensal possui a ação **Dossiê / PDF**. O documento reúne:
+
+- pagamentos PF e PJ sem converter a guia em beneficiário;
+- retenções ligadas ao pagamento e suas evidências;
+- obrigações, guias e documentos externos;
+- aprovação, responsável, fechamento e SHA-256;
+- histórico de retificações, com acesso a cada fechamento anterior.
+
+O relatório recompõe o hash antes de renderizar. Uma revisão histórica é lida do
+snapshot imutável criado na abertura da revisão seguinte; divergência de integridade
+é exibida como bloqueio explícito. A prévia de um rascunho também pode ser impressa,
+mas permanece identificada como não fechada.
+
 ## Relação de pagamentos
 
 A Folha processada também possui a ação **Relação de pagamentos**. Ela apresenta conta,

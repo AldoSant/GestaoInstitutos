@@ -2445,6 +2445,418 @@ export const obrigacoesFolhas = pgTable(
   ],
 );
 
+export const demonstrativosMensais = pgTable(
+  "demonstrativo_mensal",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    competencia: date("competencia").notNull(),
+    numero: integer("numero").notNull(),
+    revisao: integer("revisao").notNull().default(1),
+    status: varchar("status", { length: 20 }).notNull().default("RASCUNHO"),
+    totalBruto: numeric("total_bruto", { precision: 18, scale: 2 })
+      .notNull()
+      .default("0"),
+    totalRetencoes: numeric("total_retencoes", { precision: 18, scale: 2 })
+      .notNull()
+      .default("0"),
+    totalLiquido: numeric("total_liquido", { precision: 18, scale: 2 })
+      .notNull()
+      .default("0"),
+    hashResultado: varchar("hash_resultado", { length: 64 }),
+    fechadoEm: timestamp("fechado_em", { withTimezone: true }),
+    fechadoPor: varchar("fechado_por", { length: 160 }),
+    ...auditoriaBasica,
+  },
+  (table) => [
+    uniqueIndex("uq_demonstrativo_empresa_id").on(table.empresaId, table.id),
+    uniqueIndex("uq_demonstrativo_empresa_competencia_numero").on(
+      table.empresaId,
+      table.competencia,
+      table.numero,
+    ),
+    index("ix_demonstrativo_empresa_competencia").on(
+      table.empresaId,
+      table.competencia,
+      table.status,
+    ),
+    check("ck_demonstrativo_numero", sql`${table.numero} > 0`),
+    check("ck_demonstrativo_revisao", sql`${table.revisao} > 0`),
+    check(
+      "ck_demonstrativo_competencia",
+      sql`${table.competencia} = date_trunc('month', ${table.competencia})::date`,
+    ),
+    check(
+      "ck_demonstrativo_status",
+      sql`${table.status} in ('RASCUNHO', 'EM_CONFERENCIA', 'FECHADO', 'CANCELADO')`,
+    ),
+    check(
+      "ck_demonstrativo_totais",
+      sql`${table.totalBruto} >= 0 and ${table.totalRetencoes} >= 0
+          and ${table.totalLiquido} >= 0
+          and ${table.totalLiquido} = round(${table.totalBruto} - ${table.totalRetencoes}, 2)`,
+    ),
+    check(
+      "ck_demonstrativo_fechamento",
+      sql`${table.status} <> 'FECHADO' or
+          (${table.fechadoEm} is not null and ${table.fechadoPor} is not null
+           and ${table.hashResultado} ~ '^[0-9a-f]{64}$')`,
+    ),
+  ],
+);
+
+export const conferenciasDemonstrativos = pgTable(
+  "demonstrativo_conferencia",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
+    demonstrativoId: uuid("demonstrativo_id")
+      .notNull()
+      .references(() => demonstrativosMensais.id, { onDelete: "cascade" }),
+    revisao: integer("revisao").notNull(),
+    hashResultado: varchar("hash_resultado", { length: 64 }).notNull(),
+    resultado: varchar("resultado", { length: 16 }).notNull(),
+    conferente: varchar("conferente", { length: 160 }).notNull(),
+    confirmouPagamentos: boolean("confirmou_pagamentos").notNull(),
+    confirmouRetencoes: boolean("confirmou_retencoes").notNull(),
+    confirmouGuias: boolean("confirmou_guias").notNull(),
+    observacao: text("observacao").notNull().default(""),
+    criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("ix_demonstrativo_conferencia_hash").on(
+      table.demonstrativoId,
+      table.hashResultado,
+      table.criadoEm,
+    ),
+    foreignKey({
+      columns: [table.empresaId],
+      foreignColumns: [empresas.id],
+      name: "fk_demonstrativo_conferencia_empresa",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.demonstrativoId],
+      foreignColumns: [demonstrativosMensais.empresaId, demonstrativosMensais.id],
+      name: "fk_demonstrativo_conferencia_empresa_demonstrativo",
+    }).onDelete("cascade"),
+    check(
+      "ck_demonstrativo_conferencia_resultado",
+      sql`${table.resultado} in ('APROVADA', 'REJEITADA')`,
+    ),
+    check("ck_demonstrativo_conferencia_revisao", sql`${table.revisao} > 0`),
+    check(
+      "ck_demonstrativo_conferencia_hash",
+      sql`${table.hashResultado} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "ck_demonstrativo_conferencia_conferente",
+      sql`length(btrim(${table.conferente})) between 3 and 160`,
+    ),
+    check(
+      "ck_demonstrativo_conferencia_aprovacao",
+      sql`${table.resultado} <> 'APROVADA' or (
+        ${table.confirmouPagamentos} and ${table.confirmouRetencoes}
+        and ${table.confirmouGuias}
+      )`,
+    ),
+    check(
+      "ck_demonstrativo_conferencia_rejeicao",
+      sql`${table.resultado} <> 'REJEITADA' or length(btrim(${table.observacao})) >= 10`,
+    ),
+  ],
+);
+
+export const historicosRevisoesDemonstrativos = pgTable(
+  "demonstrativo_revisao_historico",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
+    demonstrativoId: uuid("demonstrativo_id").notNull(),
+    revisaoOrigem: integer("revisao_origem").notNull(),
+    revisaoDestino: integer("revisao_destino").notNull(),
+    hashResultado: varchar("hash_resultado", { length: 64 }).notNull(),
+    motivo: text("motivo").notNull(),
+    responsavel: varchar("responsavel", { length: 160 }).notNull(),
+    snapshotAnterior: jsonb("snapshot_anterior").notNull(),
+    criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("uq_demonstrativo_revisao_origem").on(
+      table.demonstrativoId,
+      table.revisaoOrigem,
+    ),
+    uniqueIndex("uq_demonstrativo_revisao_destino").on(
+      table.demonstrativoId,
+      table.revisaoDestino,
+    ),
+    index("ix_demonstrativo_revisao_empresa_data").on(
+      table.empresaId,
+      table.criadoEm,
+    ),
+    foreignKey({
+      columns: [table.empresaId],
+      foreignColumns: [empresas.id],
+      name: "fk_demonstrativo_revisao_empresa",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.demonstrativoId],
+      foreignColumns: [demonstrativosMensais.empresaId, demonstrativosMensais.id],
+      name: "fk_demonstrativo_revisao_empresa_demonstrativo",
+    }).onDelete("cascade"),
+    check(
+      "ck_demonstrativo_revisao_sequencia",
+      sql`${table.revisaoOrigem} > 0
+          and ${table.revisaoDestino} = ${table.revisaoOrigem} + 1`,
+    ),
+    check(
+      "ck_demonstrativo_revisao_hash",
+      sql`${table.hashResultado} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "ck_demonstrativo_revisao_motivo",
+      sql`length(btrim(${table.motivo})) between 20 and 3000`,
+    ),
+    check(
+      "ck_demonstrativo_revisao_responsavel",
+      sql`length(btrim(${table.responsavel})) between 3 and 160`,
+    ),
+    check(
+      "ck_demonstrativo_revisao_snapshot",
+      sql`jsonb_typeof(${table.snapshotAnterior}) = 'object'`,
+    ),
+  ],
+);
+
+export const pagamentosPrestadores = pgTable(
+  "pagamento_prestador",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
+    demonstrativoId: uuid("demonstrativo_id")
+      .notNull()
+      .references(() => demonstrativosMensais.id, { onDelete: "cascade" }),
+    prestadorId: uuid("prestador_id").references(() => prestadores.id),
+    vinculoId: uuid("vinculo_id").references(() => vinculos.id),
+    folhaItemId: uuid("folha_item_id").references(() => itensFolha.id),
+    tipoPessoa: tipoPessoa("tipo_pessoa").notNull(),
+    origem: varchar("origem", { length: 24 }).notNull(),
+    documentoReferencia: varchar("documento_referencia", { length: 160 }),
+    documentoHash: varchar("documento_hash", { length: 64 }),
+    beneficiarioSnapshot: jsonb("beneficiario_snapshot").notNull(),
+    valorBruto: numeric("valor_bruto", { precision: 18, scale: 2 }).notNull(),
+    totalRetencoes: numeric("total_retencoes", { precision: 18, scale: 2 })
+      .notNull()
+      .default("0"),
+    valorLiquido: numeric("valor_liquido", { precision: 18, scale: 2 }).notNull(),
+    observacao: text("observacao"),
+    ...auditoriaBasica,
+  },
+  (table) => [
+    uniqueIndex("uq_pagamento_prestador_empresa_id").on(table.empresaId, table.id),
+    uniqueIndex("uq_pagamento_prestador_folha_item")
+      .on(table.demonstrativoId, table.folhaItemId)
+      .where(sql`${table.folhaItemId} is not null`),
+    index("ix_pagamento_prestador_demonstrativo").on(
+      table.demonstrativoId,
+      table.tipoPessoa,
+    ),
+    foreignKey({
+      columns: [table.empresaId, table.demonstrativoId],
+      foreignColumns: [demonstrativosMensais.empresaId, demonstrativosMensais.id],
+      name: "fk_pagamento_empresa_demonstrativo",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.empresaId, table.prestadorId],
+      foreignColumns: [prestadores.empresaId, prestadores.id],
+      name: "fk_pagamento_empresa_prestador",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.vinculoId],
+      foreignColumns: [vinculos.empresaId, vinculos.id],
+      name: "fk_pagamento_empresa_vinculo",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.folhaItemId],
+      foreignColumns: [itensFolha.empresaId, itensFolha.id],
+      name: "fk_pagamento_empresa_folha_item",
+    }),
+    check(
+      "ck_pagamento_origem",
+      sql`${table.origem} in ('FOLHA_PF', 'NOTA_FISCAL_PJ', 'IMPORTACAO_GIW', 'MANUAL')`,
+    ),
+    check(
+      "ck_pagamento_tipo_origem",
+      sql`not (
+        (${table.tipoPessoa} = 'FISICA' and ${table.origem} = 'NOTA_FISCAL_PJ') or
+        (${table.tipoPessoa} = 'JURIDICA' and ${table.origem} = 'FOLHA_PF')
+      )`,
+    ),
+    check(
+      "ck_pagamento_beneficiario",
+      sql`${table.prestadorId} is not null or ${table.origem} = 'IMPORTACAO_GIW'`,
+    ),
+    check(
+      "ck_pagamento_valores",
+      sql`${table.valorBruto} >= 0 and ${table.totalRetencoes} >= 0
+          and ${table.valorLiquido} >= 0
+          and ${table.valorLiquido} = round(${table.valorBruto} - ${table.totalRetencoes}, 2)`,
+    ),
+    check(
+      "ck_pagamento_documento_hash",
+      sql`${table.documentoHash} is null or ${table.documentoHash} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "ck_pagamento_beneficiario_snapshot",
+      sql`jsonb_typeof(${table.beneficiarioSnapshot}) = 'object'`,
+    ),
+  ],
+);
+
+export const retencoesPagamentos = pgTable(
+  "pagamento_retencao",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
+    pagamentoId: uuid("pagamento_id")
+      .notNull()
+      .references(() => pagamentosPrestadores.id, { onDelete: "cascade" }),
+    tributo: varchar("tributo", { length: 16 }).notNull(),
+    codigoReceita: varchar("codigo_receita", { length: 40 }),
+    baseCalculo: numeric("base_calculo", { precision: 18, scale: 2 }),
+    aliquota: numeric("aliquota", { precision: 12, scale: 6 }),
+    valor: numeric("valor", { precision: 18, scale: 2 }).notNull(),
+    origem: varchar("origem", { length: 24 }).notNull(),
+    regraCalculoId: uuid("regra_calculo_id").references(() => regrasCalculo.id),
+    evidenciaReferencia: varchar("evidencia_referencia", { length: 240 }),
+    evidenciaHash: varchar("evidencia_hash", { length: 64 }),
+    snapshot: jsonb("snapshot").notNull().default({}),
+    criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("ix_pagamento_retencao_pagamento").on(table.pagamentoId, table.tributo),
+    foreignKey({
+      columns: [table.empresaId],
+      foreignColumns: [empresas.id],
+      name: "fk_pagamento_retencao_empresa",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.pagamentoId],
+      foreignColumns: [pagamentosPrestadores.empresaId, pagamentosPrestadores.id],
+      name: "fk_pagamento_retencao_empresa_pagamento",
+    }).onDelete("cascade"),
+    check(
+      "ck_pagamento_retencao_tributo",
+      sql`${table.tributo} in ('INSS', 'IRRF', 'ISS', 'PIS', 'COFINS', 'CSLL', 'OUTRO')`,
+    ),
+    check(
+      "ck_pagamento_retencao_origem",
+      sql`${table.origem} in (
+        'CALCULO_FOLHA_PF', 'DOCUMENTO_FISCAL', 'IMPORTACAO_GIW', 'MATRIZ_FISCAL'
+      )`,
+    ),
+    check(
+      "ck_pagamento_retencao_valores",
+      sql`${table.valor} >= 0
+          and (${table.baseCalculo} is null or ${table.baseCalculo} >= 0)
+          and (${table.aliquota} is null or ${table.aliquota} >= 0)`,
+    ),
+    check(
+      "ck_pagamento_retencao_matriz",
+      sql`${table.origem} <> 'MATRIZ_FISCAL' or
+          (${table.regraCalculoId} is not null
+           and length(btrim(coalesce(${table.evidenciaReferencia}, ''))) > 0)`,
+    ),
+    check(
+      "ck_pagamento_retencao_evidencia_hash",
+      sql`${table.evidenciaHash} is null or ${table.evidenciaHash} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "ck_pagamento_retencao_snapshot",
+      sql`jsonb_typeof(${table.snapshot}) = 'object'`,
+    ),
+  ],
+);
+
+export const demonstrativosObrigacoes = pgTable(
+  "demonstrativo_obrigacao",
+  {
+    empresaId: uuid("empresa_id").notNull(),
+    demonstrativoId: uuid("demonstrativo_id").notNull(),
+    obrigacaoId: uuid("obrigacao_id").notNull(),
+    natureza: varchar("natureza", { length: 24 }).notNull().default("GUIA_RECOLHIMENTO"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.demonstrativoId, table.obrigacaoId] }),
+    foreignKey({
+      columns: [table.empresaId, table.demonstrativoId],
+      foreignColumns: [demonstrativosMensais.empresaId, demonstrativosMensais.id],
+      name: "fk_demonstrativo_obrigacao_demonstrativo",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.empresaId, table.obrigacaoId],
+      foreignColumns: [obrigacoes.empresaId, obrigacoes.id],
+      name: "fk_demonstrativo_obrigacao_obrigacao",
+    }),
+    check(
+      "ck_demonstrativo_obrigacao_natureza",
+      sql`${table.natureza} = 'GUIA_RECOLHIMENTO'`,
+    ),
+  ],
+);
+
+export const classificacoesOperacionaisLegado = pgTable(
+  "classificacao_operacional_legado",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    origem: varchar("origem", { length: 40 }).notNull().default("GIW"),
+    entidade: varchar("entidade", { length: 40 }).notNull(),
+    legacyId: varchar("legacy_id", { length: 100 }).notNull(),
+    natureza: varchar("natureza", { length: 30 }).notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("PENDENTE"),
+    responsavel: varchar("responsavel", { length: 160 }),
+    evidenciaReferencia: varchar("evidencia_referencia", { length: 240 }),
+    observacao: text("observacao"),
+    decididoEm: timestamp("decidido_em", { withTimezone: true }),
+    ...auditoriaBasica,
+  },
+  (table) => [
+    uniqueIndex("uq_classificacao_legado_origem").on(
+      table.empresaId,
+      table.origem,
+      table.entidade,
+      table.legacyId,
+    ),
+    index("ix_classificacao_legado_pendencia").on(
+      table.empresaId,
+      table.status,
+      table.natureza,
+    ),
+    check(
+      "ck_classificacao_legado_natureza",
+      sql`${table.natureza} in (
+        'PAGAMENTO_PRESTADOR', 'RETENCAO_TRIBUTARIA', 'GUIA_RECOLHIMENTO'
+      )`,
+    ),
+    check(
+      "ck_classificacao_legado_status",
+      sql`${table.status} in ('PENDENTE', 'CONFIRMADA', 'REJEITADA')`,
+    ),
+    check(
+      "ck_classificacao_legado_decisao",
+      sql`${table.status} = 'PENDENTE' or (
+        length(btrim(coalesce(${table.responsavel}, ''))) > 0
+        and length(btrim(coalesce(${table.evidenciaReferencia}, ''))) > 0
+        and ${table.decididoEm} is not null
+      )`,
+    ),
+  ],
+);
+
 export const folhasLegado = pgTable(
   "legado_folha",
   {

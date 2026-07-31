@@ -64,10 +64,10 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
 
 .main-column { min-width: 0; }
 .topbar { height: 78px; position: sticky; top: 0; z-index: 15; display: flex; align-items: center; gap: 20px; padding: 0 34px; background: rgba(255,255,255,.93); border-bottom: 1px solid var(--line); backdrop-filter: blur(12px); }
-.page-heading { min-width: 0; }
+.page-heading { min-width: 0; flex: 1 1 auto; overflow: hidden; }
 .page-heading span { display: block; color: var(--teal); font-size: 10px; text-transform: uppercase; letter-spacing: .12em; font-weight: 800; }
 .page-heading h1 { margin: 3px 0 0; font-family: Georgia, "Times New Roman", serif; font-size: 24px; line-height: 1.1; }
-.topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.topbar-actions { flex: 0 0 auto; margin-left: auto; display: flex; align-items: center; gap: 10px; }
 .context-button { height: 38px; border: 1px solid var(--line); border-radius: 9px; padding: 0 12px; display: flex; align-items: center; gap: 8px; background: #fff; font-size: 12px; font-weight: 650; cursor: pointer; }
 .context-button:hover { border-color: #a9cfca; color: var(--teal-dark); }
 .competencia-switcher { height: 38px; border: 1px solid var(--line); border-radius: 9px; padding: 0 8px 0 11px; display: flex; align-items: center; gap: 7px; background: #fff; color: var(--teal-dark); }
@@ -100,6 +100,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
 .readiness-grid > *.ready { border-color: #c8e4d7; color: #176a4e; background: #f2faf6; }
 .readiness-grid > *.pending { border-color: #ecd9b9; color: #905208; background: #fffaf0; }
 .two-column-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.two-column-panels .crud-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 .status-badge { width: fit-content; min-height: 24px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; font-size: 10px; line-height: 1; font-weight: 800; white-space: nowrap; }
 .status-badge.success { color: #176a4e; background: #e3f4eb; }
@@ -213,8 +214,10 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
 .search-field input { min-width: 0; width: 100%; border: 0; outline: 0; color: var(--ink); font-size: 11px; background: transparent; }
 .search-field button { width: 28px; height: 28px; padding: 0; display: inline-grid; place-items: center; flex: 0 0 auto; border: 0; border-radius: 6px; color: var(--teal); background: transparent; cursor: pointer; }
 .search-field button:hover, .search-field button:focus-visible { color: #fff; background: var(--teal); outline: 0; }
-.cadastro-filters { width: min(650px, 55vw); height: auto; min-height: 40px; padding: 4px 6px 4px 11px; }
-.cadastro-filters select { max-width: 105px; border: 0; border-left: 1px solid var(--line); padding-left: 9px; outline: 0; background: #fff; color: var(--ink); font-size: 11px; }
+.cadastro-filters { width: min(650px, 55vw); min-height: 44px; padding: 4px 6px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
+.cadastro-search-control { min-width: 0; flex: 1 1 auto; padding-left: 5px; display: flex; align-items: center; gap: 7px; color: #819095; }
+.cadastro-search-control input { min-width: 0; width: 100%; border: 0; outline: 0; color: var(--ink); background: transparent; font-size: 11px; }
+.cadastro-filters select { flex: 0 0 auto; max-width: 105px; border: 0; border-left: 1px solid var(--line); padding-left: 9px; outline: 0; background: #fff; color: var(--ink); font-size: 11px; }
 .cadastro-filters .button { height: 31px; }
 .pagination { margin-top: 15px; display: flex; align-items: center; justify-content: flex-end; gap: 12px; color: var(--muted); font-size: 11px; }
 .button.disabled { pointer-events: none; opacity: .45; }
@@ -433,9 +436,12 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
   .process-steps.obligation-steps { grid-template-columns: 1fr; }
   .guided-actions { align-items: flex-start; flex-wrap: wrap; }
   .readiness-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .topbar { height: 70px; padding: 0 13px; }
-  .page-heading h1 { font-size: 20px; }
+  .topbar { height: 70px; gap: 10px; padding: 0 13px; }
+  .page-heading h1 { margin-top: 0; overflow: hidden; font-size: 20px; text-overflow: ellipsis; white-space: nowrap; }
   .page-heading span, .context-button span { display: none; }
+  .topbar-actions { gap: 6px; }
+  .competencia-switcher { padding: 0 5px 0 8px; gap: 5px; }
+  .competencia-switcher select { min-width: 72px; font-size: 11px; }
   .content { padding: 15px 13px 40px; }
   .hero-row { align-items: flex-start; flex-direction: column; padding: 22px; }
   .hero-status { min-width: 0; width: 100%; }
@@ -449,6 +455,10 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
   .panel-header > .row-actions { width: 100%; flex-wrap: wrap; }
   .panel-header > .row-actions .button { flex: 1 1 auto; }
   .search-field { min-width: 0; width: 100%; }
+  .cadastro-filters { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: 7px; }
+  .cadastro-search-control { min-height: 34px; grid-column: 1 / -1; padding: 0 8px; border: 1px solid var(--line); border-radius: 7px; }
+  .cadastro-filters select { width: 100%; max-width: none; height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: 7px; }
+  .cadastro-filters .button { height: 34px; }
   .summary-strip { align-items: flex-start; flex-direction: column; gap: 6px; }
   .feedback-banner { align-items: flex-start; flex-direction: column; }
   .crud-form { grid-template-columns: 1fr; }
@@ -595,6 +605,7 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
   text-transform: uppercase;
 }
 .print-table td:not(:first-child) { white-space: nowrap; }
+.print-table td.wrap-cell { white-space: normal; overflow-wrap: anywhere; }
 .print-table small { margin-top: 2px; display: block; color: #617074; }
 .print-activity { margin: 18px 0 8px; font-size: 10px; }
 .signature-grid {

@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { caminhoAplicacao } from "@/lib/base-path";
 import { ModalShell } from "@/components/modal-shell";
 import { StatusBadge } from "@/components/ui";
 import { carregarVinculos } from "@/db/vinculos";
@@ -165,7 +166,7 @@ export default async function VinculosPage({
           <h2>Vínculos dos prestadores</h2>
           <p>Vigência, retribuição e incidências usadas posteriormente no cálculo da folha.</p>
         </div>
-        <form action="/vinculos" method="get" className="search-field">
+        <form action={caminhoAplicacao("/vinculos")} method="get" className="search-field">
           <Search size={17} />
           <label className="sr-only" htmlFor="busca-vinculos">Buscar vínculos</label>
           <input
