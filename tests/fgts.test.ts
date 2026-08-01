@@ -4,9 +4,38 @@ import {
   calcularFgtsTruncado,
   calcularItemFgts,
   consolidarFgtsPorTrabalhador,
+  avaliarProntidaoFgts,
   resolverCategoriaFgts,
   vencimentoNominalFgtsMensal,
 } from "../lib/fgts";
+
+test("só libera o portal após folha, eSocial e totalizadores conciliados", () => {
+  const pendente = avaliarProntidaoFgts({
+    folhasFechadas: 1,
+    trabalhadoresElegiveis: 2,
+    categoriasNaoHomologadas: 0,
+    rubricasComIncidenciaFgts: 0,
+    eventosEsocialAceitos: 0,
+    s5003Conciliado: false,
+    s5013Conciliado: false,
+    gfdRegistrada: false,
+  });
+  assert.equal(pendente.prontaParaEmitirNoPortal, false);
+  assert.equal(pendente.etapas[0].concluida, false);
+
+  const pronta = avaliarProntidaoFgts({
+    folhasFechadas: 1,
+    trabalhadoresElegiveis: 2,
+    categoriasNaoHomologadas: 0,
+    rubricasComIncidenciaFgts: 1,
+    eventosEsocialAceitos: 2,
+    s5003Conciliado: true,
+    s5013Conciliado: true,
+    gfdRegistrada: false,
+  });
+  assert.equal(pronta.prontaParaEmitirNoPortal, true);
+  assert.equal(pronta.etapas[3].concluida, false);
+});
 
 test("classifica apenas categorias de FGTS homologadas no MVP", () => {
   assert.deepEqual(resolverCategoriaFgts("101"), {

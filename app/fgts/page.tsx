@@ -13,9 +13,8 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { MetricCard, StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
-import { diagnosticarFgtsCompetencia } from "@/db/fgts";
+import { carregarProntidaoFgtsCompetencia } from "@/db/fgts";
 import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
-import { sequenciaMinimaEsocialFgtsMensal } from "@/lib/integracoes/esocial";
 
 export const dynamic = "force-dynamic";
 
@@ -39,12 +38,11 @@ export default async function FgtsPage({
 }) {
   const params = await searchParams;
   const competencia = await lerCompetenciaContexto(params.competencia);
-  const fluxo = sequenciaMinimaEsocialFgtsMensal();
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
-  let diagnostico: Awaited<ReturnType<typeof diagnosticarFgtsCompetencia>>;
+  let diagnostico: Awaited<ReturnType<typeof carregarProntidaoFgtsCompetencia>>;
   try {
     empresa = await resolverEmpresaAtiva();
-    diagnostico = await diagnosticarFgtsCompetencia(empresa.id, competencia);
+    diagnostico = await carregarProntidaoFgtsCompetencia(empresa.id, competencia);
   } catch {
     return (
       <AppShell
@@ -64,6 +62,7 @@ export default async function FgtsPage({
   }
 
   const possuiElegiveis = diagnostico.elegiveis > 0;
+  const prontaParaPortal = diagnostico.prontidao.prontaParaEmitirNoPortal;
 
   return (
     <AppShell
@@ -71,35 +70,33 @@ export default async function FgtsPage({
       eyebrow={`Competência ${rotuloCompetencia(competencia)}`}
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
       notice={{
-        label: "Emissão externa",
+        label: prontaParaPortal ? "Pronto para emissão externa" : "Emissão bloqueada com segurança",
         text:
-          "A plataforma classifica os vínculos, mas não transmite ao eSocial nem emite a GFD. A guia oficial continua sendo obtida no FGTS Digital.",
+          "A GFD oficial é emitida exclusivamente no FGTS Digital, após as remunerações aceitas pelo eSocial. Esta tela nunca gera uma guia interna pagável.",
       }}
     >
       <section className="hero-row">
         <div>
           <span className="section-kicker">Diagnóstico da folha fechada</span>
           <h2>
-            {possuiElegiveis
-              ? `${diagnostico.elegiveis} trabalhador(es) exigem validação de FGTS`
+            {prontaParaPortal
+              ? "Competência pronta para emitir a GFD no portal oficial"
+              : possuiElegiveis
+                ? `${diagnostico.elegiveis} trabalhador(es) exigem validação de FGTS`
               : diagnostico.trabalhadores
                 ? "FGTS mensal não aplicável aos vínculos desta competência"
                 : "Nenhuma folha fechada para analisar"}
           </h2>
           <p>
-            A classificação usa a categoria congelada na folha. Valores de FGTS
-            não são calculados enquanto rubricas, incidências e transmissão ao
-            eSocial não estiverem homologadas.
+            A classificação usa a categoria congelada na folha. O sistema mantém
+            a emissão bloqueada até comprovar rubricas, transmissão e totalizadores
+            oficiais — sem inferir base de FGTS pela remuneração total.
           </p>
         </div>
         <div className="hero-status">
-          <StatusBadge tone={possuiElegiveis ? "warning" : "info"}>
-            {possuiElegiveis ? (
-              <AlertTriangle size={14} />
-            ) : (
-              <CircleSlash2 size={14} />
-            )}
-            {possuiElegiveis ? "Ação necessária" : "Sem emissão interna"}
+          <StatusBadge tone={prontaParaPortal ? "success" : possuiElegiveis ? "warning" : "info"}>
+            {prontaParaPortal ? <BadgeCheck size={14} /> : possuiElegiveis ? <AlertTriangle size={14} /> : <CircleSlash2 size={14} />}
+            {prontaParaPortal ? "Pronto para portal" : possuiElegiveis ? "Ação necessária" : "Sem emissão interna"}
           </StatusBadge>
           <span>{diagnostico.folhasFechadas} folha(s) fechada(s)</span>
         </div>
@@ -128,9 +125,9 @@ export default async function FgtsPage({
           tone="slate"
         />
         <MetricCard
-          label="Documento para pagar"
-          value="GFD oficial"
-          detail="emitida no portal FGTS Digital"
+          label="Emissão oficial"
+          value={prontaParaPortal ? "Liberada" : "Bloqueada"}
+          detail={prontaParaPortal ? "emitir GFD no portal FGTS Digital" : "não há guia interna pagável"}
           icon={Landmark}
         />
       </section>
@@ -207,17 +204,17 @@ export default async function FgtsPage({
         <article className="panel">
           <div className="panel-header">
             <div>
-              <span className="section-kicker">Cadeia oficial</span>
-              <h2>Controles antes do pagamento</h2>
+            <span className="section-kicker">Cadeia oficial</span>
+              <h2>Controles antes da emissão</h2>
             </div>
           </div>
           <ol className="check-list">
-            {fluxo.map((etapa) => (
-              <li key={etapa.fase}>
-                <span className="status-badge pending">{etapa.fase}</span>
+            {diagnostico.prontidao.etapas.map((etapa, indice) => (
+              <li key={etapa.id}>
+                <span className={`status-badge ${etapa.concluida ? "success" : "pending"}`}>0{indice + 1}</span>
                 <div>
-                  <strong>{etapa.eventos.join(", ")}</strong>
-                  <p>{etapa.observacao}</p>
+                  <strong>{etapa.titulo}</strong>
+                  <p>{etapa.orientacao}</p>
                 </div>
               </li>
             ))}
@@ -228,17 +225,17 @@ export default async function FgtsPage({
           <div className="critical-icon"><FileInput size={22} /></div>
           <div>
             <span className="section-kicker">Limite atual</span>
-            <h2>Sem transmissão governamental</h2>
+            <h2>{prontaParaPortal ? "Emita a GFD no portal" : "Ainda não é uma guia pagável"}</h2>
             <p>
-              Quando houver vínculo elegível, confirme categoria, rubricas e
-              incidências; transmita no ambiente oficial e concilie a GFD antes
-              do pagamento.
+              {prontaParaPortal
+                ? "Acesse o FGTS Digital, gere a GFD e registre o documento oficial, seu valor e comprovante nesta competência."
+                : "O motor atual é de prestadores 701 e não possui rubricas de incidência de FGTS. É preciso concluir o módulo trabalhista antes de calcular ou emitir uma GFD."}
             </p>
             <div className="guided-actions">
               <Send size={18} />
               <div>
                 <strong>Não há geração fictícia de guia</strong>
-                <p>Apenas a GFD retornada pelo FGTS Digital deve ser paga.</p>
+                <p>Apenas a GFD retornada pelo FGTS Digital, com QR Code Pix, deve ser paga.</p>
               </div>
             </div>
           </div>
