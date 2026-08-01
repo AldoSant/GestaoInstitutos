@@ -37,6 +37,11 @@ function competencia(valor: string) {
 }
 
 function statusOperacional(item: CompetenciaDashboard) {
+  if (item.folhas === 0 && item.demonstrativo_id) {
+    if (item.demonstrativo_status === "FECHADO") return "Demonstrativo PJ fechado";
+    if (item.demonstrativo_status === "EM_CONFERENCIA") return "Demonstrativo PJ em conferência";
+    return "Demonstrativo PJ em preparação";
+  }
   if (item.homologacao_status === "APROVADA") return "Fechamento aprovado";
   if (item.status_folhas !== "FECHADA") return "Folhas pendentes";
   if (item.pagamentos_conformes !== item.pagamentos_total) {
@@ -47,7 +52,22 @@ function statusOperacional(item: CompetenciaDashboard) {
 }
 
 function bloqueioAtual(item: CompetenciaDashboard) {
-  if (item.status_folhas !== "FECHADA") {
+  if (
+    item.folhas === 0 &&
+    item.demonstrativo_id &&
+    item.demonstrativo_status !== "FECHADO"
+  ) {
+    return {
+      titulo: "Demonstrativo PJ pendente",
+      texto: "Registre os documentos fiscais, confira as retenções informadas e feche o demonstrativo da competência.",
+      href: rotaComCompetencia(ROTAS.demonstrativos, item.competencia.slice(0, 7)),
+      acao: "Abrir demonstrativo",
+    };
+  }
+  if (
+    item.status_folhas !== "FECHADA" &&
+    !(item.folhas === 0 && item.demonstrativo_id)
+  ) {
     return {
       titulo: "Existem Folhas não fechadas",
       texto: `${item.folhas_fechadas} de ${item.folhas} Folha(s) estão fechadas.`,
@@ -179,6 +199,7 @@ export default async function Home({
   const bloqueio = bloqueioAtual(atual);
   const competenciaAtual = atual.competencia.slice(0, 7);
   const concluida = atual.homologacao_status === "APROVADA";
+  const somentePj = atual.folhas === 0 && Boolean(atual.demonstrativo_id);
 
   return (
     <AppShell
@@ -187,10 +208,12 @@ export default async function Home({
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
       actions={
         <Link
-          href={`/folhas/nova?competencia=${competenciaAtual}`}
+          href={somentePj
+            ? rotaComCompetencia(ROTAS.demonstrativos, competenciaAtual)
+            : `/folhas/nova?competencia=${competenciaAtual}`}
           className="button primary"
         >
-          Nova Folha
+          {somentePj ? "Abrir demonstrativo" : "Nova Folha"}
         </Link>
       }
     >
@@ -215,7 +238,9 @@ export default async function Home({
             {concluida ? "Competência aprovada" : "Fechamento pendente"}
           </StatusBadge>
           <span>
-            {atual.folhas} Folha(s) · {atual.prestadores} prestador(es)
+            {somentePj
+              ? `${atual.pagamentos_pj} pagamento(s) PJ · ${atual.prestadores} prestador(es)`
+              : `${atual.folhas} Folha(s) · ${atual.prestadores} prestador(es)`}
           </span>
         </div>
       </section>
@@ -229,15 +254,19 @@ export default async function Home({
           tone="blue"
         />
         <MetricCard
-          label="Proventos"
+          label={somentePj ? "Pagamentos brutos" : "Proventos"}
           value={moeda(atual.proventos)}
-          detail={`${atual.folhas_fechadas}/${atual.folhas} Folha(s) fechada(s)`}
+          detail={somentePj
+            ? "documentos fiscais da competência"
+            : `${atual.folhas_fechadas}/${atual.folhas} Folha(s) fechada(s)`}
           icon={BadgeDollarSign}
         />
         <MetricCard
-          label="Descontos"
+          label={somentePj ? "Retenções" : "Descontos"}
           value={moeda(atual.descontos)}
-          detail={`INSS ${moeda(atual.inss)} · IRRF ${moeda(atual.irrf)}`}
+          detail={somentePj
+            ? "informadas nos documentos fiscais"
+            : `INSS ${moeda(atual.inss)} · IRRF ${moeda(atual.irrf)}`}
           icon={CircleDollarSign}
           tone="amber"
         />
@@ -279,7 +308,11 @@ export default async function Home({
                   <tr key={item.competencia}>
                     <td>
                       <strong>{competencia(item.competencia)}</strong>
-                      <small>{item.folhas} Folha(s)</small>
+                      <small>
+                        {item.folhas === 0 && item.demonstrativo_id
+                          ? `${item.pagamentos_pj} pagamento(s) PJ`
+                          : `${item.folhas} Folha(s)`}
+                      </small>
                     </td>
                     <td>
                       <StatusBadge
@@ -301,7 +334,9 @@ export default async function Home({
                     <td>
                       <Link
                         className="row-action"
-                        href={rotaComCompetencia(ROTAS.fechamentoMensal, item.competencia.slice(0, 7))}
+                        href={item.folhas === 0 && item.demonstrativo_id
+                          ? rotaComCompetencia(ROTAS.demonstrativos, item.competencia.slice(0, 7))
+                          : rotaComCompetencia(ROTAS.fechamentoMensal, item.competencia.slice(0, 7))}
                         aria-label={`Abrir ${competencia(item.competencia)}`}
                       >
                         <ArrowRight size={17} />
@@ -373,12 +408,14 @@ export default async function Home({
               </small>
             </div>
           </li>
-          <li className={atual.status_folhas === "FECHADA" ? "done" : "attention"}>
+          <li className={atual.status_folhas === "FECHADA" || somentePj ? "done" : "attention"}>
             <span>2</span>
             <div>
-              <strong>Cálculo e Folhas</strong>
+              <strong>{somentePj ? "Folha PF não aplicável" : "Cálculo e Folhas"}</strong>
               <small>
-                {atual.folhas_fechadas}/{atual.folhas} fechada(s)
+                {somentePj
+                  ? "pagamentos PJ seguem no demonstrativo"
+                  : `${atual.folhas_fechadas}/${atual.folhas} fechada(s)`}
               </small>
             </div>
           </li>
@@ -426,11 +463,16 @@ export default async function Home({
           </span>
           <ArrowRight />
         </Link>
-        <Link href="/folhas" className="quick-card">
+        <Link
+          href={somentePj
+            ? rotaComCompetencia(ROTAS.demonstrativos, competenciaAtual)
+            : "/folhas"}
+          className="quick-card"
+        >
           <BadgeDollarSign />
           <span>
-            <strong>Conferir folhas</strong>
-            <small>Valores, pagamentos e relatórios</small>
+            <strong>{somentePj ? "Conferir demonstrativo" : "Conferir folhas"}</strong>
+            <small>{somentePj ? "Documentos, retenções e relação PJ" : "Valores, pagamentos e relatórios"}</small>
           </span>
           <ArrowRight />
         </Link>

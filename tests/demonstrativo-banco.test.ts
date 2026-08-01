@@ -10,6 +10,7 @@ import {
   materializarDemonstrativoFolhas,
   registrarConferenciaDemonstrativo,
 } from "../db/demonstrativos";
+import { carregarDashboardOperacional } from "../db/dashboard";
 
 const { Pool } = pg;
 const databaseUrl = process.env.DATABASE_URL;
@@ -112,6 +113,35 @@ test(
         retencoes: "150.00",
         liquido: "1050.00",
         itens_retencao: 2,
+      });
+      const painel = await carregarDashboardOperacional(
+        empresaId,
+        "2026-06",
+        client,
+      );
+      assert.deepEqual(painel.competencias[0], {
+        competencia: "2026-06-01",
+        folhas: 0,
+        folhas_fechadas: 0,
+        status_folhas: "SEM_FOLHA",
+        prestadores: 1,
+        proventos: "1200.00",
+        descontos: "150.00",
+        inss: "0",
+        irrf: "0",
+        liquido: "1050.00",
+        pagamentos_total: 1,
+        pagamentos_conformes: 1,
+        obrigacao_id: null,
+        obrigacao_status: null,
+        obrigacao_total: null,
+        obrigacao_diferenca: null,
+        homologacao_status: null,
+        homologacao_versao: null,
+        homologacao_hash: null,
+        demonstrativo_id: demonstrativoId,
+        demonstrativo_status: "RASCUNHO",
+        pagamentos_pj: 1,
       });
       await client.query("set constraints all immediate");
 
