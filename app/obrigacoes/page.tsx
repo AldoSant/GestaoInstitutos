@@ -277,6 +277,14 @@ export default async function ObrigacoesPage({
               >
                 <FileText size={16} /> Dossiê imprimível
               </Link>
+              {item.perfil_instrumento === "GPS_EXCECAO" && (
+                <Link
+                  className="button secondary"
+                  href={`/obrigacoes/${item.id}/gps`}
+                >
+                  <FileText size={16} /> Memórias GPS
+                </Link>
+              )}
               <StatusBadge tone={item.status === "BLOQUEADA" ? "danger" : item.status === "EMITIDA" ? "success" : item.status === "CANCELADA" ? "warning" : "info"}>
                 {item.status === "BLOQUEADA" ? <AlertTriangle size={14} /> : <FileCheck2 size={14} />}
                 {nomeStatus(item.status)}
