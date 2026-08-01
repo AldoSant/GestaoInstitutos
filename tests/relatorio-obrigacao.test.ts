@@ -26,13 +26,15 @@ test("fecha o dossiê previdenciário por natureza e documentos", () => {
     totalizadorVerificado: true,
     reciboVerificado: true,
     darfVerificado: true,
-    gpsVerificada: false,
+    gpsIndividuais: 0,
+    gpsRegistradas: 0,
+    gpsTotalCentavos: 0,
   });
 });
 
-test("GPS excepcional emitida exige GPS verificada com o total exato", () => {
+test("GPS excepcional fica individual e não emite a obrigação agregada", () => {
   const comum = {
-    status: "EMITIDA",
+    status: "BLOQUEADA",
     principal: "110.00",
     juros: "0.00",
     multa: "0.00",
@@ -40,15 +42,19 @@ test("GPS excepcional emitida exige GPS verificada com o total exato", () => {
     itens: [{ id: "1", natureza: "SEGURADO", valor: "110.00" }],
     instrumento: "GPS_EXCECAO" as const,
   };
-  assert.throws(
-    () => montarResumoDossieObrigacao({ ...comum, documentos: [] }),
-    /GPS excepcional/,
-  );
   const resumo = montarResumoDossieObrigacao({
     ...comum,
-    documentos: [{ tipo: "GPS", valorTotal: "110.00", verificado: true }],
+    documentos: [],
+    guiasGpsIndividuais: [
+      { id: "gps-1", status: "REGISTRADA", total: "110.00", verificado: true },
+    ],
   });
-  assert.equal(resumo.documentos.gpsVerificada, true);
+  assert.equal(resumo.documentos.gpsRegistradas, 1);
+  assert.equal(resumo.documentos.gpsTotalCentavos, 11_000);
+  assert.throws(
+    () => montarResumoDossieObrigacao({ ...comum, status: "EMITIDA", documentos: [] }),
+    /não pode ser emitida por GPS individual/,
+  );
 });
 
 test("recusa totais ou itens previdenciários divergentes", () => {

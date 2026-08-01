@@ -34,6 +34,20 @@ salvamento como PDF sem confundir o relatório interno com a guia oficial.
 
 ## Visão geral
 
+## Atualização de recolhimento individual — 01/08/2026
+
+A exceção GPS deixou de usar o documento agregado da obrigação. A migração `0038`
+prepara uma GPS por retenção de segurado e a `0039` registra a evidência emitida no
+canal oficial (referência, data, localizador, hash opcional, juros e multa), exigindo
+conferência explícita e protegendo o registro contra alteração. A operação tem tela
+própria, com formulários recolhidos por prestador, e o dossiê exibe o progresso das
+GPS individuais sem declarar quitada a contribuição patronal ou outro componente da
+obrigação consolidada. Reapuração após registro exige retificação formal.
+
+Ainda não há emissão governamental automática: o sistema prepara a memória e registra
+o documento oficial externo, exatamente para não simular linha digitável, autenticação
+ou quitação que não foram obtidas no canal competente.
+
 **Estimativa da implementação funcional: 72%. Prontidão comprovada para substituir o
 GIW em produção: aproximadamente 55%.**
 

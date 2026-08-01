@@ -146,6 +146,19 @@ export async function apurarRetencoesSegurados({
       throw new Error("Uma obrigação emitida ou cancelada não pode ser recalculada.");
     }
     const obrigacaoId = obrigacao.rows[0].id;
+    const gpsRegistrada = await client.query<{ existe: boolean }>(
+      `select exists (
+         select 1
+           from guia_gps_individual
+          where obrigacao_id = $1 and status = 'REGISTRADA'
+       ) existe`,
+      [obrigacaoId],
+    );
+    if (gpsRegistrada.rows[0]?.existe) {
+      throw new Error(
+        "A obrigação possui GPS individual já registrada. Abra uma retificação formal antes de reapurar a competência.",
+      );
+    }
     await client.query(
       `update obrigacao_fiscal_retificacao
           set status = 'EM_ANDAMENTO',
@@ -540,6 +553,9 @@ export async function listarObrigacoes(
       iniciadaEm: string | null;
       concluidaEm: string | null;
     }>;
+    gps_individuais: number;
+    gps_registradas: number;
+    gps_total: string;
   }>(
     `select o.id, o.competencia::text, o.tipo, o.status,
             o.principal::text, o.juros::text, o.multa::text, o.total::text,
@@ -571,6 +587,22 @@ export async function listarObrigacoes(
               ),
               0
             )::text patronal,
+            (
+              select count(*)::int from guia_gps_individual guia
+               where guia.obrigacao_id = o.id
+            ) gps_individuais,
+            (
+              select count(*) filter (where guia.status = 'REGISTRADA')::int
+                from guia_gps_individual guia
+               where guia.obrigacao_id = o.id
+            ) gps_registradas,
+            coalesce(
+              (
+                select sum(guia.total) from guia_gps_individual guia
+                 where guia.obrigacao_id = o.id
+              ),
+              0
+            )::text gps_total,
             coalesce(
               (
                 select jsonb_agg(
@@ -767,7 +799,44 @@ export async function carregarEspelhoObrigacao(
   };
 }
 
-async function validarFontesObrigacaoAtuais(
+export async function listarGuiasGpsIndividuais(
+  empresaId: string,
+  obrigacaoId: string,
+) {
+  validarId(empresaId, "Empresa");
+  validarId(obrigacaoId, "Obrigação");
+  const resultado = await getPool().query<{
+    id: string;
+    obrigacao_item_id: string;
+    competencia: string;
+    beneficiario_nome: string;
+    identificador: string;
+    codigo_receita: string;
+    principal: string;
+    juros: string;
+    multa: string;
+    total: string;
+    status: "PREPARADA" | "REGISTRADA" | "CANCELADA";
+    referencia: string | null;
+    emitido_em: string | null;
+    localizador: string | null;
+    hash_sha256: string | null;
+    verificado: boolean;
+    registrado_em: Date | null;
+  }>(
+    `select id, obrigacao_item_id, competencia::text, beneficiario_nome,
+            identificador, codigo_receita, principal::text, juros::text,
+            multa::text, total::text, status, referencia, emitido_em::text,
+            localizador, hash_sha256, verificado, registrado_em
+       from guia_gps_individual
+      where empresa_id = $1 and obrigacao_id = $2
+      order by beneficiario_nome, id`,
+    [empresaId, obrigacaoId],
+  );
+  return resultado.rows;
+}
+
+export async function validarFontesObrigacaoAtuais(
   client: PoolClient,
   empresaId: string,
   obrigacaoId: string,
@@ -826,6 +895,130 @@ async function validarFontesObrigacaoAtuais(
     pendentes: fontes.pendentes,
     fechadasNovas: fontes.fechadas_novas,
     alteradas: fontes.alteradas,
+  });
+}
+
+export async function registrarGuiaGpsIndividual({
+  empresaId,
+  guiaId,
+  referencia,
+  emitidoEm,
+  localizador,
+  hashSha256,
+  juros,
+  multa,
+  ator = "OPERADOR_INTERNO",
+}: {
+  empresaId: string;
+  guiaId: string;
+  referencia: string;
+  emitidoEm: string;
+  localizador: string;
+  hashSha256: string | null;
+  juros: string;
+  multa: string;
+  ator?: string;
+}) {
+  validarId(empresaId, "Empresa");
+  validarId(guiaId, "Guia GPS");
+  if (!referencia.trim() || referencia.trim().length > 160) {
+    throw new Error("Referência da GPS inválida.");
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(emitidoEm)) {
+    throw new Error("Data de emissão inválida.");
+  }
+  if (!localizador.trim() || localizador.trim().length > 2000) {
+    throw new Error("Localizador do documento inválido.");
+  }
+  if (hashSha256 && !/^[0-9a-f]{64}$/.test(hashSha256)) {
+    throw new Error("Hash SHA-256 inválido.");
+  }
+  if (Number(juros) < 0 || Number(multa) < 0) {
+    throw new Error("Juros e multa não podem ser negativos.");
+  }
+
+  return transacao(async (client) => {
+    await client.query(
+      `select set_config('app.ator', $1, true),
+              set_config('app.motivo', $2, true)`,
+      [
+        ator.trim().slice(0, 160) || "OPERADOR_INTERNO",
+        `Registro de GPS individual ${referencia.trim()}.`,
+      ],
+    );
+    const bloqueada = await client.query<{
+      id: string;
+      obrigacao_id: string;
+      competencia: string;
+      status: "PREPARADA" | "REGISTRADA" | "CANCELADA";
+      obrigacao_status: string;
+      instrumento: "DCTFWEB_DARF" | "GPS_EXCECAO" | null;
+    }>(
+      `select guia.id, guia.obrigacao_id, guia.competencia::text, guia.status,
+              obrigacao.status obrigacao_status, perfil.instrumento
+         from guia_gps_individual guia
+         join obrigacao_fiscal obrigacao on obrigacao.id = guia.obrigacao_id
+         join perfil_recolhimento_previdenciario perfil
+           on perfil.id = guia.perfil_recolhimento_id
+        where guia.id = $1 and guia.empresa_id = $2
+        for update of guia, obrigacao`,
+      [guiaId, empresaId],
+    );
+    const guia = bloqueada.rows[0];
+    if (!guia) throw new Error("Guia GPS não encontrada.");
+    if (guia.status !== "PREPARADA") {
+      throw new Error("A GPS não está pendente de registro.");
+    }
+    if (guia.obrigacao_status === "CANCELADA" || guia.instrumento !== "GPS_EXCECAO") {
+      throw new Error("A GPS não pertence a uma obrigação excepcional ativa.");
+    }
+    await client.query(
+      "select pg_advisory_xact_lock(hashtext($1), hashtext($2))",
+      [empresaId, guia.competencia],
+    );
+    await validarFontesObrigacaoAtuais(client, empresaId, guia.obrigacao_id);
+
+    const registrada = await client.query<{ id: string; total: string }>(
+      `update guia_gps_individual
+          set juros = $3::numeric,
+              multa = $4::numeric,
+              total = round(principal + $3::numeric + $4::numeric, 2),
+              status = 'REGISTRADA',
+              referencia = $5,
+              emitido_em = $6::date,
+              localizador = $7,
+              hash_sha256 = $8,
+              verificado = true,
+              registrado_em = now(),
+              snapshot = snapshot || jsonb_build_object(
+                'registroOficial', jsonb_build_object(
+                  'referencia', $5::text,
+                  'emitidoEm', $6::date,
+                  'localizador', $7::text,
+                  'hashSha256', $8::text,
+                  'juros', $3::numeric,
+                  'multa', $4::numeric,
+                  'registradoEm', now()
+                )
+              )
+        where id = $1 and empresa_id = $2
+        returning id, total::text`,
+      [
+        guiaId,
+        empresaId,
+        juros,
+        multa,
+        referencia.trim(),
+        emitidoEm,
+        localizador.trim(),
+        hashSha256,
+      ],
+    );
+    return {
+      id: registrada.rows[0]?.id ?? guiaId,
+      obrigacaoId: guia.obrigacao_id,
+      total: registrada.rows[0]?.total ?? "0.00",
+    };
   });
 }
 

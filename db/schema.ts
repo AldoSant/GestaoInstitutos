@@ -2077,6 +2077,12 @@ export const guiasGpsIndividuais = pgTable(
     multa: numeric("multa", { precision: 18, scale: 2 }).notNull().default("0"),
     total: numeric("total", { precision: 18, scale: 2 }).notNull(),
     status: varchar("status", { length: 20 }).notNull().default("PREPARADA"),
+    referencia: varchar("referencia", { length: 160 }),
+    emitidoEm: date("emitido_em"),
+    localizador: text("localizador"),
+    hashSha256: varchar("hash_sha256", { length: 64 }),
+    verificado: boolean("verificado").notNull().default(false),
+    registradoEm: timestamp("registrado_em", { withTimezone: true }),
     snapshot: jsonb("snapshot").notNull(),
     criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -2120,6 +2126,21 @@ export const guiasGpsIndividuais = pgTable(
           and ${table.total} = round(${table.principal} + ${table.juros} + ${table.multa}, 2)`,
     ),
     check("ck_guia_gps_snapshot", sql`jsonb_typeof(${table.snapshot}) = 'object'`),
+    check(
+      "ck_guia_gps_hash",
+      sql`${table.hashSha256} is null or ${table.hashSha256} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "ck_guia_gps_registro_documental",
+      sql`${table.status} <> 'REGISTRADA' or (
+        ${table.verificado}
+        and ${table.referencia} is not null
+        and ${table.emitidoEm} is not null
+        and ${table.localizador} is not null
+        and length(btrim(${table.localizador})) > 0
+        and ${table.registradoEm} is not null
+      )}`,
+    ),
   ],
 );
 

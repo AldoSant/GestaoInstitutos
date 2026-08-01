@@ -12,6 +12,13 @@ export type DocumentoDossieObrigacao = {
   verificado: boolean;
 };
 
+export type GuiaGpsIndividualDossie = {
+  id: string;
+  status: "PREPARADA" | "REGISTRADA" | "CANCELADA";
+  total: string;
+  verificado: boolean;
+};
+
 function centavos(valor: string, campo: string) {
   try {
     return decimalParaInteiro(valor, 2);
@@ -28,6 +35,7 @@ export function montarResumoDossieObrigacao({
   total,
   itens,
   documentos,
+  guiasGpsIndividuais = [],
   instrumento = "DCTFWEB_DARF",
 }: {
   status: string;
@@ -37,6 +45,7 @@ export function montarResumoDossieObrigacao({
   total: string;
   itens: ItemDossieObrigacao[];
   documentos: DocumentoDossieObrigacao[];
+  guiasGpsIndividuais?: GuiaGpsIndividualDossie[];
   instrumento?: "DCTFWEB_DARF" | "GPS_EXCECAO" | null;
 }) {
   if (itens.length === 0) {
@@ -89,18 +98,10 @@ export function montarResumoDossieObrigacao({
       documento.verificado &&
       centavos(documento.valorTotal, "DARF") === valores.totalCentavos,
   );
-  const gpsValida = documentos.some(
-    (documento) =>
-      documento.tipo === "GPS" &&
-      documento.verificado &&
-      centavos(documento.valorTotal, "GPS") === valores.totalCentavos,
-  );
-  if (
-    status === "EMITIDA" &&
-    instrumento === "GPS_EXCECAO" &&
-    !gpsValida
-  ) {
-    throw new Error("Obrigação emitida sem GPS excepcional verificada e conciliada.");
+  if (instrumento === "GPS_EXCECAO" && status === "EMITIDA") {
+    throw new Error(
+      "A obrigação consolidada não pode ser emitida por GPS individual; registre cada retenção e trate os demais componentes separadamente.",
+    );
   }
   if (
     status === "EMITIDA" &&
@@ -111,6 +112,20 @@ export function montarResumoDossieObrigacao({
   ) {
     throw new Error("Obrigação emitida sem totalizador, recibo e DARF verificados.");
   }
+  const gpsRegistradas = guiasGpsIndividuais.filter(
+    (guia) => guia.status === "REGISTRADA" && guia.verificado,
+  );
+  if (
+    guiasGpsIndividuais.some(
+      (guia) => guia.status === "REGISTRADA" && !guia.verificado,
+    )
+  ) {
+    throw new Error("GPS individual registrada sem evidência verificada.");
+  }
+  const gpsTotalCentavos = guiasGpsIndividuais.reduce(
+    (totalGuias, guia) => totalGuias + centavos(guia.total, `GPS ${guia.id}`),
+    0,
+  );
   return {
     ...valores,
     itens: itens.length,
@@ -121,7 +136,9 @@ export function montarResumoDossieObrigacao({
       totalizadorVerificado: verificados.has("TOTALIZADOR_DCTFWEB"),
       reciboVerificado: verificados.has("RECIBO_DCTFWEB"),
       darfVerificado: darfValido,
-      gpsVerificada: gpsValida,
+      gpsIndividuais: guiasGpsIndividuais.length,
+      gpsRegistradas: gpsRegistradas.length,
+      gpsTotalCentavos,
     },
   };
 }

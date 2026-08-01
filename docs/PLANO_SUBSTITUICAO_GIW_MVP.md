@@ -95,6 +95,10 @@ Antes de liberar “emitir para pagamento”, cada entidade/contrato deve possui
 - **Simulação/conferência:** o sistema pode calcular e comparar o resultado com o GIW.
 - **Pagamento:** só é liberado como `APTO_PARA_PAGAMENTO` quando o perfil fiscal vigente autorizar o tipo do documento e todas as validações passarem.
 - **Exceção GPS:** exige fundamentação registrada, responsável e vigência; não será inferida apenas do comportamento legado.
+- **GPS individual:** quando a exceção estiver publicada, o sistema prepara uma memória
+  por retenção e registra a GPS emitida externamente com referência, data, evidência,
+  hash opcional e conferência explícita. Esse registro não quita automaticamente a
+  obrigação consolidada nem a contribuição patronal.
 - **DCTFWeb/DARF:** no primeiro corte, o MVP pode registrar totalizador, recibo e DARF oficiais emitidos fora do sistema, conciliando-os com a folha. A transmissão automática fica para uma etapa posterior.
 
 Referências oficiais:

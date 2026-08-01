@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { PrintButton } from "@/components/print-button";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
-import { carregarEspelhoObrigacao } from "@/db/obrigacoes";
+import { carregarEspelhoObrigacao, listarGuiasGpsIndividuais } from "@/db/obrigacoes";
 import { montarResumoDossieObrigacao } from "@/lib/relatorio-obrigacao";
 import { nomeInstrumentoRecolhimento } from "@/lib/perfil-recolhimento";
 
@@ -53,9 +53,11 @@ export default async function RelatorioObrigacaoPage({
   const { id } = await params;
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
   let dados: Awaited<ReturnType<typeof carregarEspelhoObrigacao>>;
+  let guiasGps: Awaited<ReturnType<typeof listarGuiasGpsIndividuais>> = [];
   try {
     empresa = await resolverEmpresaAtiva();
     dados = await carregarEspelhoObrigacao(empresa.id, id);
+    guiasGps = await listarGuiasGpsIndividuais(empresa.id, id);
   } catch {
     notFound();
   }
@@ -75,6 +77,12 @@ export default async function RelatorioObrigacaoPage({
       tipo: documento.tipo,
       valorTotal: documento.valor_total,
       verificado: documento.verificado,
+    })),
+    guiasGpsIndividuais: guiasGps.map((guia) => ({
+      id: guia.id,
+      status: guia.status,
+      total: guia.total,
+      verificado: guia.verificado,
     })),
     instrumento: obrigacao.perfil_instrumento,
   });
@@ -105,7 +113,7 @@ export default async function RelatorioObrigacaoPage({
         <section className="print-warning">
           <strong>Este dossiê não é uma guia de arrecadação.</strong>
           <p>{usaGps
-            ? "A GPS registrada está vinculada à exceção formal abaixo. Este dossiê registra a conferência interna e não substitui o documento de arrecadação."
+            ? "Cada GPS oficial é registrada por retenção de prestador. Este dossiê registra a conferência interna e não substitui os documentos de arrecadação."
             : "O documento oficial para pagamento é o DARF emitido no ambiente competente. Este relatório apenas reconcilia a apuração interna com totalizador, recibo e DARF registrados."}</p>
         </section>
 
@@ -156,7 +164,7 @@ export default async function RelatorioObrigacaoPage({
             <dd>{resumo.itens}</dd>
           </div>
           {usaGps ? (
-            <div><dt>GPS</dt><dd>{resumo.documentos.gpsVerificada ? "Verificada e conciliada" : "Pendente"}</dd></div>
+            <div><dt>GPS individuais</dt><dd>{resumo.documentos.gpsRegistradas}/{resumo.documentos.gpsIndividuais} registradas · {moedaCentavos(resumo.documentos.gpsTotalCentavos)}</dd></div>
           ) : (
             <>
               <div><dt>Totalizador / recibo</dt><dd>{resumo.documentos.totalizadorVerificado ? "Verificado" : "Pendente"} / {resumo.documentos.reciboVerificado ? "verificado" : "pendente"}</dd></div>

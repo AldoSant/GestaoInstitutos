@@ -297,16 +297,20 @@ export default async function ObrigacoesPage({
             <div className={item.status === "EMITIDA" ? "" : "danger"}>
               <dt>{item.perfil_instrumento === "GPS_EXCECAO" ? "Conciliação GPS" : "Conciliação DCTFWeb"}</dt>
               <dd>
-                {item.status === "EMITIDA"
-                  ? `${item.perfil_instrumento === "GPS_EXCECAO" ? "GPS" : "DARF"} registrado`
+                {item.perfil_instrumento === "GPS_EXCECAO"
+                  ? item.gps_individuais > 0
+                    ? `GPS ${item.gps_registradas}/${item.gps_individuais} registrada(s)`
+                    : "GPS pendente de preparo"
+                  : item.status === "EMITIDA"
+                  ? "DARF registrado"
                   : item.status === "CANCELADA"
                     ? "Obrigação cancelada"
                   : item.diferenca === "0.00"
-                    ? item.perfil_instrumento === "GPS_EXCECAO" ? "GPS conciliada" : "Totalizador conciliado"
+                    ? "Totalizador conciliado"
                     : item.diferenca
                       ? `Diferença ${moeda(item.diferenca)}`
                       : "Pendente"}
-                <small>{item.bloqueio_motivo ?? "Documento verificado e conciliado."}</small>
+                <small>{item.perfil_instrumento === "GPS_EXCECAO" ? `Total individual: ${moeda(item.gps_total)}. ${item.bloqueio_motivo ?? "A obrigação consolidada não representa quitação de outros componentes."}` : item.bloqueio_motivo ?? "Documento verificado e conciliado."}</small>
               </dd>
             </div>
           </dl>
@@ -321,9 +325,14 @@ export default async function ObrigacoesPage({
                       O legado gerava uma GPS para cada retenção. Não registre
                       uma guia agregada nesta obrigação; confira as memórias individuais.
                     </p>
-                    <Link className="button secondary" href={`/obrigacoes/${item.id}/gps`}>
-                      Abrir memórias GPS
-                    </Link>
+                    <div className="row-actions">
+                      <Link className="button secondary" href={`/obrigacoes/${item.id}/gps`}>
+                        Abrir memórias GPS
+                      </Link>
+                      <Link className="button primary" href={`/obrigacoes/${item.id}/gps/registro`}>
+                        Registrar GPS oficiais
+                      </Link>
+                    </div>
                   </div>
                 </section>
               ) : (
