@@ -498,12 +498,12 @@ export async function editarPagamentoPj({
       [pagamento.rows[0].demonstrativo_id],
     );
     await client.query("set constraints all immediate");
-    await client.query("commit");
+    if (controlaTransacao) await client.query("commit");
   } catch (error) {
-    await client.query("rollback");
+    if (controlaTransacao) await client.query("rollback");
     throw error;
   } finally {
-    client.release();
+    if (controlaTransacao) client.release();
   }
 }
 
