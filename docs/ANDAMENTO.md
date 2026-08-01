@@ -1,5 +1,13 @@
 # Andamento do MVP
 
+> **Escopo P0 corrigido em 01/08/2026:** a substituição do GIW está concentrada na
+> operação comprovada de prestadores PF/PJ, folha/relatório mensal, relações de
+> pagamento, retenções, documento previdenciário aplicável e prestação de contas.
+> FGTS/CLT não pertence ao caminho crítico atual. O plano executivo e os portões de
+> produção estão em
+> [Plano de substituição do GIW](PLANO_SUBSTITUICAO_GIW_MVP.md). Em caso de conflito
+> com registros anteriores, o plano novo prevalece.
+
 ## Decisão prioritária de 30/07/2026
 
 Foi eliminada da linha oficial de desenvolvimento a proposta de excluir toda pessoa
@@ -26,26 +34,20 @@ salvamento como PDF sem confundir o relatório interno com a guia oficial.
 
 ## Visão geral
 
-**Estimativa do MVP ampliado: 72% concluído. Prontidão operacional com dados reais:
-aproximadamente 63%.**
+**Estimativa da implementação funcional: 72%. Prontidão comprovada para substituir o
+GIW em produção: aproximadamente 55%.**
 
-O núcleo anterior — folha de prestadores e obrigação previdenciária — está em
-94%. Em 28/07/2026 o alvo foi ampliado para incluir folha trabalhista, transmissão ao
-eSocial e GFD oficial. Prestador `701` não pode ser convertido silenciosamente em
-empregado com FGTS; por isso o escopo novo é medido separadamente e depende das
-amostras reais do RH.
+O percentual foi recalibrado após a confirmação de que os documentos chamados de
+“guias de FGTS” eram, na realidade, os PDFs de GPS/INSS produzidos no fluxo do GIW. A
+folha trabalhista e o FGTS Digital saem do P0. O caminho crítico passa a ser fechar a
+jornada real de prestadores PF/PJ, apurar retenções, conciliar os 3 meses históricos,
+definir por perfil fiscal versionado se o documento atual é GPS ou DCTFWeb/DARF e
+provar operação, backup e recuperação.
 
-| Componente do escopo ampliado | Peso | Maturidade | Contribuição |
-|---|---:|---:|---:|
-| Núcleo de prestadores, INSS e migração | 65% | 94% | 61,1% |
-| Folha trabalhista, eSocial e FGTS Digital | 25% | 34% | 8,5% |
-| Operação real, homologação e corte | 10% | 24% | 2,4% |
-| **MVP ampliado** | **100%** |  | **72,0%** |
-
-A prontidão operacional é menor porque ainda exige carregar os snapshots reconciliados
-em uma homologação PostgreSQL, classificar vínculos, executar as três competências no
-motor novo, operar eSocial/FGTS Digital e obter aceite do RH. Código implementado sem
-essa prova não é contado como operação concluída.
+O código existente cobre grande parte do domínio, mas não deve ser confundido com
+substituição homologada. Faltam sobretudo: documento de recolhimento atual apto para
+pagamento, correções de jornada/UX, classificação dos avisos da carga, regressão dos
+meses reais, aceite do RH/contabilidade e ensaio de corte/rollback.
 
 ## Migração real confirmada em 29/07/2026
 
@@ -80,18 +82,13 @@ homologação. Interfaces demonstrativas contam apenas como descoberta de fluxo.
 | Homologação, paralelo e corte | 10% | 9% | Painel real, oito gates, comparação CSV, acervo histórico, casos multi-lote, simulações, relatórios, pagamentos e retificação formal estão operacionais. Faltam executar os meses reais, treinar e efetuar o corte. |
 | **Total do núcleo anterior** | **100%** | **94%** | |
 
-## Nova frente prioritária: FGTS Digital
+## Frente futura preservada: folha trabalhista e FGTS Digital
 
-| Etapa | Estado | Evidência |
-|---|---|---|
-| Regra de elegibilidade e cálculo individual | Implementada | Categorias `101`, `103` e `721`; `701` bloqueada; truncamento por trabalhador/tipo de valor testado. |
-| Contrato de integração eSocial | Implementado | Interface de provedor, eventos mínimos e máquina de estados independentes de fornecedor. |
-| Persistência e auditoria | Implementada | Migração `0029`: apuração, itens S-5003, eventos eSocial e GFD oficial. |
-| Pesquisa de canal oficial e alternativas | Concluída para o desenho | Web Service oficial, `erpbrasil/esociallib`, TecnoSpeed e RESocial documentados para _spike_. |
-| Contrato trabalhista e rubricas eSocial | Pendente | Exige amostra real do RH e separação de prestador. |
-| Folha trabalhista | Pendente | Não deve reutilizar o motor de contribuinte individual. |
-| Produção restrita do eSocial | Pendente | Exige certificado/procuração e escolha provisória de adaptador. |
-| Emissão, importação e pagamento da GFD | Pendente | A GFD é emitida no FGTS Digital; falta operar e reconciliar uma competência real. |
+O desenho e as migrations já produzidos para uma futura folha trabalhista permanecem
+preservados para não perder trabalho nem fechar a arquitetura. Eles não entram no
+percentual, na navegação principal, nos critérios de aceite nem no cronograma P0 da
+operação atual. Sua retomada exige evidência de vínculo trabalhista real e decisão
+formal de escopo.
 
 ## O que já pode ser usado
 

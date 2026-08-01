@@ -2,6 +2,7 @@
 
 | Documento | Finalidade |
 |---|---|
+| [Plano de substituição do GIW](PLANO_SUBSTITUICAO_GIW_MVP.md) | Fonte única do escopo P0, fases, validações, portões de produção e corte. |
 | [Arquitetura](ARQUITETURA.md) | Componentes, limites de domínio e decisões técnicas. |
 | [Modelo de dados](MODELO_DE_DADOS.md) | Estruturas atuais, modelo completo e estratégia de migração. |
 | [Engenharia reversa](ENGENHARIA_REVERSA.md) | Evidências, confiança e como transformar observação em regra. |
@@ -17,7 +18,7 @@
 | [Obrigação previdenciária](OBRIGACAO_PREVIDENCIARIA.md) | Apuração completa, fontes congeladas, estados, espelho CSV e conciliação documental. |
 | [Relatórios operacionais](RELATORIOS_OPERACIONAIS.md) | Relatório A4 da Folha, demonstrativos individuais e dossiê previdenciário. |
 | [Relação de pagamentos](RELACAO_PAGAMENTOS.md) | Conta congelada, gates de liberação, relação A4 e espelho CSV. |
-| [FGTS Digital](FGTS_DIGITAL.md) | Elegibilidade, cálculo, eSocial, alternativas de integração e cadeia da GFD oficial. |
+| [FGTS Digital](FGTS_DIGITAL.md) | Frente futura preservada; não integra o escopo P0 da operação atual. |
 | [Amostras de Folha e GPS](ANALISE_AMOSTRAS_FOLHA_GPS.md) | Reconciliação dos PDFs do GIW, duplicidades e limites normativos da GPS 1007. |
 | [Cancelamentos e retificações](CANCELAMENTOS_E_RETIFICACOES.md) | Estados permitidos, impacto fiscal, invalidação de evidências e justificativas. |
 | [Roadmap](ROADMAP.md) | Incrementos, critérios de aceite e ordem recomendada. |

@@ -58,6 +58,10 @@ export async function salvarPagamentoPj(formData: FormData) {
   const competencia = String(formData.get("competencia") ?? "");
   try {
     const empresa = await resolverEmpresaAtiva();
+    await materializarDemonstrativoFolhas({
+      empresaId: empresa.id,
+      competencia,
+    });
     await adicionarPagamentoPj({
       empresaId: empresa.id,
       competencia,
@@ -76,7 +80,7 @@ export async function salvarPagamentoPj(formData: FormData) {
     revalidatePath("/demonstrativos");
     redirect(
       destino(competencia, {
-        sucesso: "Pagamento PJ registrado com as retenções informadas.",
+        sucesso: "Pagamento PJ registrado no demonstrativo da competência com as retenções informadas.",
       }),
     );
   } catch (error) {

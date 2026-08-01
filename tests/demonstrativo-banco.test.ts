@@ -382,3 +382,49 @@ test(
     }
   },
 );
+
+test(
+  "prepara demonstrativo vazio para competência composta somente por pagamentos PJ",
+  { skip: !databaseUrl },
+  async () => {
+    const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      const empresaId = randomUUID();
+      await client.query(
+        `insert into empresa (id, cnpj, razao_social)
+         values ($1, $2, 'Empresa somente PJ')`,
+        [empresaId, String(randomInt(10 ** 13, 10 ** 14))],
+      );
+
+      const resultado = await materializarDemonstrativoFolhas({
+        empresaId,
+        competencia: "2026-06",
+        client,
+      });
+
+      assert.equal(resultado.pagamentos, 0);
+      const demonstrativo = await client.query<{
+        status: string;
+        total_bruto: string;
+        total_retencoes: string;
+        total_liquido: string;
+      }>(
+        `select status, total_bruto::text, total_retencoes::text, total_liquido::text
+           from demonstrativo_mensal where id = $1`,
+        [resultado.demonstrativoId],
+      );
+      assert.deepEqual(demonstrativo.rows[0], {
+        status: "RASCUNHO",
+        total_bruto: "0.00",
+        total_retencoes: "0.00",
+        total_liquido: "0.00",
+      });
+      await client.query("rollback");
+    } finally {
+      client.release();
+      await pool.end();
+    }
+  },
+);

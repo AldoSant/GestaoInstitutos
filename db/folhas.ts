@@ -1623,11 +1623,15 @@ export async function listarOpcoesNovaFolha(
             m.id meta_id, m.codigo meta_codigo, m.descricao meta_descricao,
             count(distinct v.id)::int vinculos,
             count(distinct v.id) filter (
-              where p.tipo <> 'FISICA'
-                 or pr.categoria_contribuinte is distinct from '701'
+              where p.tipo = 'FISICA'
+            )::int vinculos_pf,
+            count(distinct v.id) filter (
+              where p.tipo = 'FISICA'
+                and pr.categoria_contribuinte is distinct from '701'
             )::int enquadramentos_pendentes,
             count(distinct v.id) filter (
-              where nullif(btrim(pr.nit_pis_pasep), '') is null
+              where p.tipo = 'FISICA'
+                and nullif(btrim(pr.nit_pis_pasep), '') is null
             )::int nit_pendente,
             count(distinct v.id) filter (
               where v.exige_medicao_mensal and mm.id is null

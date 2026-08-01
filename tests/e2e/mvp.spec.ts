@@ -51,7 +51,7 @@ test("jornada não destrutiva do MVP publicado", async ({ page }) => {
     ).toBeVisible();
   });
 
-  await test.step("consultar obrigações e o diagnóstico de FGTS", async () => {
+  await test.step("consultar obrigações e o caminho de recolhimento", async () => {
     await page.goto("obrigacoes");
     await expect(
       page.getByRole("heading", { name: "Obrigações e guias" }),
@@ -59,10 +59,5 @@ test("jornada não destrutiva do MVP publicado", async ({ page }) => {
     await expect(
       page.getByText("Da folha fechada ao DARF para pagamento"),
     ).toBeVisible();
-
-    await page.goto("fgts");
-    await expect(page.getByRole("heading", { name: "FGTS Digital" })).toBeVisible();
-    await expect(page.getByText("Categorias encontradas na folha")).toBeVisible();
-    await expect(page.getByText(/GFD oficial/).first()).toBeVisible();
   });
 });

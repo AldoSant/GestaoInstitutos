@@ -126,7 +126,7 @@ export default async function DemonstrativosPage({
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
       notice={{
         label: "Separação fiscal",
-        text: "PF vem de Folhas fechadas; PJ é lançado por documento. Guias são obrigações da organização e nunca beneficiários.",
+        text: "PF vem de Folhas fechadas; PJ é lançado por documento e pode iniciar uma competência sem folha PF. Guias são obrigações da organização e nunca beneficiários.",
       }}
     >
       {(erro || sucesso) && (
@@ -407,7 +407,7 @@ export default async function DemonstrativosPage({
                   <input type="hidden" name="competencia" value={competencia} />
                   <button className="button secondary" type="submit">
                     <RefreshCw size={15} />
-                    {demonstrativo ? "Atualizar PF e guias" : "Gerar rascunho"}
+                    {demonstrativo ? "Atualizar PF e guias" : "Preparar competência"}
                   </button>
                 </form>
                 <Link

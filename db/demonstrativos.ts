@@ -76,23 +76,6 @@ export async function materializarDemonstrativoFolhas({
       [`demonstrativo:${empresaId}:${mes}`],
     );
 
-    const fontes = await client.query<{ total: number }>(
-      `select count(*)::int total
-         from folha_item i
-         join folha f on f.id = i.folha_id and f.empresa_id = i.empresa_id
-         join prestador_vinculo v on v.id = i.vinculo_id and v.empresa_id = i.empresa_id
-         join prestador pr on pr.id = v.prestador_id and pr.empresa_id = v.empresa_id
-         join pessoa p on p.id = pr.pessoa_id and p.empresa_id = pr.empresa_id
-        where f.empresa_id = $1 and f.competencia = $2::date
-          and f.status = 'FECHADA' and p.tipo = 'FISICA'`,
-      [empresaId, mes],
-    );
-    if ((fontes.rows[0]?.total ?? 0) === 0) {
-      throw new Error(
-        "Nenhum pagamento PF de Folha fechada foi encontrado nesta competência.",
-      );
-    }
-
     const atual = await client.query<{
       id: string;
       status: string;

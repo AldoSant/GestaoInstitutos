@@ -53,15 +53,18 @@ test("ficha, prestador e vínculo formam uma jornada acionável", async ({
   expect(await açõesFicha.count()).toBeGreaterThan(0);
 });
 
-test("termo e meta com pendências continuam selecionáveis para validação", async ({
+test("folha deixa explícito quando o instrumento segue para demonstrativo PJ", async ({
   page,
 }) => {
   await autenticar(page);
   await page.goto("folhas/nova?competencia=2026-05");
   const seletor = page.getByRole("combobox", { name: "Termo e Meta" });
   await expect(seletor).toBeVisible();
-  const opçõesDisponíveis = await seletor.locator("option:not([disabled])").count();
-  expect(opçõesDisponíveis).toBeGreaterThan(0);
+  const instrumentos = seletor.locator("option");
+  expect(await instrumentos.count()).toBeGreaterThan(1);
+  await expect(
+    page.getByText("Pagamentos PJ são registrados no demonstrativo mensal por documento fiscal."),
+  ).toBeVisible();
 });
 
 test("ações cadastrais permanecem operáveis em tela estreita", async ({

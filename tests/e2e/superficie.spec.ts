@@ -25,7 +25,6 @@ const paginas = [
   "/folhas/nova?competencia=2026-06",
   "/demonstrativos?competencia=2026-06",
   "/obrigacoes?competencia=2026-06",
-  "/fgts?competencia=2026-06",
   "/fechamento-mensal?competencia=2026-06",
   "/conferencia-entre-folhas?competencia=2026-06",
   "/conferencia-entre-folhas/simulacoes?competencia=2026-06",

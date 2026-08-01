@@ -56,19 +56,22 @@ export default async function NovaFolhaPage({
     return {
       ...item,
       bloqueios,
-      selecionavel: Number(item.vinculos) > 0 && !item.folha_existente,
+      vinculosPf: Number(item.vinculos_pf),
+      vinculosPj: Number(item.vinculos) - Number(item.vinculos_pf),
+      selecionavel: Number(item.vinculos_pf) > 0 && !item.folha_existente,
       pronta:
-        Number(item.vinculos) > 0 &&
+        Number(item.vinculos_pf) > 0 &&
         bloqueios === 0 &&
         !item.folha_existente,
     };
   });
   const opcoesProntas = opcoes.filter((item) => item.pronta);
   const opcoesSelecionaveis = opcoes.filter((item) => item.selecionavel);
-  const vinculos = opcoes.reduce(
-    (total, item) => total + Number(item.vinculos),
+  const vinculosPf = opcoes.reduce(
+    (total, item) => total + item.vinculosPf,
     0,
   );
+  const vinculosPj = opcoes.reduce((total, item) => total + item.vinculosPj, 0);
   const contasPendentes = opcoes.reduce(
     (total, item) => total + Number(item.contas_pendentes),
     0,
@@ -95,9 +98,9 @@ export default async function NovaFolhaPage({
             icon={CheckCircle2}
           />
           <MetricCard
-            label="Vínculos encontrados"
-            value={String(vinculos)}
-            detail={`na competência ${competencia}`}
+            label="Vínculos PF para folha"
+            value={String(vinculosPf)}
+            detail={`${vinculosPj} PJ em documentos de pagamento`}
             icon={UsersRound}
             tone="blue"
           />
@@ -115,7 +118,7 @@ export default async function NovaFolhaPage({
             <div>
               <span className="section-kicker">Lote mensal</span>
               <h2>Selecionar competência e instrumento</h2>
-              <p>Serão incluídos os vínculos ativos no primeiro dia da competência.</p>
+              <p>Serão incluídos os vínculos PF ativos no primeiro dia da competência. Pagamentos PJ são registrados no demonstrativo mensal por documento fiscal.</p>
             </div>
             <StatusBadge tone={opcoesSelecionaveis.length ? "info" : "warning"}>
               {opcoesSelecionaveis.length
@@ -153,12 +156,14 @@ export default async function NovaFolhaPage({
                   >
                     Termo {item.termo_numero} · Meta {item.meta_codigo} —{" "}
                     {item.pronta
-                      ? `${item.vinculos} vínculo(s) · pronta`
+                      ? `${item.vinculosPf} vínculo(s) PF · pronta`
                       : item.folha_existente
                         ? "folha já criada"
-                        : item.vinculos === 0
-                          ? "sem vínculos"
-                          : `${item.vinculos} vínculo(s) · ${item.bloqueios} pendência(s) para resolver`}
+                        : item.vinculosPf === 0
+                          ? item.vinculosPj > 0
+                            ? `${item.vinculosPj} pagamento(s) PJ · usar demonstrativo`
+                            : "sem vínculos"
+                          : `${item.vinculosPf} vínculo(s) PF · ${item.bloqueios} pendência(s) para resolver`}
                   </option>
                 ))}
               </select>
@@ -202,7 +207,10 @@ export default async function NovaFolhaPage({
                       <strong>Termo {item.termo_numero}</strong>
                       <small>Meta {item.meta_codigo} · {item.meta_descricao}</small>
                     </td>
-                    <td>{item.vinculos}</td>
+                    <td>
+                      <strong>{item.vinculosPf} PF</strong>
+                      <small>{item.vinculosPj} PJ</small>
+                    </td>
                     <td>{item.enquadramentos_pendentes}</td>
                     <td>{item.nit_pendente}</td>
                     <td>{item.documentos_pendentes}</td>
@@ -230,6 +238,8 @@ export default async function NovaFolhaPage({
                             : "Pronta"
                           : item.folha_existente
                             ? "Já criada"
+                            : item.vinculosPf === 0 && item.vinculosPj > 0
+                              ? "Usar demonstrativo"
                             : "Bloqueada"}
                       </StatusBadge>
                     </td>
@@ -267,6 +277,14 @@ export default async function NovaFolhaPage({
               >
                 Revisar medições
               </Link>
+              {vinculosPj > 0 && (
+                <Link
+                  className="button secondary"
+                  href={`/demonstrativos?competencia=${competencia}`}
+                >
+                  Registrar pagamentos PJ
+                </Link>
+              )}
             </div>
           )}
         </section>
