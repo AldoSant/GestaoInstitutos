@@ -267,6 +267,13 @@
       "when": 1786423200000,
       "tag": "0037_collection_instrument_profile",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1786509600000,
+      "tag": "0038_individual_gps_memory",
+      "breakpoints": true
     }
   ]
 }

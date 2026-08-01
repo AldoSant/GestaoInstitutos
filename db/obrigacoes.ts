@@ -249,6 +249,36 @@ export async function apurarRetencoesSegurados({
         order by f.id, fi.id`,
       [obrigacaoId, empresaId, data],
     );
+    if (perfilRecolhimento.instrumento === "GPS_EXCECAO") {
+      await client.query(
+        `insert into guia_gps_individual
+           (empresa_id, obrigacao_id, obrigacao_item_id,
+            perfil_recolhimento_id, competencia, beneficiario_nome,
+            identificador, codigo_receita, principal, juros, multa, total,
+            status, snapshot)
+         select item.empresa_id, item.obrigacao_id, item.id, $2, $3::date,
+                item.snapshot #>> '{pessoa,nome}',
+                regexp_replace(item.snapshot #>> '{prestador,nitPisPasep}', '\\D', '', 'g'),
+                $4, item.valor, 0, 0, item.valor, 'PREPARADA',
+                jsonb_build_object(
+                  'obrigacaoItemId', item.id,
+                  'folhaItemId', item.folha_item_id,
+                  'fonte', item.snapshot,
+                  'perfilRecolhimentoId', $2::text
+                )
+           from obrigacao_fiscal_item item
+          where item.obrigacao_id = $1
+            and item.natureza = 'SEGURADO'
+            and item.valor > 0
+          order by item.id`,
+        [
+          obrigacaoId,
+          perfilRecolhimento.id,
+          data,
+          perfilRecolhimento.codigo_receita,
+        ],
+      );
+    }
     const atualizada = await client.query<{
       id: string;
       principal: string;
@@ -860,15 +890,19 @@ export async function registrarDocumentoObrigacao({
         "A obrigação não possui perfil de recolhimento congelado. Reapure a competência antes de registrar documentos.",
       );
     }
-    const documentosPermitidos =
-      obrigacao.instrumento === "GPS_EXCECAO"
-        ? ["GPS"]
-        : ["TOTALIZADOR_DCTFWEB", "RECIBO_DCTFWEB", "DARF"];
+    if (obrigacao.instrumento === "GPS_EXCECAO") {
+      throw new Error(
+        "GPS excepcional é registrada individualmente por prestador; não registre uma guia agregada na obrigação.",
+      );
+    }
+    const documentosPermitidos = [
+      "TOTALIZADOR_DCTFWEB",
+      "RECIBO_DCTFWEB",
+      "DARF",
+    ];
     if (!documentosPermitidos.includes(tipo)) {
       throw new Error(
-        obrigacao.instrumento === "GPS_EXCECAO"
-          ? "Este perfil exige somente GPS excepcional; totalizador, recibo e DARF não se aplicam."
-          : "Este perfil exige documentos DCTFWeb (totalizador, recibo e DARF); GPS não se aplica.",
+        "Este perfil exige documentos DCTFWeb (totalizador, recibo e DARF); GPS não se aplica.",
       );
     }
     if (obrigacao.status === "EMITIDA" && tipo !== "RECIBO_DCTFWEB") {

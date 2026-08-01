@@ -312,42 +312,42 @@ export default async function ObrigacoesPage({
           </dl>
           {item.status !== "CANCELADA" && (
             <>
-              <div className="panel-header">
-                <div>
-                  <span className="section-kicker">Evidência externa</span>
-                  <h3>Registrar documento do recolhimento</h3>
-                  <p>
-                    {item.perfil_instrumento === "GPS_EXCECAO"
-                      ? `A GPS usa o código ${item.perfil_codigo_receita ?? "informado no perfil"} e só é liberada quando o valor coincidir com a apuração.`
-                      : "Marcar como verificado altera o estado somente se os valores satisfizerem as travas de conciliação."}
-                  </p>
-                </div>
-              </div>
-              <form action={registrarDocumento} className="crud-form">
-                <input type="hidden" name="obrigacaoId" value={item.id} />
-                <label>
-                  <span>Tipo</span>
-                  <select name="tipo" required defaultValue="">
-                    <option value="" disabled>Selecione</option>
-                    {item.perfil_instrumento === "GPS_EXCECAO" ? (
-                      <option value="GPS">GPS excepcional</option>
-                    ) : (
-                      <>
-                        <option value="TOTALIZADOR_DCTFWEB">Totalizador DCTFWeb</option>
-                        <option value="RECIBO_DCTFWEB">Recibo DCTFWeb</option>
-                        <option value="DARF">DARF</option>
-                      </>
-                    )}
-                  </select>
-                </label>
-                <label><span>Referência/protocolo</span><input name="referencia" required maxLength={160} /></label>
-                <label><span>{item.perfil_instrumento === "GPS_EXCECAO" ? "Valor total da GPS" : "Valor total (recibo pode ficar vazio)"}</span><input name="valorTotal" inputMode="decimal" placeholder="0,00" /></label>
-                <label><span>Data de emissão</span><input name="emitidoEm" type="date" required /></label>
-                <label className="field-wide"><span>Localizador do documento</span><input name="localizador" required maxLength={2000} placeholder="Caminho interno, ID do arquivo ou protocolo" /></label>
-                <label className="field-wide"><span>Hash SHA-256, se disponível</span><input name="hashSha256" maxLength={64} /></label>
-                <label className="checkbox-field"><input name="verificado" type="checkbox" /><span>Documento conferido contra o portal oficial</span></label>
-                <button className="button secondary" type="submit"><FileCheck2 size={16} /> Registrar documento</button>
-              </form>
+              {item.perfil_instrumento === "GPS_EXCECAO" ? (
+                <section className="alert-box">
+                  <FileText size={22} />
+                  <div>
+                    <strong>GPS é individual por prestador</strong>
+                    <p>
+                      O legado gerava uma GPS para cada retenção. Não registre
+                      uma guia agregada nesta obrigação; confira as memórias individuais.
+                    </p>
+                    <Link className="button secondary" href={`/obrigacoes/${item.id}/gps`}>
+                      Abrir memórias GPS
+                    </Link>
+                  </div>
+                </section>
+              ) : (
+                <>
+                  <div className="panel-header">
+                    <div>
+                      <span className="section-kicker">Evidência externa</span>
+                      <h3>Registrar documento do recolhimento</h3>
+                      <p>Marcar como verificado altera o estado somente se os valores satisfizerem as travas de conciliação.</p>
+                    </div>
+                  </div>
+                  <form action={registrarDocumento} className="crud-form">
+                    <input type="hidden" name="obrigacaoId" value={item.id} />
+                    <label><span>Tipo</span><select name="tipo" required defaultValue=""><option value="" disabled>Selecione</option><option value="TOTALIZADOR_DCTFWEB">Totalizador DCTFWeb</option><option value="RECIBO_DCTFWEB">Recibo DCTFWeb</option><option value="DARF">DARF</option></select></label>
+                    <label><span>Referência/protocolo</span><input name="referencia" required maxLength={160} /></label>
+                    <label><span>Valor total (recibo pode ficar vazio)</span><input name="valorTotal" inputMode="decimal" placeholder="0,00" /></label>
+                    <label><span>Data de emissão</span><input name="emitidoEm" type="date" required /></label>
+                    <label className="field-wide"><span>Localizador do documento</span><input name="localizador" required maxLength={2000} placeholder="Caminho interno, ID do arquivo ou protocolo" /></label>
+                    <label className="field-wide"><span>Hash SHA-256, se disponível</span><input name="hashSha256" maxLength={64} /></label>
+                    <label className="checkbox-field"><input name="verificado" type="checkbox" /><span>Documento conferido contra o portal oficial</span></label>
+                    <button className="button secondary" type="submit"><FileCheck2 size={16} /> Registrar documento</button>
+                  </form>
+                </>
+              )}
             </>
           )}
           {item.documentos.length > 0 && (

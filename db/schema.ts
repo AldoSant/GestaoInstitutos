@@ -2060,6 +2060,69 @@ export const documentosObrigacao = pgTable(
   ],
 );
 
+export const guiasGpsIndividuais = pgTable(
+  "guia_gps_individual",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull(),
+    obrigacaoId: uuid("obrigacao_id").notNull(),
+    obrigacaoItemId: uuid("obrigacao_item_id").notNull(),
+    perfilRecolhimentoId: uuid("perfil_recolhimento_id").notNull(),
+    competencia: date("competencia").notNull(),
+    beneficiarioNome: varchar("beneficiario_nome", { length: 180 }).notNull(),
+    identificador: varchar("identificador", { length: 14 }).notNull(),
+    codigoReceita: varchar("codigo_receita", { length: 4 }).notNull(),
+    principal: numeric("principal", { precision: 18, scale: 2 }).notNull(),
+    juros: numeric("juros", { precision: 18, scale: 2 }).notNull().default("0"),
+    multa: numeric("multa", { precision: 18, scale: 2 }).notNull().default("0"),
+    total: numeric("total", { precision: 18, scale: 2 }).notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("PREPARADA"),
+    snapshot: jsonb("snapshot").notNull(),
+    criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("uq_guia_gps_item").on(table.obrigacaoItemId),
+    uniqueIndex("uq_guia_gps_empresa_id").on(table.empresaId, table.id),
+    index("ix_guia_gps_obrigacao").on(table.obrigacaoId, table.status),
+    foreignKey({
+      columns: [table.empresaId],
+      foreignColumns: [empresas.id],
+      name: "fk_guia_gps_empresa",
+    }),
+    foreignKey({
+      columns: [table.empresaId, table.obrigacaoId],
+      foreignColumns: [obrigacoes.empresaId, obrigacoes.id],
+      name: "fk_guia_gps_empresa_obrigacao",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.obrigacaoItemId],
+      foreignColumns: [itensObrigacao.id],
+      name: "fk_guia_gps_obrigacao_item",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.empresaId, table.perfilRecolhimentoId],
+      foreignColumns: [
+        perfisRecolhimentoPrevidenciarios.empresaId,
+        perfisRecolhimentoPrevidenciarios.id,
+      ],
+      name: "fk_guia_gps_empresa_perfil",
+    }),
+    check(
+      "ck_guia_gps_competencia",
+      sql`${table.competencia} = date_trunc('month', ${table.competencia})::date`,
+    ),
+    check("ck_guia_gps_identificador", sql`${table.identificador} ~ '^[0-9]{8,14}$'`),
+    check("ck_guia_gps_codigo", sql`${table.codigoReceita} ~ '^[0-9]{4}$'`),
+    check("ck_guia_gps_status", sql`${table.status} in ('PREPARADA', 'REGISTRADA', 'CANCELADA')`),
+    check(
+      "ck_guia_gps_valores",
+      sql`${table.principal} > 0 and ${table.juros} >= 0 and ${table.multa} >= 0
+          and ${table.total} = round(${table.principal} + ${table.juros} + ${table.multa}, 2)`,
+    ),
+    check("ck_guia_gps_snapshot", sql`jsonb_typeof(${table.snapshot}) = 'object'`),
+  ],
+);
+
 export const retificacoesObrigacao = pgTable(
   "obrigacao_fiscal_retificacao",
   {
