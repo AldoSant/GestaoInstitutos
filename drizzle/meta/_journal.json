@@ -260,6 +260,13 @@
       "when": 1786336800000,
       "tag": "0036_demonstrative_revision_history",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1786423200000,
+      "tag": "0037_collection_instrument_profile",
+      "breakpoints": true
     }
   ]
 }

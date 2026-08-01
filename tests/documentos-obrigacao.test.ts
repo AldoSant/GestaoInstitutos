@@ -29,3 +29,16 @@ test("recibo pode omitir valor, mas exige referência e localizador", () => {
   });
   assert.equal(resultado.dados?.valorTotal, "0.00");
 });
+
+test("aceita GPS com valor obrigatório para conferência excepcional", () => {
+  const resultado = validarDocumentoObrigacao({
+    obrigacaoId: "00000000-0000-4000-8000-000000000001",
+    tipo: "GPS",
+    referencia: "GPS-1007-2026-07",
+    valorTotal: "432,10",
+    emitidoEm: "2026-08-01",
+    localizador: "Arquivo de prestação de contas",
+  });
+  assert.deepEqual(resultado.erros, []);
+  assert.equal(resultado.dados?.valorTotal, "432.10");
+});

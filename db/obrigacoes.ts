@@ -12,6 +12,7 @@ import {
   hashSnapshotRetificacao,
   normalizarSolicitacaoRetificacao,
 } from "@/lib/retificacao-obrigacao";
+import { carregarPerfilRecolhimentoPorCompetencia } from "./perfis-recolhimento";
 import { getPool } from "./index";
 
 function validarId(valor: string, campo: string) {
@@ -111,26 +112,35 @@ export async function apurarRetencoesSegurados({
       semEnquadramento: resumo.sem_enquadramento,
     });
 
+    const perfilRecolhimento = await carregarPerfilRecolhimentoPorCompetencia(
+      empresaId,
+      data,
+      client,
+    );
+
     const motivos = [
       "Segurado e cota patronal do contribuinte individual foram calculados conforme o enquadramento congelado.",
-      "A emissão depende da conferência de outras categorias eventualmente existentes e dos totalizadores/recibos do eSocial/DCTFWeb.",
+      perfilRecolhimento.instrumento === "GPS_EXCECAO"
+        ? `A emissão depende da conferência da GPS excepcional, código ${perfilRecolhimento.codigo_receita}, conforme a fundamentação publicada.`
+        : "A emissão depende da conferência de outras categorias eventualmente existentes e dos totalizadores/recibos do eSocial/DCTFWeb.",
     ];
     const bloqueioMotivo = motivos.join(" ");
 
     const obrigacao = await client.query<{ id: string }>(
       `insert into obrigacao_fiscal
          (empresa_id, competencia, tipo, status, principal, juros, multa,
-          total, bloqueio_motivo)
+          total, bloqueio_motivo, perfil_recolhimento_id)
        values ($1, $2::date, 'PREVIDENCIARIA_DCTFWEB', 'BLOQUEADA',
-               0, 0, 0, 0, $3)
+               0, 0, 0, 0, $3, $4)
        on conflict (empresa_id, competencia, tipo) do update
          set status = 'BLOQUEADA', principal = 0, juros = 0, multa = 0,
              total = 0, valor_declarado = null, diferenca = null,
              conciliada_em = null,
-             bloqueio_motivo = excluded.bloqueio_motivo
+             bloqueio_motivo = excluded.bloqueio_motivo,
+             perfil_recolhimento_id = excluded.perfil_recolhimento_id
          where obrigacao_fiscal.status in ('RASCUNHO', 'APURADA', 'BLOQUEADA')
        returning id`,
-      [empresaId, data, bloqueioMotivo],
+      [empresaId, data, bloqueioMotivo, perfilRecolhimento.id],
     );
     if (!obrigacao.rows[0]) {
       throw new Error("Uma obrigação emitida ou cancelada não pode ser recalculada.");
@@ -458,6 +468,8 @@ export async function listarObrigacoes(
     juros: string;
     multa: string;
     total: string;
+    perfil_instrumento: "DCTFWEB_DARF" | "GPS_EXCECAO" | null;
+    perfil_codigo_receita: string | null;
     bloqueio_motivo: string | null;
     valor_declarado: string | null;
     diferenca: string | null;
@@ -503,6 +515,8 @@ export async function listarObrigacoes(
             o.principal::text, o.juros::text, o.multa::text, o.total::text,
             o.bloqueio_motivo, o.valor_declarado::text, o.diferenca::text,
             o.conciliada_em, o.criado_em,
+            perfil.instrumento perfil_instrumento,
+            perfil.codigo_receita perfil_codigo_receita,
             (
               select count(*)::int
                 from obrigacao_fiscal_folha ofo
@@ -591,6 +605,8 @@ export async function listarObrigacoes(
               '[]'::jsonb
             ) retificacoes
        from obrigacao_fiscal o
+       left join perfil_recolhimento_previdenciario perfil
+         on perfil.id = o.perfil_recolhimento_id
       where o.empresa_id = $1
         and ($2::date is null or o.competencia = $2::date)
       order by o.competencia desc, o.criado_em desc
@@ -812,10 +828,15 @@ export async function registrarDocumentoObrigacao({
       status: string;
       total: string;
       competencia: string;
+      instrumento: "DCTFWEB_DARF" | "GPS_EXCECAO" | null;
+      codigo_receita: string | null;
     }>(
-      `select id, status, total::text, competencia::text
-         from obrigacao_fiscal
-        where id = $1 and empresa_id = $2
+      `select o.id, o.status, o.total::text, o.competencia::text,
+              perfil.instrumento, perfil.codigo_receita
+         from obrigacao_fiscal o
+         left join perfil_recolhimento_previdenciario perfil
+           on perfil.id = o.perfil_recolhimento_id
+        where o.id = $1 and o.empresa_id = $2
         for update`,
       [obrigacaoId, empresaId],
     );
@@ -824,8 +845,24 @@ export async function registrarDocumentoObrigacao({
     if (obrigacao.status === "CANCELADA") {
       throw new Error("Obrigação cancelada não aceita documentos.");
     }
+    if (!obrigacao.instrumento) {
+      throw new Error(
+        "A obrigação não possui perfil de recolhimento congelado. Reapure a competência antes de registrar documentos.",
+      );
+    }
+    const documentosPermitidos =
+      obrigacao.instrumento === "GPS_EXCECAO"
+        ? ["GPS"]
+        : ["TOTALIZADOR_DCTFWEB", "RECIBO_DCTFWEB", "DARF"];
+    if (!documentosPermitidos.includes(tipo)) {
+      throw new Error(
+        obrigacao.instrumento === "GPS_EXCECAO"
+          ? "Este perfil exige somente GPS excepcional; totalizador, recibo e DARF não se aplicam."
+          : "Este perfil exige documentos DCTFWeb (totalizador, recibo e DARF); GPS não se aplica.",
+      );
+    }
     if (obrigacao.status === "EMITIDA" && tipo !== "RECIBO_DCTFWEB") {
-      throw new Error("Obrigação já emitida não aceita novo totalizador ou DARF.");
+      throw new Error("Obrigação já emitida não aceita novo documento de pagamento.");
     }
     if (verificado) {
       await client.query(
@@ -938,6 +975,38 @@ export async function registrarDocumentoObrigacao({
                   'diferenca', obrigacao.diferenca::text,
                   'darfReferencia', $2::text,
                   'darfDocumentoId', $3::uuid
+                )
+           from obrigacao_fiscal obrigacao
+          where retificacao.obrigacao_id = $1
+            and retificacao.status in ('SOLICITADA', 'EM_ANDAMENTO')
+            and obrigacao.id = retificacao.obrigacao_id`,
+        [obrigacaoId, referencia, inserido.rows[0].id],
+      );
+    }
+    if (verificado && tipo === "GPS") {
+      if (Number(valorTotal) !== Number(obrigacao.total)) {
+        throw new Error("GPS só pode ser confirmada quando o valor for idêntico à apuração interna.");
+      }
+      await client.query(
+        `update obrigacao_fiscal
+            set valor_declarado = $2::numeric,
+                diferenca = 0,
+                conciliada_em = now(),
+                status = 'EMITIDA',
+                bloqueio_motivo = null
+          where id = $1`,
+        [obrigacaoId, valorTotal],
+      );
+      await client.query(
+        `update obrigacao_fiscal_retificacao retificacao
+            set status = 'CONCLUIDA',
+                protocolo = coalesce(retificacao.protocolo, $2),
+                concluida_em = now(),
+                resultado = jsonb_build_object(
+                  'obrigacaoId', obrigacao.id,
+                  'documentoReferencia', $2::text,
+                  'documentoId', $3::uuid,
+                  'instrumento', 'GPS_EXCECAO'
                 )
            from obrigacao_fiscal obrigacao
           where retificacao.obrigacao_id = $1

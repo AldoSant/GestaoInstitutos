@@ -20,6 +20,7 @@ import {
   listarObrigacoes,
 } from "@/db/obrigacoes";
 import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
+import { nomeInstrumentoRecolhimento } from "@/lib/perfil-recolhimento";
 import {
   apurarObrigacao,
   cancelarObrigacaoFiscal,
@@ -54,7 +55,7 @@ function nomeStatus(status: string) {
   if (status === "RASCUNHO") return "Em preparação";
   if (status === "BLOQUEADA") return "Conciliação pendente";
   if (status === "APURADA") return "Totalizador conciliado";
-  if (status === "EMITIDA") return "DARF registrado";
+  if (status === "EMITIDA") return "Documento registrado";
   if (status === "CANCELADA") return "Cancelada";
   return status.replaceAll("_", " ");
 }
@@ -102,6 +103,9 @@ export default async function ObrigacoesPage({
   const totalizador = documentoVerificado("TOTALIZADOR_DCTFWEB");
   const recibo = documentoVerificado("RECIBO_DCTFWEB");
   const darf = documentoVerificado("DARF");
+  const gps = documentoVerificado("GPS");
+  const usaGps = obrigacaoAtual?.perfil_instrumento === "GPS_EXCECAO";
+  const documentoPagamento = usaGps ? gps : darf;
 
   return (
     <AppShell
@@ -110,7 +114,7 @@ export default async function ObrigacoesPage({
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
       notice={{
         label: "Emissão controlada",
-        text: "Segurado e patronal são apurados da Folha fechada conforme o enquadramento; nenhuma guia é liberada sem conciliação com a DCTFWeb.",
+        text: "Segurado e patronal são apurados da Folha fechada conforme o enquadramento; o documento liberado segue o perfil de recolhimento congelado na competência.",
       }}
     >
       {(erro || sucesso) && (
@@ -147,10 +151,10 @@ export default async function ObrigacoesPage({
         />
         <MetricCard
           label="Documento para pagar"
-          value={darf ? "Registrado" : "Pendente"}
-          detail="DARF oficial da DCTFWeb"
+          value={documentoPagamento ? "Registrado" : "Pendente"}
+          detail={usaGps ? "GPS excepcional fundamentada" : "DARF oficial da DCTFWeb"}
           icon={FileCheck2}
-          tone={darf ? "teal" : "amber"}
+          tone={documentoPagamento ? "teal" : "amber"}
         />
       </section>
 
@@ -158,18 +162,25 @@ export default async function ObrigacoesPage({
         <div className="panel-header">
           <div>
             <span className="section-kicker">Fluxo previdenciário</span>
-            <h2>Da folha fechada ao DARF para pagamento</h2>
+            <h2>Da folha fechada ao documento para pagamento</h2>
             <p>
-              O sistema apura e concilia; os documentos oficiais continuam vindo
-              da DCTFWeb.
+              {usaGps
+                ? "A GPS é permitida apenas pela exceção formal congelada nesta competência."
+                : "O sistema apura e concilia; os documentos oficiais continuam vindo da DCTFWeb."}
             </p>
           </div>
-          <StatusBadge tone={darf ? "success" : "warning"}>
-            {darf ? "Pronta para pagamento" : "Documentação pendente"}
+          <StatusBadge tone={documentoPagamento ? "success" : "warning"}>
+            {documentoPagamento ? "Pronta para pagamento" : "Documentação pendente"}
           </StatusBadge>
         </div>
         <ol className="process-steps obligation-steps">
-          {[
+          {(usaGps
+            ? [
+                ["1. Folhas", diagnostico.apta_apuracao, `${diagnostico.folhas_fechadas} fechada(s)`],
+                ["2. Apuração", Boolean(obrigacaoAtual), obrigacaoAtual ? moeda(obrigacaoAtual.total) : "Não executada"],
+                ["3. GPS", gps, gps ? "Conferida" : "Pendente"],
+              ]
+            : [
             [
               "1. Folhas",
               diagnostico.apta_apuracao,
@@ -187,7 +198,7 @@ export default async function ObrigacoesPage({
             ],
             ["4. Recibo", recibo, recibo ? "Conferido" : "Pendente"],
             ["5. DARF", darf, darf ? "Registrado" : "Pendente"],
-          ].map(([titulo, concluida, detalhe], indice, etapas) => {
+          ]).map(([titulo, concluida, detalhe], indice, etapas) => {
             const anteriorConcluida =
               indice === 0 || Boolean(etapas[indice - 1][1]);
             return (
@@ -249,9 +260,9 @@ export default async function ObrigacoesPage({
         <section className="panel" key={item.id}>
           <div className="panel-header">
             <div>
-              <span className="section-kicker">{competencia(item.competencia)} · {item.tipo}</span>
+              <span className="section-kicker">{competencia(item.competencia)} · Obrigação previdenciária</span>
               <h2>{moeda(item.total)}</h2>
-              <p>{item.folhas} Folha(s) · {item.itens} item(ns) rastreáveis</p>
+              <p>{item.folhas} Folha(s) · {item.itens} item(ns) rastreáveis · {item.perfil_instrumento ? nomeInstrumentoRecolhimento(item.perfil_instrumento) : "Perfil histórico sem instrumento"}</p>
             </div>
             <div className="row-actions">
               <Link
@@ -276,14 +287,14 @@ export default async function ObrigacoesPage({
             <div><dt>Retenção dos segurados</dt><dd>{moeda(item.segurado)}<small>Alíquota conforme o regime congelado</small></dd></div>
             <div><dt>Contribuição patronal</dt><dd>{moeda(item.patronal)}<small>20% no regime geral ou zero na imunidade validada</small></dd></div>
             <div className={item.status === "EMITIDA" ? "" : "danger"}>
-              <dt>Conciliação DCTFWeb</dt>
+              <dt>{item.perfil_instrumento === "GPS_EXCECAO" ? "Conciliação GPS" : "Conciliação DCTFWeb"}</dt>
               <dd>
                 {item.status === "EMITIDA"
-                  ? "DARF registrado"
+                  ? `${item.perfil_instrumento === "GPS_EXCECAO" ? "GPS" : "DARF"} registrado`
                   : item.status === "CANCELADA"
                     ? "Obrigação cancelada"
                   : item.diferenca === "0.00"
-                    ? "Totalizador conciliado"
+                    ? item.perfil_instrumento === "GPS_EXCECAO" ? "GPS conciliada" : "Totalizador conciliado"
                     : item.diferenca
                       ? `Diferença ${moeda(item.diferenca)}`
                       : "Pendente"}
@@ -296,10 +307,11 @@ export default async function ObrigacoesPage({
               <div className="panel-header">
                 <div>
                   <span className="section-kicker">Evidência externa</span>
-                  <h3>Registrar documento da DCTFWeb</h3>
+                  <h3>Registrar documento do recolhimento</h3>
                   <p>
-                    Marcar como verificado altera o estado somente se os valores
-                    satisfizerem as travas de conciliação.
+                    {item.perfil_instrumento === "GPS_EXCECAO"
+                      ? `A GPS usa o código ${item.perfil_codigo_receita ?? "informado no perfil"} e só é liberada quando o valor coincidir com a apuração.`
+                      : "Marcar como verificado altera o estado somente se os valores satisfizerem as travas de conciliação."}
                   </p>
                 </div>
               </div>
@@ -309,13 +321,19 @@ export default async function ObrigacoesPage({
                   <span>Tipo</span>
                   <select name="tipo" required defaultValue="">
                     <option value="" disabled>Selecione</option>
-                    <option value="TOTALIZADOR_DCTFWEB">Totalizador DCTFWeb</option>
-                    <option value="RECIBO_DCTFWEB">Recibo DCTFWeb</option>
-                    <option value="DARF">DARF</option>
+                    {item.perfil_instrumento === "GPS_EXCECAO" ? (
+                      <option value="GPS">GPS excepcional</option>
+                    ) : (
+                      <>
+                        <option value="TOTALIZADOR_DCTFWEB">Totalizador DCTFWeb</option>
+                        <option value="RECIBO_DCTFWEB">Recibo DCTFWeb</option>
+                        <option value="DARF">DARF</option>
+                      </>
+                    )}
                   </select>
                 </label>
                 <label><span>Referência/protocolo</span><input name="referencia" required maxLength={160} /></label>
-                <label><span>Valor total (recibo pode ficar vazio)</span><input name="valorTotal" inputMode="decimal" placeholder="0,00" /></label>
+                <label><span>{item.perfil_instrumento === "GPS_EXCECAO" ? "Valor total da GPS" : "Valor total (recibo pode ficar vazio)"}</span><input name="valorTotal" inputMode="decimal" placeholder="0,00" /></label>
                 <label><span>Data de emissão</span><input name="emitidoEm" type="date" required /></label>
                 <label className="field-wide"><span>Localizador do documento</span><input name="localizador" required maxLength={2000} placeholder="Caminho interno, ID do arquivo ou protocolo" /></label>
                 <label className="field-wide"><span>Hash SHA-256, se disponível</span><input name="hashSha256" maxLength={64} /></label>

@@ -3,7 +3,8 @@ import { numeroDecimalBrasileiro } from "./importacao-giw";
 export type TipoDocumentoObrigacao =
   | "TOTALIZADOR_DCTFWEB"
   | "RECIBO_DCTFWEB"
-  | "DARF";
+  | "DARF"
+  | "GPS";
 
 function texto(valor: unknown) {
   return String(valor ?? "").trim();
@@ -39,7 +40,7 @@ export function validarDocumentoObrigacao(input: Record<string, unknown>) {
     input.verificado === "true";
 
   if (!uuidValido(obrigacaoId)) erros.push("Obrigação inválida.");
-  if (!["TOTALIZADOR_DCTFWEB", "RECIBO_DCTFWEB", "DARF"].includes(tipo)) {
+  if (!["TOTALIZADOR_DCTFWEB", "RECIBO_DCTFWEB", "DARF", "GPS"].includes(tipo)) {
     erros.push("Tipo documental inválido.");
   }
   if (!referencia || referencia.length > 160) {

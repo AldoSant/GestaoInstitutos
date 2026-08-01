@@ -857,6 +857,53 @@ export const enquadramentosPrevidenciarios = pgTable(
   ],
 );
 
+export const perfisRecolhimentoPrevidenciarios = pgTable(
+  "perfil_recolhimento_previdenciario",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id")
+      .notNull()
+      .references(() => empresas.id),
+    instrumento: varchar("instrumento", { length: 24 }).notNull(),
+    codigoReceita: varchar("codigo_receita", { length: 10 }),
+    inicioVigencia: date("inicio_vigencia").notNull(),
+    fimVigencia: date("fim_vigencia").notNull(),
+    evidencia: text("evidencia").notNull(),
+    responsavel: varchar("responsavel", { length: 160 }).notNull(),
+    publicado: boolean("publicado").notNull().default(true),
+    criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("uq_perfil_recolhimento_empresa_id").on(table.empresaId, table.id),
+    index("ix_perfil_recolhimento_empresa_vigencia").on(
+      table.empresaId,
+      table.inicioVigencia,
+      table.fimVigencia,
+    ),
+    check(
+      "ck_perfil_recolhimento_instrumento",
+      sql`${table.instrumento} in ('DCTFWEB_DARF', 'GPS_EXCECAO')`,
+    ),
+    check(
+      "ck_perfil_recolhimento_vigencia",
+      sql`${table.fimVigencia} >= ${table.inicioVigencia}`,
+    ),
+    check(
+      "ck_perfil_recolhimento_codigo",
+      sql`(${table.instrumento} = 'GPS_EXCECAO' and ${table.codigoReceita} ~ '^[0-9]{4}$')
+        or (${table.instrumento} = 'DCTFWEB_DARF' and ${table.codigoReceita} is null)`,
+    ),
+    check(
+      "ck_perfil_recolhimento_evidencia",
+      sql`length(btrim(${table.evidencia})) between 20 and 3000`,
+    ),
+    check(
+      "ck_perfil_recolhimento_responsavel",
+      sql`length(btrim(${table.responsavel})) between 3 and 160`,
+    ),
+  ],
+);
+
 export const folhas = pgTable(
   "folha",
   {
@@ -1852,6 +1899,7 @@ export const obrigacoes = pgTable(
       .references(() => empresas.id),
     competencia: date("competencia").notNull(),
     tipo: varchar("tipo", { length: 40 }).notNull(),
+    perfilRecolhimentoId: uuid("perfil_recolhimento_id"),
     status: statusObrigacao("status").notNull().default("RASCUNHO"),
     principal: numeric("principal", { precision: 18, scale: 2 }).notNull(),
     juros: numeric("juros", { precision: 18, scale: 2 }).notNull().default("0"),
@@ -1871,6 +1919,14 @@ export const obrigacoes = pgTable(
       table.tipo,
     ),
     index("ix_obrigacao_empresa_competencia").on(table.empresaId, table.competencia),
+    foreignKey({
+      columns: [table.empresaId, table.perfilRecolhimentoId],
+      foreignColumns: [
+        perfisRecolhimentoPrevidenciarios.empresaId,
+        perfisRecolhimentoPrevidenciarios.id,
+      ],
+      name: "fk_obrigacao_empresa_perfil_recolhimento",
+    }),
     check(
       "ck_obrigacao_valores_nao_negativos",
       sql`${table.principal} >= 0 and ${table.juros} >= 0
@@ -1991,7 +2047,7 @@ export const documentosObrigacao = pgTable(
     }).onDelete("cascade"),
     check(
       "ck_obrigacao_documento_tipo",
-      sql`${table.tipo} in ('TOTALIZADOR_DCTFWEB', 'RECIBO_DCTFWEB', 'DARF')`,
+      sql`${table.tipo} in ('TOTALIZADOR_DCTFWEB', 'RECIBO_DCTFWEB', 'DARF', 'GPS')`,
     ),
     check(
       "ck_obrigacao_documento_valor",

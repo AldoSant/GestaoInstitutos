@@ -10,6 +10,7 @@ import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { listarEnquadramentos } from "@/db/enquadramentos";
+import { listarPerfisRecolhimento } from "@/db/perfis-recolhimento";
 import { listarRegrasFiscais } from "@/db/regras";
 import { exigirAdministrador } from "@/lib/autorizacao";
 import {
@@ -17,7 +18,9 @@ import {
   CENARIOS_PREVIDENCIARIOS,
   nomeRegimePrevidenciario,
 } from "@/lib/enquadramento-previdenciario";
+import { nomeInstrumentoRecolhimento } from "@/lib/perfil-recolhimento";
 import { EnquadramentoForm } from "./enquadramento-form";
+import { PerfilRecolhimentoForm } from "./perfil-recolhimento-form";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +49,7 @@ type SearchParams = Promise<{
   erro?: string | string[];
   sucesso?: string | string[];
   novo?: string | string[];
+  novoPerfil?: string | string[];
   regime?: string | string[];
 }>;
 
@@ -63,15 +67,20 @@ export default async function ParametrosPage({
   const erro = primeiro(params.erro);
   const sucesso = primeiro(params.sucesso);
   const publicarNovo = primeiro(params.novo) === "1";
+  const publicarPerfil = primeiro(params.novoPerfil) === "1";
   const regimeInicial = primeiro(params.regime);
   const empresa = await resolverEmpresaAtiva();
-  const [regras, enquadramentos] = await Promise.all([
+  const [regras, enquadramentos, perfisRecolhimento] = await Promise.all([
     listarRegrasFiscais(empresa.id),
     listarEnquadramentos(empresa.id),
+    listarPerfisRecolhimento(empresa.id),
   ]);
   const regra = regras.find((item) => item.publicada) ?? regras[0];
   const hoje = new Date().toISOString().slice(0, 10);
   const vigente = enquadramentos.find(
+    (item) => item.inicio_vigencia <= hoje && item.fim_vigencia >= hoje,
+  );
+  const perfilVigente = perfisRecolhimento.find(
     (item) => item.inicio_vigencia <= hoje && item.fim_vigencia >= hoje,
   );
 
@@ -223,7 +232,61 @@ export default async function ParametrosPage({
         </div>
       </section>
 
+      <section className="panel cadastro-section">
+        <div className="panel-header">
+          <div>
+            <span className="section-kicker">Emissão e conferência</span>
+            <h2>Instrumento de recolhimento</h2>
+            <p>
+              Defina por vigência se a obrigação será conferida por DCTFWeb/DARF
+              ou, somente quando fundamentado, por GPS excepcional.
+            </p>
+          </div>
+          <Link className="button primary" href="/parametros?novoPerfil=1">
+            <Plus size={16} /> Publicar vigência
+          </Link>
+        </div>
+        <article className={`current-profile ${perfilVigente ? "" : "missing"}`}>
+          <div className="current-profile-icon">
+            {perfilVigente ? <ShieldCheck size={22} /> : <AlertTriangle size={22} />}
+          </div>
+          <div>
+            <small>Perfil vigente hoje</small>
+            <strong>
+              {perfilVigente
+                ? nomeInstrumentoRecolhimento(perfilVigente.instrumento)
+                : "Nenhum instrumento publicado para a data atual"}
+            </strong>
+            <p>
+              {perfilVigente
+                ? `${dataBrasileira(perfilVigente.inicio_vigencia)} a ${dataBrasileira(perfilVigente.fim_vigencia)}${perfilVigente.codigo_receita ? ` · código ${perfilVigente.codigo_receita}` : ""}`
+                : "A apuração fica bloqueada até a publicação de um perfil fundamentado para a competência."}
+            </p>
+          </div>
+          <StatusBadge tone={perfilVigente ? "info" : "warning"}>
+            {perfilVigente ? "Vigente" : "Ação necessária"}
+          </StatusBadge>
+        </article>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Vigência</th><th>Instrumento</th><th>Fundamentação</th><th>Responsável</th></tr></thead>
+            <tbody>
+              {perfisRecolhimento.map((item) => (
+                <tr key={item.id}>
+                  <td><strong>{dataBrasileira(item.inicio_vigencia)}</strong><small>até {dataBrasileira(item.fim_vigencia)}</small></td>
+                  <td>{nomeInstrumentoRecolhimento(item.instrumento)}<small>{item.codigo_receita ? `Código ${item.codigo_receita}` : "Fluxo padrão"}</small></td>
+                  <td>{item.evidencia}</td>
+                  <td>{item.responsavel}</td>
+                </tr>
+              ))}
+              {perfisRecolhimento.length === 0 && <tr><td colSpan={4} className="empty-cell">Nenhum perfil de recolhimento publicado.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       {publicarNovo && <EnquadramentoForm regimeInicial={regimeInicial} />}
+      {publicarPerfil && <PerfilRecolhimentoForm />}
 
       <section className="rule-summary">
         <article>
