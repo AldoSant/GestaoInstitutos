@@ -34,7 +34,7 @@ test(
           where table_schema = 'public'
             and table_type = 'BASE TABLE'`,
       );
-      assert.equal(Number(tabelas.rows[0].total), 57);
+      assert.equal(Number(tabelas.rows[0].total), 59);
 
       const restricoes = await client.query<{ conname: string }>(
         `select conname
@@ -262,10 +262,29 @@ test(
             'ck_demonstrativo_revisao_hash',
             'ck_demonstrativo_revisao_motivo',
             'ck_demonstrativo_revisao_responsavel',
-            'ck_demonstrativo_revisao_snapshot'
+            'ck_demonstrativo_revisao_snapshot',
+            'ck_perfil_recolhimento_instrumento',
+            'ck_perfil_recolhimento_vigencia',
+            'ck_perfil_recolhimento_codigo',
+            'ck_perfil_recolhimento_evidencia',
+            'ck_perfil_recolhimento_responsavel',
+            'ex_perfil_recolhimento_publicado_sem_sobreposicao',
+            'fk_obrigacao_empresa_perfil_recolhimento',
+            'fk_guia_gps_empresa',
+            'fk_guia_gps_empresa_obrigacao',
+            'fk_guia_gps_obrigacao_item',
+            'fk_guia_gps_empresa_perfil',
+            'ck_guia_gps_competencia',
+            'ck_guia_gps_identificador',
+            'ck_guia_gps_codigo',
+            'ck_guia_gps_status',
+            'ck_guia_gps_valores',
+            'ck_guia_gps_snapshot',
+            'ck_guia_gps_hash',
+            'ck_guia_gps_registro_documental'
           )`,
       );
-      assert.equal(restricoes.rowCount, 223);
+      assert.equal(restricoes.rowCount, 242);
 
       const gatilhos = await client.query<{ tgname: string }>(
         `select tgname
@@ -323,10 +342,14 @@ test(
               'tr_retencao_demonstrativo_fechado',
               'tr_proteger_demonstrativo_conferencia',
               'tr_proteger_demonstrativo_revisao',
-              'tr_auditar_demonstrativo_revisao'
+              'tr_auditar_demonstrativo_revisao',
+              'tr_proteger_perfil_recolhimento_utilizado',
+              'tr_auditar_perfil_recolhimento_previdenciario',
+              'tr_proteger_guia_gps_registrada',
+              'tr_auditar_guia_gps_individual'
             )`,
       );
-      assert.equal(gatilhos.rowCount, 52);
+      assert.equal(gatilhos.rowCount, 56);
 
       const auditoriaImportacao = await client.query<{
         dry_runs: number;
