@@ -26,7 +26,29 @@ test("fecha o dossiê previdenciário por natureza e documentos", () => {
     totalizadorVerificado: true,
     reciboVerificado: true,
     darfVerificado: true,
+    gpsVerificada: false,
   });
+});
+
+test("GPS excepcional emitida exige GPS verificada com o total exato", () => {
+  const comum = {
+    status: "EMITIDA",
+    principal: "110.00",
+    juros: "0.00",
+    multa: "0.00",
+    total: "110.00",
+    itens: [{ id: "1", natureza: "SEGURADO", valor: "110.00" }],
+    instrumento: "GPS_EXCECAO" as const,
+  };
+  assert.throws(
+    () => montarResumoDossieObrigacao({ ...comum, documentos: [] }),
+    /GPS excepcional/,
+  );
+  const resumo = montarResumoDossieObrigacao({
+    ...comum,
+    documentos: [{ tipo: "GPS", valorTotal: "110.00", verificado: true }],
+  });
+  assert.equal(resumo.documentos.gpsVerificada, true);
 });
 
 test("recusa totais ou itens previdenciários divergentes", () => {

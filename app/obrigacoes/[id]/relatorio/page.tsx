@@ -5,6 +5,7 @@ import { PrintButton } from "@/components/print-button";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { carregarEspelhoObrigacao } from "@/db/obrigacoes";
 import { montarResumoDossieObrigacao } from "@/lib/relatorio-obrigacao";
+import { nomeInstrumentoRecolhimento } from "@/lib/perfil-recolhimento";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +76,9 @@ export default async function RelatorioObrigacaoPage({
       valorTotal: documento.valor_total,
       verificado: documento.verificado,
     })),
+    instrumento: obrigacao.perfil_instrumento,
   });
+  const usaGps = obrigacao.perfil_instrumento === "GPS_EXCECAO";
 
   return (
     <main className="print-document">
@@ -94,18 +97,16 @@ export default async function RelatorioObrigacaoPage({
           </div>
           <div className="print-document-code">
             <strong>Competência {competencia(obrigacao.competencia)}</strong>
-            <span>{obrigacao.tipo}</span>
+            <span>Obrigação previdenciária</span>
             <span>Status: {obrigacao.status}</span>
           </div>
         </header>
 
         <section className="print-warning">
           <strong>Este dossiê não é uma guia de arrecadação.</strong>
-          <p>
-            O documento oficial para pagamento é o DARF emitido no ambiente
-            competente. Este relatório apenas reconcilia a apuração interna com
-            totalizador, recibo e DARF registrados.
-          </p>
+          <p>{usaGps
+            ? "A GPS registrada está vinculada à exceção formal abaixo. Este dossiê registra a conferência interna e não substitui o documento de arrecadação."
+            : "O documento oficial para pagamento é o DARF emitido no ambiente competente. Este relatório apenas reconcilia a apuração interna com totalizador, recibo e DARF registrados."}</p>
         </section>
 
         <section className="print-totals">
@@ -143,6 +144,10 @@ export default async function RelatorioObrigacaoPage({
 
         <dl className="print-meta">
           <div>
+            <dt>Instrumento congelado</dt>
+            <dd>{obrigacao.perfil_instrumento ? nomeInstrumentoRecolhimento(obrigacao.perfil_instrumento) : "Perfil histórico não registrado"}{obrigacao.perfil_codigo_receita ? ` · código ${obrigacao.perfil_codigo_receita}` : ""}</dd>
+          </div>
+          <div>
             <dt>Conciliação</dt>
             <dd>{data(obrigacao.conciliada_em)}</dd>
           </div>
@@ -150,22 +155,23 @@ export default async function RelatorioObrigacaoPage({
             <dt>Itens rastreáveis</dt>
             <dd>{resumo.itens}</dd>
           </div>
-          <div>
-            <dt>Totalizador / recibo</dt>
-            <dd>
-              {resumo.documentos.totalizadorVerificado ? "Verificado" : "Pendente"}{" "}
-              / {resumo.documentos.reciboVerificado ? "verificado" : "pendente"}
-            </dd>
-          </div>
-          <div>
-            <dt>DARF</dt>
-            <dd>
-              {resumo.documentos.darfVerificado
-                ? "Verificado e conciliado"
-                : "Pendente"}
-            </dd>
-          </div>
+          {usaGps ? (
+            <div><dt>GPS</dt><dd>{resumo.documentos.gpsVerificada ? "Verificada e conciliada" : "Pendente"}</dd></div>
+          ) : (
+            <>
+              <div><dt>Totalizador / recibo</dt><dd>{resumo.documentos.totalizadorVerificado ? "Verificado" : "Pendente"} / {resumo.documentos.reciboVerificado ? "verificado" : "pendente"}</dd></div>
+              <div><dt>DARF</dt><dd>{resumo.documentos.darfVerificado ? "Verificado e conciliado" : "Pendente"}</dd></div>
+            </>
+          )}
         </dl>
+
+        {obrigacao.perfil_evidencia && (
+          <section className="print-warning subtle">
+            <strong>Fundamentação do instrumento</strong>
+            <p>{obrigacao.perfil_evidencia}</p>
+            <p>Conferido por: {obrigacao.perfil_responsavel ?? "Não informado"}</p>
+          </section>
+        )}
 
         {obrigacao.bloqueio_motivo && (
           <section className="print-warning subtle">

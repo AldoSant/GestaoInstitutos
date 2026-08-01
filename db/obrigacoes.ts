@@ -636,14 +636,24 @@ export async function carregarEspelhoObrigacao(
       diferenca: string | null;
       bloqueio_motivo: string | null;
       conciliada_em: Date | null;
+      perfil_instrumento: "DCTFWEB_DARF" | "GPS_EXCECAO" | null;
+      perfil_codigo_receita: string | null;
+      perfil_evidencia: string | null;
+      perfil_responsavel: string | null;
       criado_em: Date;
     }>(
-      `select id, competencia::text, tipo, status, principal::text,
-              juros::text, multa::text, total::text,
-              valor_declarado::text, diferenca::text, bloqueio_motivo,
-              conciliada_em, criado_em
-         from obrigacao_fiscal
-        where id = $1 and empresa_id = $2`,
+      `select o.id, o.competencia::text, o.tipo, o.status, o.principal::text,
+              o.juros::text, o.multa::text, o.total::text,
+              o.valor_declarado::text, o.diferenca::text, o.bloqueio_motivo,
+              o.conciliada_em, o.criado_em,
+              perfil.instrumento perfil_instrumento,
+              perfil.codigo_receita perfil_codigo_receita,
+              perfil.evidencia perfil_evidencia,
+              perfil.responsavel perfil_responsavel
+         from obrigacao_fiscal o
+         left join perfil_recolhimento_previdenciario perfil
+           on perfil.id = o.perfil_recolhimento_id
+        where o.id = $1 and o.empresa_id = $2`,
       [obrigacaoId, empresaId],
     ),
     getPool().query<{

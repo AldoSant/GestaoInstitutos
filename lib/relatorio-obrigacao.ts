@@ -28,6 +28,7 @@ export function montarResumoDossieObrigacao({
   total,
   itens,
   documentos,
+  instrumento = "DCTFWEB_DARF",
 }: {
   status: string;
   principal: string;
@@ -36,6 +37,7 @@ export function montarResumoDossieObrigacao({
   total: string;
   itens: ItemDossieObrigacao[];
   documentos: DocumentoDossieObrigacao[];
+  instrumento?: "DCTFWEB_DARF" | "GPS_EXCECAO" | null;
 }) {
   if (itens.length === 0) {
     throw new Error("A obrigação não possui itens para o dossiê.");
@@ -87,15 +89,27 @@ export function montarResumoDossieObrigacao({
       documento.verificado &&
       centavos(documento.valorTotal, "DARF") === valores.totalCentavos,
   );
+  const gpsValida = documentos.some(
+    (documento) =>
+      documento.tipo === "GPS" &&
+      documento.verificado &&
+      centavos(documento.valorTotal, "GPS") === valores.totalCentavos,
+  );
   if (
     status === "EMITIDA" &&
+    instrumento === "GPS_EXCECAO" &&
+    !gpsValida
+  ) {
+    throw new Error("Obrigação emitida sem GPS excepcional verificada e conciliada.");
+  }
+  if (
+    status === "EMITIDA" &&
+    instrumento !== "GPS_EXCECAO" &&
     (!verificados.has("TOTALIZADOR_DCTFWEB") ||
       !verificados.has("RECIBO_DCTFWEB") ||
       !darfValido)
   ) {
-    throw new Error(
-      "Obrigação emitida sem totalizador, recibo e DARF verificados.",
-    );
+    throw new Error("Obrigação emitida sem totalizador, recibo e DARF verificados.");
   }
   return {
     ...valores,
@@ -107,6 +121,7 @@ export function montarResumoDossieObrigacao({
       totalizadorVerificado: verificados.has("TOTALIZADOR_DCTFWEB"),
       reciboVerificado: verificados.has("RECIBO_DCTFWEB"),
       darfVerificado: darfValido,
+      gpsVerificada: gpsValida,
     },
   };
 }

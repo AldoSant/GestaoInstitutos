@@ -14,6 +14,8 @@ type DadosEspelho = {
     total: string;
     valor_declarado: string | null;
     diferenca: string | null;
+    perfil_instrumento?: "DCTFWEB_DARF" | "GPS_EXCECAO" | null;
+    perfil_codigo_receita?: string | null;
     criado_em: Date;
   };
   itens: Array<{
@@ -46,6 +48,8 @@ const CABECALHO = [
   "competencia",
   "tipo",
   "status",
+  "instrumento_recolhimento",
+  "codigo_receita",
   "folha_lote",
   "folha_revisao",
   "hash_folha",
@@ -127,6 +131,8 @@ export function gerarCsvEspelhoObrigacao(dados: DadosEspelho) {
       celula(dados.obrigacao.competencia.slice(0, 7)),
       celula(dados.obrigacao.tipo),
       celula(dados.obrigacao.status),
+      celula(dados.obrigacao.perfil_instrumento ?? "SEM_PERFIL_CONGELADO"),
+      celula(dados.obrigacao.perfil_codigo_receita),
       item.folha_numero === null ? "" : String(item.folha_numero),
       item.folha_revisao === null ? "" : String(item.folha_revisao),
       celula(item.folha_hash),
