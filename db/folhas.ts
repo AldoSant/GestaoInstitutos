@@ -1689,6 +1689,8 @@ export async function listarOpcoesNovaFolha(
         and mm.vinculo_id = v.id
         and mm.competencia = $2::date
       where t.empresa_id = $1 and t.ativo and m.ativo
+        and t.inicio <= $2::date
+        and (t.fim is null or t.fim >= $2::date)
       group by t.id, m.id
       order by t.numero, m.codigo`,
     [empresaId, competenciaData],

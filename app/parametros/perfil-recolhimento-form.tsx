@@ -3,13 +3,19 @@
 import Link from "next/link";
 import { Landmark } from "lucide-react";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ModalShell } from "@/components/modal-shell";
 import type { InstrumentoRecolhimentoPrevidenciario } from "@/lib/perfil-recolhimento";
 import { salvarPerfilRecolhimento } from "./actions";
 
 export function PerfilRecolhimentoForm() {
+  const searchParams = useSearchParams();
   const [instrumento, setInstrumento] =
     useState<InstrumentoRecolhimentoPrevidenciario>("DCTFWEB_DARF");
+  const competencia = searchParams.get("competencia") ?? "";
+  const inicioVigencia = /^\d{4}-(0[1-9]|1[0-2])$/.test(competencia)
+    ? `${competencia}-01`
+    : "";
 
   return (
     <ModalShell
@@ -52,7 +58,7 @@ export function PerfilRecolhimentoForm() {
         )}
         <label>
           <span>Início da vigência</span>
-          <input name="inicioVigencia" type="date" required />
+          <input name="inicioVigencia" type="date" required defaultValue={inicioVigencia} />
         </label>
         <label>
           <span>Fim da vigência</span>

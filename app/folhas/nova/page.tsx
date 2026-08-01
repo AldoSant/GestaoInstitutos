@@ -12,7 +12,10 @@ import { AppShell } from "@/components/app-shell";
 import { MetricCard, StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { listarOpcoesNovaFolha } from "@/db/folhas";
+import { listarPerfisRecolhimento } from "@/db/perfis-recolhimento";
+import { caminhoAplicacao } from "@/lib/base-path";
 import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
+import { nomeInstrumentoRecolhimento } from "@/lib/perfil-recolhimento";
 import { criarNovaFolha } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -32,9 +35,13 @@ export default async function NovaFolhaPage({
   const competencia = await lerCompetenciaContexto(params.competencia);
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
   let instrumentos: Awaited<ReturnType<typeof listarOpcoesNovaFolha>>;
+  let perfisRecolhimento: Awaited<ReturnType<typeof listarPerfisRecolhimento>>;
   try {
     empresa = await resolverEmpresaAtiva();
-    instrumentos = await listarOpcoesNovaFolha(empresa.id, competencia);
+    [instrumentos, perfisRecolhimento] = await Promise.all([
+      listarOpcoesNovaFolha(empresa.id, competencia),
+      listarPerfisRecolhimento(empresa.id),
+    ]);
   } catch {
     return (
       <AppShell title="Nova folha" eyebrow="Processamento mensal" organization="Não configurada">
@@ -77,6 +84,14 @@ export default async function NovaFolhaPage({
     0,
   );
   const primeiraOpcao = opcoesProntas[0] ?? opcoesSelecionaveis[0];
+  const competenciaData = `${competencia}-01`;
+  const perfilRecolhimento = perfisRecolhimento.find(
+    (item) =>
+      item.publicado &&
+      item.inicio_vigencia <= competenciaData &&
+      item.fim_vigencia >= competenciaData,
+  );
+  const competenciaRotulo = competencia.split("-").reverse().join("/");
 
   return (
       <AppShell
@@ -113,6 +128,42 @@ export default async function NovaFolhaPage({
           />
         </section>
 
+        <section className="panel compact-panel">
+          <form action={caminhoAplicacao("/folhas/nova")} method="get" className="search-field">
+            <label>
+              <span>Competência para preparar</span>
+              <input name="competencia" type="month" required defaultValue={competencia} />
+            </label>
+            <button className="button secondary" type="submit">Atualizar competência</button>
+          </form>
+          <p className="field-help">
+            A seleção de Termo e Meta abaixo sempre corresponde à competência escolhida aqui.
+          </p>
+        </section>
+
+        {!perfilRecolhimento && (
+          <section className="alert-box warning">
+            <AlertTriangle size={22} />
+            <div>
+              <strong>Recolhimento previdenciário ainda não configurado para {competenciaRotulo}</strong>
+              <p>A Folha pode ser preparada e conferida, mas a apuração de retenções ficará bloqueada até a publicação do instrumento fiscal vigente.</p>
+            </div>
+            <Link className="button secondary" href={`/parametros?novoPerfil=1&competencia=${competencia}`}>
+              Configurar recolhimento
+            </Link>
+          </section>
+        )}
+
+        {perfilRecolhimento && (
+          <section className="alert-box success">
+            <CheckCircle2 size={22} />
+            <div>
+              <strong>Recolhimento configurado: {nomeInstrumentoRecolhimento(perfilRecolhimento.instrumento)}</strong>
+              <p>Esta vigência será congelada na apuração previdenciária da competência.</p>
+            </div>
+          </section>
+        )}
+
         <section className="panel cadastro-section">
           <div className="panel-header">
             <div>
@@ -128,13 +179,9 @@ export default async function NovaFolhaPage({
           </div>
           <form action={criarNovaFolha} className="crud-form">
             <label>
-              <span>Competência</span>
-              <input
-                name="competencia"
-                type="month"
-                required
-                defaultValue={competencia}
-              />
+              <span>Competência selecionada</span>
+              <input value={competenciaRotulo} readOnly aria-readonly="true" />
+              <input name="competencia" type="hidden" value={competencia} />
             </label>
             <label className="field-wide">
               <span>Termo e Meta</span>
@@ -270,6 +317,9 @@ export default async function NovaFolhaPage({
               </Link>
               <Link className="button secondary" href="/cadastros">
                 Revisar pessoas
+              </Link>
+              <Link className="button secondary" href="/termos-e-metas">
+                Revisar termos e metas
               </Link>
               <Link
                 className="button secondary"

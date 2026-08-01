@@ -58,6 +58,12 @@ test("folha deixa explícito quando o instrumento segue para demonstrativo PJ", 
 }) => {
   await autenticar(page);
   await page.goto("folhas/nova?competencia=2026-05");
+  await expect(
+    page.getByRole("textbox", { name: "Competência selecionada" }),
+  ).toHaveValue("05/2026");
+  await expect(
+    page.getByRole("textbox", { name: "Competência selecionada" }),
+  ).not.toBeEditable();
   const seletor = page.getByRole("combobox", { name: "Termo e Meta" });
   await expect(seletor).toBeVisible();
   const instrumentos = seletor.locator("option");
