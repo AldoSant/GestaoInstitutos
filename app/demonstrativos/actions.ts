@@ -6,6 +6,7 @@ import { resolverEmpresaAtiva } from "@/db/cadastros";
 import {
   adicionarPagamentoPj,
   abrirNovaRevisaoDemonstrativo,
+  editarPagamentoPj,
   excluirPagamentoPj,
   fecharDemonstrativo,
   materializarDemonstrativoFolhas,
@@ -130,6 +131,47 @@ export async function removerPagamentoPj(formData: FormData) {
           error instanceof Error
             ? error.message
             : "Não foi possível remover o pagamento.",
+      }),
+    );
+  }
+}
+
+export async function atualizarPagamentoPj(formData: FormData) {
+  const competencia = String(formData.get("competencia") ?? "");
+  try {
+    const empresa = await resolverEmpresaAtiva();
+    await editarPagamentoPj({
+      empresaId: empresa.id,
+      pagamentoId: String(formData.get("pagamentoId") ?? ""),
+      prestadorId: String(formData.get("prestadorId") ?? ""),
+      documentoReferencia: String(formData.get("documentoReferencia") ?? ""),
+      valorBruto: formData.get("valorBruto"),
+      retencoes: {
+        INSS: formData.get("inss"),
+        IRRF: formData.get("irrf"),
+        ISS: formData.get("iss"),
+        PIS: formData.get("pis"),
+        COFINS: formData.get("cofins"),
+        CSLL: formData.get("csll"),
+      },
+    });
+    revalidatePath("/demonstrativos");
+    redirect(destino(competencia, { sucesso: "Pagamento PJ atualizado no rascunho." }));
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      String(error.digest).startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+    redirect(
+      destino(competencia, {
+        erro:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível atualizar o pagamento PJ.",
       }),
     );
   }

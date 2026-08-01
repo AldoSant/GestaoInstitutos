@@ -5,6 +5,7 @@ import pg from "pg";
 import {
   abrirNovaRevisaoDemonstrativo,
   carregarRelatorioDemonstrativo,
+  editarPagamentoPj,
   fecharDemonstrativo,
   materializarDemonstrativoFolhas,
   registrarConferenciaDemonstrativo,
@@ -80,6 +81,38 @@ test(
          values ($1, $2, $3)`,
         [empresaId, demonstrativoId, obrigacaoId],
       );
+      await editarPagamentoPj({
+        empresaId,
+        pagamentoId,
+        prestadorId,
+        documentoReferencia: "NF TESTE RETIFICADA",
+        valorBruto: "1200,00",
+        retencoes: { ISS: "120,00", IRRF: "30,00" },
+        client,
+      });
+      const pagamentoEditado = await client.query<{
+        documento: string;
+        bruto: string;
+        retencoes: string;
+        liquido: string;
+        itens_retencao: number;
+      }>(
+        `select p.documento_referencia documento, p.valor_bruto::text bruto,
+                p.total_retencoes::text retencoes, p.valor_liquido::text liquido,
+                count(r.id)::int itens_retencao
+           from pagamento_prestador p
+           left join pagamento_retencao r on r.pagamento_id = p.id
+          where p.id = $1
+          group by p.id`,
+        [pagamentoId],
+      );
+      assert.deepEqual(pagamentoEditado.rows[0], {
+        documento: "NF TESTE RETIFICADA",
+        bruto: "1200.00",
+        retencoes: "150.00",
+        liquido: "1050.00",
+        itens_retencao: 2,
+      });
       await client.query("set constraints all immediate");
 
       await client.query("savepoint classificacao_invalida");

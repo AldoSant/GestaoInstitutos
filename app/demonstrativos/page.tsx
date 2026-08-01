@@ -10,6 +10,7 @@ import {
   FileClock,
   FileText,
   LockKeyhole,
+  Pencil,
   Plus,
   ReceiptText,
   RefreshCw,
@@ -25,6 +26,7 @@ import { caminhoAplicacao } from "@/lib/base-path";
 import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 import {
   abrirRevisaoDemonstrativo,
+  atualizarPagamentoPj,
   gerarRascunhoDemonstrativo,
   conferirDemonstrativo,
   concluirDemonstrativo,
@@ -42,6 +44,7 @@ type SearchParams = Promise<{
   conferir?: string | string[];
   fechar?: string | string[];
   revisar?: string | string[];
+  editar?: string | string[];
 }>;
 
 type Retencao = {
@@ -107,6 +110,14 @@ export default async function DemonstrativosPage({
 
   const demonstrativo = dados.demonstrativo;
   const fechado = demonstrativo?.status === "FECHADO";
+  const pagamentoEmEdicao = dados.pagamentos.find(
+    (item) =>
+      item.id === primeiro(params.editar) &&
+      item.origem === "NOTA_FISCAL_PJ",
+  );
+  const retencoesEmEdicao = (pagamentoEmEdicao?.retencoes ?? []) as Retencao[];
+  const valorRetencaoEmEdicao = (tributo: string) =>
+    retencoesEmEdicao.find((item) => item.tributo === tributo)?.valor ?? "0,00";
   const pagamentosPf = dados.pagamentos.filter(
     (item) => item.tipo_pessoa === "FISICA",
   ).length;
@@ -139,17 +150,20 @@ export default async function DemonstrativosPage({
         </section>
       )}
 
-      {novoPj && !fechado && (
+      {(novoPj || pagamentoEmEdicao) && !fechado && (
         <ModalShell
-          title="Adicionar pagamento PJ"
+          title={pagamentoEmEdicao ? "Editar pagamento PJ" : "Adicionar pagamento PJ"}
           description="Transcreva os valores do documento fiscal. Nenhuma retenção será calculada automaticamente."
           closeHref={fecharModal}
         >
-          <form action={salvarPagamentoPj} className="crud-form">
+          <form action={pagamentoEmEdicao ? atualizarPagamentoPj : salvarPagamentoPj} className="crud-form">
             <input type="hidden" name="competencia" value={competencia} />
+            {pagamentoEmEdicao && (
+              <input type="hidden" name="pagamentoId" value={pagamentoEmEdicao.id} />
+            )}
             <label className="field-wide">
               <span>Prestador pessoa jurídica</span>
-              <select name="prestadorId" required defaultValue="">
+              <select name="prestadorId" required defaultValue={pagamentoEmEdicao?.prestador_id ?? ""}>
                 <option value="" disabled>Selecione o prestador</option>
                 {dados.prestadoresPj.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -164,12 +178,13 @@ export default async function DemonstrativosPage({
                 name="documentoReferencia"
                 required
                 maxLength={160}
+                defaultValue={pagamentoEmEdicao?.documento_referencia ?? ""}
                 placeholder="Ex.: NF 000123 de 30/06/2026"
               />
             </label>
             <label>
               <span>Valor bruto</span>
-              <input name="valorBruto" required inputMode="decimal" placeholder="0,00" />
+              <input name="valorBruto" required inputMode="decimal" placeholder="0,00" defaultValue={pagamentoEmEdicao?.valor_bruto ?? ""} />
             </label>
             {[
               ["inss", "INSS"],
@@ -184,7 +199,7 @@ export default async function DemonstrativosPage({
                 <input
                   name={nome}
                   inputMode="decimal"
-                  defaultValue="0,00"
+                  defaultValue={valorRetencaoEmEdicao(rotulo)}
                   aria-label={`Retenção ${rotulo}`}
                 />
               </label>
@@ -201,7 +216,7 @@ export default async function DemonstrativosPage({
               type="submit"
               disabled={dados.prestadoresPj.length === 0}
             >
-              Registrar pagamento
+              {pagamentoEmEdicao ? "Salvar pagamento" : "Registrar pagamento"}
             </button>
             <Link className="button secondary" href={fecharModal}>Cancelar</Link>
           </form>
@@ -481,13 +496,21 @@ export default async function DemonstrativosPage({
                     <td><strong>{moeda(item.valor_liquido)}</strong></td>
                     <td>
                       {item.origem !== "FOLHA_PF" && !fechado ? (
-                        <form action={removerPagamentoPj}>
-                          <input type="hidden" name="competencia" value={competencia} />
-                          <input type="hidden" name="pagamentoId" value={item.id} />
-                          <button className="row-text-action danger" type="submit">
-                            <Trash2 size={13} /> Remover
-                          </button>
-                        </form>
+                        <div className="row-actions compact">
+                          <Link
+                            className="row-text-action"
+                            href={`/demonstrativos?${new URLSearchParams({ competencia, editar: item.id }).toString()}`}
+                          >
+                            <Pencil size={13} /> Editar
+                          </Link>
+                          <form action={removerPagamentoPj}>
+                            <input type="hidden" name="competencia" value={competencia} />
+                            <input type="hidden" name="pagamentoId" value={item.id} />
+                            <button className="row-text-action danger" type="submit">
+                              <Trash2 size={13} /> Remover
+                            </button>
+                          </form>
+                        </div>
                       ) : (
                         <small>Gerenciado pela Folha</small>
                       )}

@@ -384,6 +384,129 @@ export async function excluirPagamentoPj({
   }
 }
 
+export async function editarPagamentoPj({
+  empresaId,
+  pagamentoId,
+  prestadorId,
+  documentoReferencia,
+  valorBruto,
+  retencoes,
+  client: clientInformado,
+}: {
+  empresaId: string;
+  pagamentoId: string;
+  prestadorId: string;
+  documentoReferencia: string;
+  valorBruto: unknown;
+  retencoes: Record<string, unknown>;
+  client?: PoolClient;
+}) {
+  validarId(empresaId, "Empresa");
+  validarId(pagamentoId, "Pagamento");
+  validarId(prestadorId, "Prestador");
+  const referencia = documentoReferencia.trim();
+  if (referencia.length < 3 || referencia.length > 160) {
+    throw new Error("Informe a nota fiscal ou documento de referência.");
+  }
+  const brutoCentavos = centavosFormulario(valorBruto, "Valor bruto");
+  if (brutoCentavos === 0) throw new Error("Valor bruto deve ser maior que zero.");
+  const tributos = ["INSS", "IRRF", "ISS", "PIS", "COFINS", "CSLL"] as const;
+  const linhas = tributos
+    .map((tributo) => ({
+      tributo,
+      centavos: centavosFormulario(retencoes[tributo] ?? "0", tributo),
+    }))
+    .filter((item) => item.centavos > 0);
+  const totalRetencoes = linhas.reduce((total, item) => total + item.centavos, 0);
+  if (totalRetencoes > brutoCentavos) {
+    throw new Error("As retenções não podem superar o valor bruto.");
+  }
+
+  const client = clientInformado ?? (await getPool().connect());
+  const controlaTransacao = clientInformado === undefined;
+  try {
+    if (controlaTransacao) await client.query("begin");
+    const pagamento = await client.query<{
+      demonstrativo_id: string;
+      origem: string;
+      status: string;
+    }>(
+      `select p.demonstrativo_id, p.origem, d.status
+         from pagamento_prestador p
+         join demonstrativo_mensal d on d.id = p.demonstrativo_id
+        where p.id = $1 and p.empresa_id = $2
+        for update`,
+      [pagamentoId, empresaId],
+    );
+    if (!pagamento.rows[0]) throw new Error("Pagamento não encontrado.");
+    if (pagamento.rows[0].origem !== "NOTA_FISCAL_PJ") {
+      throw new Error("Somente pagamentos PJ por documento podem ser editados aqui.");
+    }
+    if (pagamento.rows[0].status === "FECHADO") {
+      throw new Error("Demonstrativo fechado não pode ser alterado.");
+    }
+    const prestador = await client.query<{ nome: string; cnpj: string | null }>(
+      `select p.nome_razao_social nome, p.cnpj
+         from prestador pr
+         join pessoa p on p.id = pr.pessoa_id and p.empresa_id = pr.empresa_id
+        where pr.id = $1 and pr.empresa_id = $2 and pr.ativo
+          and p.ativo and p.tipo = 'JURIDICA'`,
+      [prestadorId, empresaId],
+    );
+    if (!prestador.rows[0]) throw new Error("Selecione um prestador PJ ativo.");
+    await client.query(
+      `update pagamento_prestador
+          set prestador_id = $2, documento_referencia = $3,
+              beneficiario_snapshot = jsonb_build_object('nome', $4::text, 'cnpj', $5::text),
+              valor_bruto = $6, total_retencoes = $7, valor_liquido = $8
+        where id = $1`,
+      [
+        pagamentoId,
+        prestadorId,
+        referencia,
+        prestador.rows[0].nome,
+        prestador.rows[0].cnpj,
+        decimalCentavos(brutoCentavos),
+        decimalCentavos(totalRetencoes),
+        decimalCentavos(brutoCentavos - totalRetencoes),
+      ],
+    );
+    await client.query(`delete from pagamento_retencao where pagamento_id = $1`, [
+      pagamentoId,
+    ]);
+    for (const linha of linhas) {
+      await client.query(
+        `insert into pagamento_retencao (
+           empresa_id, pagamento_id, tributo, valor, origem,
+           evidencia_referencia, snapshot
+         ) values ($1, $2, $3, $4, 'DOCUMENTO_FISCAL', $5, '{}')`,
+        [
+          empresaId,
+          pagamentoId,
+          linha.tributo,
+          decimalCentavos(linha.centavos),
+          referencia,
+        ],
+      );
+    }
+    await atualizarTotais(client, pagamento.rows[0].demonstrativo_id);
+    await client.query(
+      `update demonstrativo_mensal
+          set status = 'RASCUNHO', hash_resultado = null,
+              atualizado_em = now()
+        where id = $1`,
+      [pagamento.rows[0].demonstrativo_id],
+    );
+    await client.query("set constraints all immediate");
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function conteudoHashDemonstrativo(
   client: PoolClient,
   empresaId: string,
@@ -809,7 +932,7 @@ export async function carregarDemonstrativo(
         [empresaId, mes],
       ),
       getPool().query(
-        `select p.id, p.tipo_pessoa, p.origem, p.documento_referencia,
+        `select p.id, p.prestador_id, p.tipo_pessoa, p.origem, p.documento_referencia,
                 p.valor_bruto::text, p.total_retencoes::text,
                 p.valor_liquido::text, p.beneficiario_snapshot,
                 pr.matricula,
