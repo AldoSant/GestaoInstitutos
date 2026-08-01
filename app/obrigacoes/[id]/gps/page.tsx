@@ -82,6 +82,9 @@ export default async function MemoriasGpsPage({
         <Link className="button secondary" href="/obrigacoes">
           <ArrowLeft size={16} /> Voltar às obrigações
         </Link>
+        <Link className="button secondary" href={`/obrigacoes/${id}/gps/espelho`}>
+          Baixar CSV
+        </Link>
         <PrintButton label="Imprimir memórias GPS" />
       </nav>
       <article className="print-sheet">
