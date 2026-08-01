@@ -48,6 +48,87 @@ export type ItemFgtsCalculado = ItemApuracaoFgts & {
   valorFgtsCentavos: number;
 };
 
+export type DiagnosticoProntidaoFgts = {
+  folhasFechadas: number;
+  trabalhadoresElegiveis: number;
+  categoriasNaoHomologadas: number;
+  rubricasComIncidenciaFgts: number;
+  eventosEsocialAceitos: number;
+  s5003Conciliado: boolean;
+  s5013Conciliado: boolean;
+  gfdRegistrada: boolean;
+};
+
+export type EtapaProntidaoFgts = {
+  id: string;
+  titulo: string;
+  concluida: boolean;
+  bloqueiaEmissao: boolean;
+  orientacao: string;
+};
+
+/**
+ * Separa a prontidão interna da emissão oficial. A GFD só existe depois dos
+ * eventos aceitos no eSocial e é emitida no FGTS Digital, nunca por um PDF
+ * produzido por esta aplicação.
+ */
+export function avaliarProntidaoFgts(
+  dados: DiagnosticoProntidaoFgts,
+): { prontaParaEmitirNoPortal: boolean; etapas: EtapaProntidaoFgts[] } {
+  const categoriasProntas =
+    dados.trabalhadoresElegiveis > 0 && dados.categoriasNaoHomologadas === 0;
+  const rubricasProntas = dados.rubricasComIncidenciaFgts > 0;
+  const folhaPronta = dados.folhasFechadas > 0 && categoriasProntas && rubricasProntas;
+  const eventosProntos = dados.eventosEsocialAceitos > 0;
+  const conciliacaoPronta = dados.s5003Conciliado && dados.s5013Conciliado;
+  const etapas: EtapaProntidaoFgts[] = [
+    {
+      id: "folha",
+      titulo: "Folha trabalhista fechada",
+      concluida: folhaPronta,
+      bloqueiaEmissao: true,
+      orientacao: !dados.folhasFechadas
+        ? "Feche uma folha da competência."
+        : !categoriasProntas
+          ? "Classifique todos os vínculos em categorias eSocial homologadas para FGTS."
+          : !rubricasProntas
+            ? "Cadastre e homologue a incidência de FGTS de cada rubrica."
+            : "Folha e bases internas prontas para transmissão.",
+    },
+    {
+      id: "esocial",
+      titulo: "Remunerações aceitas no eSocial",
+      concluida: eventosProntos,
+      bloqueiaEmissao: true,
+      orientacao: eventosProntos
+        ? "Há evento(s) de remuneração aceito(s)."
+        : "Transmita as remunerações por provedor homologado ou pelo ambiente oficial e registre os recibos.",
+    },
+    {
+      id: "totalizadores",
+      titulo: "S-5003 e S-5013 conciliados",
+      concluida: conciliacaoPronta,
+      bloqueiaEmissao: true,
+      orientacao: conciliacaoPronta
+        ? "A apuração interna confere com os totalizadores oficiais."
+        : "Importe ou registre os retornos S-5003/S-5013 e resolva qualquer diferença antes da GFD.",
+    },
+    {
+      id: "gfd",
+      titulo: "GFD oficial registrada",
+      concluida: dados.gfdRegistrada,
+      bloqueiaEmissao: false,
+      orientacao: dados.gfdRegistrada
+        ? "A GFD oficial está registrada para conferência e pagamento."
+        : "No FGTS Digital, gere a Guia Rápida ou Parametrizada e registre a GFD retornada, com PDF e valor.",
+    },
+  ];
+  return {
+    prontaParaEmitirNoPortal: folhaPronta && eventosProntos && conciliacaoPronta,
+    etapas,
+  };
+}
+
 function inteiroSeguro(valor: number, campo: string) {
   if (!Number.isSafeInteger(valor) || valor < 0) {
     throw new Error(`${campo} deve ser um inteiro não negativo em centavos.`);
