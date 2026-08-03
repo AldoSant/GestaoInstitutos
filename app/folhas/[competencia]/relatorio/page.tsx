@@ -91,6 +91,7 @@ export default async function RelatorioFolhaPage({
     const snapshot = item.snapshots as {
       pessoa?: {
         nome?: string;
+        tipo?: "FISICA" | "JURIDICA";
         cpf?: string | null;
         cnpj?: string | null;
       };
@@ -104,6 +105,7 @@ export default async function RelatorioFolhaPage({
     return {
       id: item.id,
       nome: snapshot.pessoa?.nome ?? "Prestador não identificado",
+      tipoPessoa: snapshot.pessoa?.tipo === "JURIDICA" ? "JURIDICA" : "FISICA",
       documento: snapshot.pessoa?.cpf ?? snapshot.pessoa?.cnpj ?? null,
       matricula: snapshot.prestador?.matricula ?? "—",
       nitPisPasep: snapshot.prestador?.nitPisPasep ?? null,
@@ -251,7 +253,7 @@ export default async function RelatorioFolhaPage({
                 <td>
                   <strong>{item.nome}</strong>
                   <small>
-                    Matrícula {item.matricula} · {item.atividade}
+                    {item.tipoPessoa === "FISICA" ? "PF" : "PJ"} · matrícula {item.matricula} · {item.atividade}
                   </small>
                 </td>
                 <td>{moeda(item.totalProventos)}</td>
@@ -340,8 +342,8 @@ export default async function RelatorioFolhaPage({
               <span>Demonstrativo individual da Folha</span>
               <h2>{item.nome}</h2>
               <p>
-                {formatarCpfCnpj(item.documento)} · matrícula {item.matricula} ·
-                NIT/PIS/PASEP {item.nitPisPasep ?? "não informado"}
+                {item.tipoPessoa === "FISICA" ? "Pessoa física" : "Pessoa jurídica"} · {formatarCpfCnpj(item.documento)} · matrícula {item.matricula}
+                {item.tipoPessoa === "FISICA" && ` · NIT/PIS/PASEP ${item.nitPisPasep ?? "não informado"}`}
               </p>
             </div>
             <div className="print-document-code">

@@ -11,6 +11,7 @@ function item(
   return {
     id: "item-1",
     nome: "Pessoa Teste",
+    tipoPessoa: "FISICA",
     documento: "00000000000",
     matricula: "M-1",
     nitPisPasep: "00000000000",

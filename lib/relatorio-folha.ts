@@ -16,6 +16,7 @@ export type LinhaRelatorioFolha = {
 export type ItemRelatorioFolha = {
   id: string;
   nome: string;
+  tipoPessoa: "FISICA" | "JURIDICA";
   documento: string | null;
   matricula: string;
   nitPisPasep: string | null;
