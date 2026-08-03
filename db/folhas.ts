@@ -253,42 +253,43 @@ async function prevalidarCriacaoFolha(
       where v.empresa_id = $1 and v.termo_id = $2 and v.meta_id = $3
         and v.ativo and v.inicio <= $4::date
         and (v.fim is null or v.fim >= $4::date)
-        and p.tipo = 'FISICA'
       order by p.nome_razao_social`,
     [empresaId, termoId, metaId, competencia],
   );
   if (candidatos.rowCount === 0) {
-    throw new Error(
-      "Este instrumento não possui vínculo PF para Folha nesta competência. Registre pagamentos PJ no Demonstrativo mensal.",
-    );
+    throw new Error("Nenhum Vínculo ativo atende ao Termo, Meta e competência.");
   }
 
   const problemas: string[] = [];
   for (const candidato of candidatos.rows) {
     const identificacao = `${candidato.nome} (${candidato.matricula})`;
-    const decisao = resolverEnquadramentoPrestador({
-      tipoPessoa: candidato.tipo_pessoa,
-      categoriaContribuinte: candidato.categoria_contribuinte,
-    });
-    if (!decisao.suportado) {
-      problemas.push(`${identificacao}: ${decisao.motivo}`);
-      continue;
-    }
-    if (
-      (candidato.tipo_pessoa === "FISICA" && !candidato.cpf) ||
-      (candidato.tipo_pessoa === "JURIDICA" && !candidato.cnpj)
-    ) {
+    if (candidato.tipo_pessoa === "FISICA") {
+      const decisao = resolverEnquadramentoPrestador({
+        tipoPessoa: candidato.tipo_pessoa,
+        categoriaContribuinte: candidato.categoria_contribuinte,
+      });
+      if (!decisao.suportado) {
+        problemas.push(`${identificacao}: ${decisao.motivo}`);
+        continue;
+      }
+      if (!candidato.cpf) {
+        problemas.push(`${identificacao}: documento fiscal não informado.`);
+      }
+      if (!candidato.nit_pis_pasep?.trim()) {
+        problemas.push(`${identificacao}: NIT/PIS/PASEP não informado.`);
+      }
+    } else if (!candidato.cnpj) {
       problemas.push(`${identificacao}: documento fiscal não informado.`);
-    }
-    if (!candidato.nit_pis_pasep?.trim()) {
-      problemas.push(`${identificacao}: NIT/PIS/PASEP não informado.`);
     }
     if (candidato.exige_medicao_mensal && !candidato.medicao_id) {
       problemas.push(
         `${identificacao}: medição mensal obrigatória não registrada para a competência.`,
       );
     }
-    if (candidato.pendencias_outras_fontes > 0) {
+    if (
+      candidato.tipo_pessoa === "FISICA" &&
+      candidato.pendencias_outras_fontes > 0
+    ) {
       problemas.push(
         `${identificacao}: ${candidato.pendencias_outras_fontes} comprovante(s) de outra fonte aguardam conferência.`,
       );
@@ -1637,18 +1638,17 @@ export async function listarOpcoesNovaFolha(
                 and nullif(btrim(pr.nit_pis_pasep), '') is null
             )::int nit_pendente,
             count(distinct v.id) filter (
-              where p.tipo = 'FISICA'
-                and v.exige_medicao_mensal and mm.id is null
+              where v.exige_medicao_mensal and mm.id is null
             )::int medicoes_pendentes,
             count(distinct v.id) filter (
-              where p.tipo = 'FISICA'
-                and (conta.id is null
+              where conta.id is null
                  or nullif(btrim(conta.agencia), '') is null
                  or nullif(btrim(conta.numero), '') is null
-                 or conta.tipo not in ('CORRENTE', 'POUPANCA'))
+                 or conta.tipo not in ('CORRENTE', 'POUPANCA')
             )::int contas_pendentes,
             count(distinct v.id) filter (
-              where p.tipo = 'FISICA' and p.cpf is null
+              where (p.tipo = 'FISICA' and p.cpf is null)
+                 or (p.tipo = 'JURIDICA' and p.cnpj is null)
             )::int documentos_pendentes,
             count(distinct v.id) filter (
               where p.tipo = 'FISICA'

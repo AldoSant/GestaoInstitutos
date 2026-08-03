@@ -44,7 +44,7 @@ export default async function NovaFolhaPage({
     ]);
   } catch {
     return (
-      <AppShell title="Nova folha" eyebrow="Processamento mensal" organization="Não configurada">
+      <AppShell title="Novo processamento" eyebrow="PF, PJ e GPS" organization="Não configurada">
         <Link href="/folhas" className="back-link"><ArrowLeft size={16} /> Voltar</Link>
         <section className="alert-box danger">
           <Database size={22} />
@@ -65,18 +65,15 @@ export default async function NovaFolhaPage({
       bloqueios,
       vinculosPf: Number(item.vinculos_pf),
       vinculosPj: Number(item.vinculos) - Number(item.vinculos_pf),
-      selecionavel: Number(item.vinculos_pf) > 0 && !item.folha_existente,
+      selecionavel: Number(item.vinculos) > 0 && !item.folha_existente,
       pronta:
-        Number(item.vinculos_pf) > 0 &&
+        Number(item.vinculos) > 0 &&
         bloqueios === 0 &&
         !item.folha_existente,
     };
   });
   const opcoesProntas = opcoes.filter((item) => item.pronta);
   const opcoesSelecionaveis = opcoes.filter((item) => item.selecionavel);
-  const opcoesSomentePj = opcoes.filter(
-    (item) => item.vinculosPf === 0 && item.vinculosPj > 0,
-  );
   const vinculosPf = opcoes.reduce(
     (total, item) => total + item.vinculosPf,
     0,
@@ -98,14 +95,14 @@ export default async function NovaFolhaPage({
 
   return (
       <AppShell
-        title="Nova folha"
-        eyebrow="Processamento mensal"
+        title="Novo processamento"
+        eyebrow="PF, PJ e GPS"
         organization={empresa.nomeFantasia ?? empresa.razaoSocial}
       >
         <Link href="/folhas" className="back-link"><ArrowLeft size={16} /> Voltar</Link>
         {erro && (
           <section className="feedback-banner error" role="alert">
-            <strong>Folha não criada</strong><span>{erro}</span>
+            <strong>Processamento não criado</strong><span>{erro}</span>
           </section>
         )}
         <section className="metrics-grid" aria-label="Pré-requisitos da folha">
@@ -116,9 +113,9 @@ export default async function NovaFolhaPage({
             icon={CheckCircle2}
           />
           <MetricCard
-            label="Vínculos PF para folha"
-            value={String(vinculosPf)}
-            detail={`${vinculosPj} PJ em documentos de pagamento`}
+            label="Prestadores no processamento"
+            value={String(vinculosPf + vinculosPj)}
+            detail={`${vinculosPf} PF e ${vinculosPj} PJ`}
             icon={UsersRound}
             tone="blue"
           />
@@ -172,7 +169,7 @@ export default async function NovaFolhaPage({
             <div>
               <span className="section-kicker">Lote mensal</span>
               <h2>Selecionar competência e instrumento</h2>
-              <p>Serão incluídos os vínculos PF ativos no primeiro dia da competência. Pagamentos PJ são registrados no demonstrativo mensal por documento fiscal.</p>
+              <p>Serão incluídos os vínculos PF e PJ ativos no primeiro dia da competência. INSS e GPS individual são apurados apenas para PF elegível.</p>
             </div>
             <StatusBadge tone={opcoesSelecionaveis.length ? "info" : "warning"}>
               {opcoesSelecionaveis.length
@@ -206,41 +203,20 @@ export default async function NovaFolhaPage({
                   >
                     Termo {item.termo_numero} · Meta {item.meta_codigo} —{" "}
                     {item.pronta
-                      ? `${item.vinculosPf} vínculo(s) PF · pronta`
+                      ? `${item.vinculosPf} PF + ${item.vinculosPj} PJ · pronta`
                       : item.folha_existente
                         ? "folha já criada"
-                        : item.vinculosPf === 0
-                          ? item.vinculosPj > 0
-                            ? `${item.vinculosPj} pagamento(s) PJ · usar demonstrativo`
-                            : "sem vínculos"
-                          : `${item.vinculosPf} vínculo(s) PF · ${item.bloqueios} pendência(s) para resolver`}
+                        : item.vinculos === 0
+                          ? "sem vínculos"
+                          : `${item.vinculosPf} PF + ${item.vinculosPj} PJ · ${item.bloqueios} pendência(s) para resolver`}
                   </option>
                 ))}
               </select>
             </label>
             <button className="button primary" type="submit" disabled={!opcoesSelecionaveis.length}>
-              <PlayCircle size={16} /> Validar, criar e processar
+              <PlayCircle size={16} /> Validar e gerar processamento mensal
             </button>
           </form>
-          {opcoesSomentePj.length > 0 && (
-            <div className="guided-actions folha-pj-guidance">
-              <WalletCards size={19} />
-              <div>
-                <strong>Instrumentos com pagamentos exclusivamente PJ</strong>
-                <p>
-                  {opcoesSomentePj.length} instrumento(s) nesta competência não
-                  geram Folha PF. Registre os documentos e pagamentos no
-                  Demonstrativo mensal.
-                </p>
-              </div>
-              <Link
-                className="button primary"
-                href={`/demonstrativos?competencia=${competencia}`}
-              >
-                Abrir demonstrativo mensal
-              </Link>
-            </div>
-          )}
         </section>
 
         <section className="panel">
@@ -260,7 +236,7 @@ export default async function NovaFolhaPage({
                 <tr>
                   <th>Termo e meta</th>
                   <th>Vínculos</th>
-                  <th>Pendências da folha PF</th>
+                  <th>Pendências do processamento</th>
                   <th>Conta</th>
                   <th>Situação</th>
                 </tr>
@@ -316,8 +292,6 @@ export default async function NovaFolhaPage({
                             : "Pronta"
                           : item.folha_existente
                             ? "Já criada"
-                            : item.vinculosPf === 0 && item.vinculosPj > 0
-                              ? "Usar demonstrativo"
                             : "Bloqueada"}
                       </StatusBadge>
                     </td>

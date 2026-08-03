@@ -51,11 +51,11 @@ export default async function FolhasPage() {
     folhas = await listarFolhas(empresa.id);
   } catch {
     return (
-      <AppShell title="Folhas mensais" eyebrow="Processamento mensal" organization="Não configurada">
+      <AppShell title="Processamentos mensais" eyebrow="PF, PJ e GPS" organization="Não configurada">
         <section className="alert-box danger">
           <Database size={22} />
           <div>
-            <strong>Folhas indisponíveis</strong>
+            <strong>Processamentos indisponíveis</strong>
             <p>Não foi possível carregar as competências. Tente novamente.</p>
           </div>
         </section>
@@ -70,16 +70,16 @@ export default async function FolhasPage() {
 
   return (
       <AppShell
-        title="Folhas mensais"
-        eyebrow="Processamento mensal"
+        title="Processamentos mensais"
+        eyebrow="PF, PJ e GPS"
         organization={empresa.nomeFantasia ?? empresa.razaoSocial}
         actions={
           <Link href="/folhas/nova" className="button primary">
-            <Plus size={16} /> Nova folha
+            <Plus size={16} /> Novo processamento
           </Link>
         }
       >
-        <section className="metrics-grid" aria-label="Situação das folhas">
+        <section className="metrics-grid" aria-label="Situação dos processamentos">
           <MetricCard
             label="Em cálculo"
             value={String(processando)}
@@ -106,7 +106,7 @@ export default async function FolhasPage() {
             <div>
               <span className="section-kicker">Histórico</span>
               <h2>Competências processadas</h2>
-              <p>Consulte valores, pendências e situação de cada competência.</p>
+              <p>Cada lote reúne PF e PJ do instrumento. GPS é preparada somente para retenções PF.</p>
             </div>
             <StatusBadge tone={folhas.length ? "success" : "neutral"}>
               {folhas.length} lote(s)

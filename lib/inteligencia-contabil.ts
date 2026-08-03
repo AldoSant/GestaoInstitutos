@@ -73,7 +73,9 @@ export type EnquadramentoPrestador = {
 export type DecisaoEnquadramento =
   | {
       suportado: true;
-      cenario: "PF_CONTRIBUINTE_INDIVIDUAL_701";
+      cenario:
+        | "PF_CONTRIBUINTE_INDIVIDUAL_701"
+        | "PJ_PAGAMENTO_SEM_PREVIDENCIA";
       fundamentos: string[];
     }
   | {
@@ -93,19 +95,10 @@ export function resolverEnquadramentoPrestador(
   const categoria = entrada.categoriaContribuinte?.trim() || null;
   if (entrada.tipoPessoa === "JURIDICA") {
     return {
-      suportado: false,
-      cenario: "PESSOA_JURIDICA_FORA_DA_FOLHA",
-      motivo:
-        "Pessoa Jurídica exige documento fiscal, natureza do serviço, regime tributário e análise própria de IRRF/contribuições. Não deve usar a retenção de contribuinte individual.",
-      dadosNecessarios: [
-        "natureza e código do serviço",
-        "município de incidência e documento fiscal",
-        "regime tributário e enquadramento do fornecedor",
-        "retenções federais, previdenciárias e municipais aplicáveis",
-      ],
+      suportado: true,
+      cenario: "PJ_PAGAMENTO_SEM_PREVIDENCIA",
       fundamentos: [
         FONTES_NORMATIVAS.EFD_REINF_DCTFWEB.codigo,
-        FONTES_NORMATIVAS.CONTRIBUINTE_INDIVIDUAL.codigo,
       ],
     };
   }

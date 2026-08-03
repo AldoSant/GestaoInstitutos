@@ -52,7 +52,7 @@ export async function criarNovaFolha(formData: FormData) {
     redirect(`/folhas/nova?${params}`);
   }
   revalidatePath("/folhas");
-  redirect(destino(folhaId, "Folha criada e enviada para processamento."));
+  redirect(destino(folhaId, "Processamento mensal criado e enviado para cálculo."));
 }
 
 export async function solicitarReprocessamento(formData: FormData) {

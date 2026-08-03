@@ -23,7 +23,7 @@ test("libera somente o cenário 701 atualmente homologado", () => {
   assert.equal(decisao.cenario, "PF_CONTRIBUINTE_INDIVIDUAL_701");
 });
 
-test("bloqueia categorias ausentes, não homologadas e Pessoa Jurídica", () => {
+test("bloqueia categorias PF ausentes ou não homologadas e classifica PJ sem previdência", () => {
   assert.equal(
     resolverEnquadramentoPrestador({
       tipoPessoa: "FISICA",
@@ -38,11 +38,10 @@ test("bloqueia categorias ausentes, não homologadas e Pessoa Jurídica", () => 
     }).cenario,
     "CATEGORIA_PF_NAO_HOMOLOGADA",
   );
-  assert.equal(
-    resolverEnquadramentoPrestador({
-      tipoPessoa: "JURIDICA",
-      categoriaContribuinte: null,
-    }).cenario,
-    "PESSOA_JURIDICA_FORA_DA_FOLHA",
-  );
+  const pj = resolverEnquadramentoPrestador({
+    tipoPessoa: "JURIDICA",
+    categoriaContribuinte: null,
+  });
+  assert.equal(pj.suportado, true);
+  assert.equal(pj.cenario, "PJ_PAGAMENTO_SEM_PREVIDENCIA");
 });

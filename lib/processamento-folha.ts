@@ -113,6 +113,7 @@ export function processarVinculoFolha(
   entrada: EntradaVinculoFolha,
   regra: RegraFiscalParametros,
 ) {
+  const pessoaJuridica = entrada.tipoPessoa === "JURIDICA";
   const enquadramento = resolverEnquadramentoPrestador({
     tipoPessoa: entrada.tipoPessoa,
     categoriaContribuinte: entrada.categoriaContribuinte,
@@ -172,13 +173,13 @@ export function processarVinculoFolha(
   const descontosEventosCentavos = linhas
     .filter((linha) => linha.natureza === "DESCONTO")
     .reduce((total, linha) => total + linha.valorCentavos, 0);
-  const baseInssBrutaCentavos = Math.max(
+  const baseInssBrutaCentavos = pessoaJuridica ? 0 : Math.max(
     0,
     linhas
       .filter((linha) => linha.incideInss)
       .reduce((total, linha) => total + efeitoIncidencia(linha), 0),
   );
-  const baseIrrfBrutaCentavos = Math.max(
+  const baseIrrfBrutaCentavos = pessoaJuridica ? 0 : Math.max(
     0,
     linhas
       .filter((linha) => linha.incideIrrf)
@@ -193,7 +194,7 @@ export function processarVinculoFolha(
   }
 
   const inss =
-    entrada.descontaInss && !entrada.isentoInss
+    !pessoaJuridica && entrada.descontaInss && !entrada.isentoInss
       ? calcularInssPrestador(
           deCentavos(baseInssBrutaCentavos),
           deCentavos(baseOutrasFontesCentavos),
@@ -207,16 +208,17 @@ export function processarVinculoFolha(
         )
       : {
           base: 0,
-          aliquota:
-            entrada.enquadramentoPrevidenciario.aliquotaSeguradoNumerador /
-            entrada.enquadramentoPrevidenciario.aliquotaSeguradoDenominador,
+          aliquota: pessoaJuridica
+            ? 0
+            : entrada.enquadramentoPrevidenciario.aliquotaSeguradoNumerador /
+              entrada.enquadramentoPrevidenciario.aliquotaSeguradoDenominador,
           valor: 0,
           tetoAtingido: false,
         };
   const valorInssCentavos = paraCentavos(inss.valor);
   const baseInssCentavos = paraCentavos(inss.base);
   const irrf =
-    entrada.descontaIrrf
+    !pessoaJuridica && entrada.descontaIrrf
       ? calcularIrrf2026({
           rendimentos: deCentavos(baseIrrfBrutaCentavos),
           inssDedutivel: deCentavos(valorInssCentavos),
@@ -234,7 +236,7 @@ export function processarVinculoFolha(
         };
   const valorIrrfCentavos = paraCentavos(irrf.valor);
 
-  linhas.push(
+  if (!pessoaJuridica) linhas.push(
     {
       eventoId: null,
       codigo: "INSS",
@@ -293,15 +295,27 @@ export function processarVinculoFolha(
         baseContribuidaCentavos: baseOutrasFontesCentavos,
         comprovantes: entrada.outrasFontes,
       },
-      previdencia: entrada.enquadramentoPrevidenciario,
+      previdencia: pessoaJuridica
+        ? {
+            ...entrada.enquadramentoPrevidenciario,
+            aliquotaSeguradoNumerador: 0,
+            aliquotaSeguradoDenominador: 1,
+            aliquotaPatronalNumerador: 0,
+            aliquotaPatronalDenominador: 1,
+          }
+        : entrada.enquadramentoPrevidenciario,
       inss: {
         aliquotaNumerador:
-          entrada.enquadramentoPrevidenciario.aliquotaSeguradoNumerador,
+          pessoaJuridica
+            ? 0
+            : entrada.enquadramentoPrevidenciario.aliquotaSeguradoNumerador,
         aliquotaDenominador:
-          entrada.enquadramentoPrevidenciario.aliquotaSeguradoDenominador,
+          pessoaJuridica
+            ? 1
+            : entrada.enquadramentoPrevidenciario.aliquotaSeguradoDenominador,
         valorCentavos: valorInssCentavos,
         tetoAtingido: inss.tetoAtingido,
-        isento: entrada.isentoInss || !entrada.descontaInss,
+        isento: pessoaJuridica || entrada.isentoInss || !entrada.descontaInss,
       },
       irrf: {
         baseBrutaCentavos: baseIrrfBrutaCentavos,
@@ -312,7 +326,7 @@ export function processarVinculoFolha(
         impostoBrutoCentavos: paraCentavos(irrf.impostoBruto),
         reducaoCentavos: paraCentavos(irrf.reducao),
         valorCentavos: valorIrrfCentavos,
-        isento: !entrada.descontaIrrf,
+        isento: pessoaJuridica || !entrada.descontaIrrf,
       },
       enquadramento: {
         cenario: enquadramento.cenario,

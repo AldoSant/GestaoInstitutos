@@ -68,28 +68,33 @@ test("processa retribuição, eventos, INSS e IRRF com memória em centavos", ()
   );
 });
 
-test("bloqueia Pessoa Jurídica no motor de contribuinte individual", () => {
-  assert.throws(
-    () =>
-      processarVinculoFolha(
-        {
-          vinculoId: "00000000-0000-4000-8000-000000000004",
-          tipoPessoa: "JURIDICA",
-          categoriaContribuinte: null,
-          valorRetribuicao: "2500.00",
-          descontaInss: true,
-          descontaIrrf: true,
-          isentoInss: false,
-          baseOutrasFontes: "0",
-          outrasFontes: [],
-          enquadramentoPrevidenciario: ENQUADRAMENTO_GERAL,
-          dependentesIrrf: 0,
-          eventos: [],
-        },
-        REGRA_FISCAL_2026,
-      ),
-    /Pessoa Jurídica exige documento fiscal/,
+test("processa PJ no relatório mensal sem retenção PF ou GPS", () => {
+  const resultado = processarVinculoFolha(
+    {
+      vinculoId: "00000000-0000-4000-8000-000000000004",
+      tipoPessoa: "JURIDICA",
+      categoriaContribuinte: null,
+      valorRetribuicao: "2500.00",
+      descontaInss: true,
+      descontaIrrf: true,
+      isentoInss: false,
+      baseOutrasFontes: "0",
+      outrasFontes: [],
+      enquadramentoPrevidenciario: ENQUADRAMENTO_GERAL,
+      dependentesIrrf: 0,
+      eventos: [],
+    },
+    REGRA_FISCAL_2026,
   );
+  assert.equal(resultado.totalProventosCentavos, 250_000);
+  assert.equal(resultado.totalDescontosCentavos, 0);
+  assert.equal(resultado.valorInssCentavos, 0);
+  assert.equal(resultado.valorIrrfCentavos, 0);
+  assert.deepEqual(
+    resultado.linhas.map((linha) => linha.codigo),
+    ["RETRIBUICAO"],
+  );
+  assert.equal(resultado.memoria.enquadramento.cenario, "PJ_PAGAMENTO_SEM_PREVIDENCIA");
 });
 
 test("rejeita percentuais fora do contrato do Evento", () => {
