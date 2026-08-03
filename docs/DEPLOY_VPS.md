@@ -25,6 +25,8 @@ Defina no `.env`:
 - `ADMIN_PASSWORD`: senha com ao menos 12 caracteres;
 - `AUTH_SECRET`: pelo menos 32 bytes aleatórios;
 - `APP_COMMIT_SHA`: revisão publicada, obtida por `git rev-parse --short=12 HEAD`;
+- `EMPRESA_ATIVA_ID`: UUID da organização a operar, obrigatório quando o banco
+  tiver mais de uma organização ativa;
 - demais variáveis conforme o ambiente.
 
 Mantenha `FOLHA_CONSOLIDADA_PRODUTIVA=false` até a homologação real do rateio

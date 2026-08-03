@@ -37,6 +37,7 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD obrigatoria}
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET obrigatoria}
       APP_COMMIT_SHA: ${APP_COMMIT_SHA:-unknown}
+      EMPRESA_ATIVA_ID: ${EMPRESA_ATIVA_ID:-}
     depends_on:
       database:
         condition: service_healthy

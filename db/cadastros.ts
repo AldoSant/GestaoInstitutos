@@ -12,7 +12,35 @@ import {
   prestadores,
 } from "./schema";
 
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
 export async function resolverEmpresaAtiva() {
+  const empresaConfigurada = process.env.EMPRESA_ATIVA_ID?.trim();
+  if (empresaConfigurada) {
+    if (!UUID.test(empresaConfigurada)) {
+      throw new Error("EMPRESA_ATIVA_ID deve ser um UUID válido.");
+    }
+    const [registro] = await getDb()
+      .select({
+        id: empresas.id,
+        cnpj: empresas.cnpj,
+        razaoSocial: empresas.razaoSocial,
+        nomeFantasia: empresas.nomeFantasia,
+      })
+      .from(empresas)
+      .where(
+        and(eq(empresas.id, empresaConfigurada), eq(empresas.ativo, true)),
+      )
+      .limit(1);
+    if (!registro) {
+      throw new Error(
+        "EMPRESA_ATIVA_ID não identifica uma organização ativa neste banco.",
+      );
+    }
+    return registro;
+  }
+
   const registros = await getDb()
     .select({
       id: empresas.id,
