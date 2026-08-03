@@ -74,6 +74,9 @@ export default async function NovaFolhaPage({
   });
   const opcoesProntas = opcoes.filter((item) => item.pronta);
   const opcoesSelecionaveis = opcoes.filter((item) => item.selecionavel);
+  const opcoesSomentePj = opcoes.filter(
+    (item) => item.vinculosPf === 0 && item.vinculosPj > 0,
+  );
   const vinculosPf = opcoes.reduce(
     (total, item) => total + item.vinculosPf,
     0,
@@ -219,6 +222,25 @@ export default async function NovaFolhaPage({
               <PlayCircle size={16} /> Validar, criar e processar
             </button>
           </form>
+          {opcoesSomentePj.length > 0 && (
+            <div className="guided-actions folha-pj-guidance">
+              <WalletCards size={19} />
+              <div>
+                <strong>Instrumentos com pagamentos exclusivamente PJ</strong>
+                <p>
+                  {opcoesSomentePj.length} instrumento(s) nesta competência não
+                  geram Folha PF. Registre os documentos e pagamentos no
+                  Demonstrativo mensal.
+                </p>
+              </div>
+              <Link
+                className="button primary"
+                href={`/demonstrativos?competencia=${competencia}`}
+              >
+                Abrir demonstrativo mensal
+              </Link>
+            </div>
+          )}
         </section>
 
         <section className="panel">
@@ -238,11 +260,7 @@ export default async function NovaFolhaPage({
                 <tr>
                   <th>Termo e meta</th>
                   <th>Vínculos</th>
-                  <th>Fiscal</th>
-                  <th>NIT</th>
-                  <th>Documento</th>
-                  <th>Medições</th>
-                  <th>Outras fontes</th>
+                  <th>Pendências da folha PF</th>
                   <th>Conta</th>
                   <th>Situação</th>
                 </tr>
@@ -258,11 +276,24 @@ export default async function NovaFolhaPage({
                       <strong>{item.vinculosPf} PF</strong>
                       <small>{item.vinculosPj} PJ</small>
                     </td>
-                    <td>{item.enquadramentos_pendentes}</td>
-                    <td>{item.nit_pendente}</td>
-                    <td>{item.documentos_pendentes}</td>
-                    <td>{item.medicoes_pendentes}</td>
-                    <td>{item.outras_fontes_pendentes}</td>
+                    <td>
+                      {item.bloqueios === 0 ? (
+                        <strong>Sem bloqueios</strong>
+                      ) : (
+                        <>
+                          <strong>{item.bloqueios} pendência(s)</strong>
+                          <small>
+                            {[
+                              Number(item.enquadramentos_pendentes) > 0 && `${item.enquadramentos_pendentes} enquadramento(s)`,
+                              Number(item.nit_pendente) > 0 && `${item.nit_pendente} NIT`,
+                              Number(item.documentos_pendentes) > 0 && `${item.documentos_pendentes} documento(s)`,
+                              Number(item.medicoes_pendentes) > 0 && `${item.medicoes_pendentes} medição(ões)`,
+                              Number(item.outras_fontes_pendentes) > 0 && `${item.outras_fontes_pendentes} outra(s) fonte(s)`,
+                            ].filter(Boolean).join(" · ")}
+                          </small>
+                        </>
+                      )}
+                    </td>
                     <td>{item.contas_pendentes}</td>
                     <td>
                       <StatusBadge
@@ -294,7 +325,7 @@ export default async function NovaFolhaPage({
                 ))}
                 {opcoes.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="empty-cell">
+                    <td colSpan={5} className="empty-cell">
                       Nenhum termo e meta ativo foi encontrado.
                     </td>
                   </tr>

@@ -253,11 +253,14 @@ async function prevalidarCriacaoFolha(
       where v.empresa_id = $1 and v.termo_id = $2 and v.meta_id = $3
         and v.ativo and v.inicio <= $4::date
         and (v.fim is null or v.fim >= $4::date)
+        and p.tipo = 'FISICA'
       order by p.nome_razao_social`,
     [empresaId, termoId, metaId, competencia],
   );
   if (candidatos.rowCount === 0) {
-    throw new Error("Nenhum Vínculo ativo atende ao Termo, Meta e competência.");
+    throw new Error(
+      "Este instrumento não possui vínculo PF para Folha nesta competência. Registre pagamentos PJ no Demonstrativo mensal.",
+    );
   }
 
   const problemas: string[] = [];
@@ -1634,20 +1637,22 @@ export async function listarOpcoesNovaFolha(
                 and nullif(btrim(pr.nit_pis_pasep), '') is null
             )::int nit_pendente,
             count(distinct v.id) filter (
-              where v.exige_medicao_mensal and mm.id is null
+              where p.tipo = 'FISICA'
+                and v.exige_medicao_mensal and mm.id is null
             )::int medicoes_pendentes,
             count(distinct v.id) filter (
-              where conta.id is null
+              where p.tipo = 'FISICA'
+                and (conta.id is null
                  or nullif(btrim(conta.agencia), '') is null
                  or nullif(btrim(conta.numero), '') is null
-                 or conta.tipo not in ('CORRENTE', 'POUPANCA')
+                 or conta.tipo not in ('CORRENTE', 'POUPANCA'))
             )::int contas_pendentes,
             count(distinct v.id) filter (
-              where (p.tipo = 'FISICA' and p.cpf is null)
-                 or (p.tipo = 'JURIDICA' and p.cnpj is null)
+              where p.tipo = 'FISICA' and p.cpf is null
             )::int documentos_pendentes,
             count(distinct v.id) filter (
-              where exists (
+              where p.tipo = 'FISICA'
+                and exists (
                 select 1
                   from contribuicao_outra_fonte cof
                  where cof.empresa_id = v.empresa_id

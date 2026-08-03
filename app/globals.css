@@ -180,6 +180,7 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
 .guided-actions strong, .guided-actions p { display: block; }
 .guided-actions strong { font-size: 11px; }
 .guided-actions p { margin: 3px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.folha-pj-guidance { margin-top: 16px; border-color: #c8e4d7; background: #f4faf7; }
 .quick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
 .quick-card { min-width: 0; padding: 15px 17px; display: grid; grid-template-columns: auto 1fr auto; gap: 11px; align-items: center; border: 1px solid var(--line); border-radius: 11px; background: #fff; color: var(--teal); }
 .quick-card:hover { border-color: #a9cfca; transform: translateY(-1px); }
