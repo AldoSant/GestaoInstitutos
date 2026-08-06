@@ -4,6 +4,7 @@ import { ArrowLeft, Download } from "lucide-react";
 import { PrintButton } from "@/components/print-button";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { carregarFolha } from "@/db/folhas";
+import { caminhoAplicacao } from "@/lib/base-path";
 import {
   extrairItemRelacaoPagamento,
   montarRelacaoPagamentos,
@@ -79,13 +80,13 @@ export default async function RelacaoPagamentosPage({
   return (
     <main className="print-document">
       <nav className="print-toolbar" aria-label="Ações da relação">
-        <Link className="button secondary" href={`/folhas/${folha.id}`}>
+        <Link className="button secondary" href={caminhoAplicacao(`/folhas/${folha.id}`)}>
           <ArrowLeft size={16} /> Voltar à Folha
         </Link>
         <div className="row-actions">
           <a
             className="button secondary"
-            href={`/folhas/${folha.id}/pagamentos/espelho`}
+            href={caminhoAplicacao(`/folhas/${folha.id}/pagamentos/espelho`)}
           >
             <Download size={16} /> Baixar espelho CSV
           </a>
@@ -144,6 +145,17 @@ export default async function RelacaoPagamentosPage({
                 : ""}
               Este documento serve para saneamento e conferência, não para
               autorizar movimentação financeira.
+            </p>
+          </section>
+        )}
+
+        {relacao.reprocessamentoNecessario && (
+          <section className="print-warning">
+            <strong>Guia ou retenção encontrada na relação de pagamentos</strong>
+            <p>
+              {relacao.itensForaPagamento.length} item(ns) foram classificados como
+              guia/recolhimento e não podem ser tratados como prestador bancário.
+              Esta revisão precisa ser reprocessada antes de liberar pagamentos.
             </p>
           </section>
         )}

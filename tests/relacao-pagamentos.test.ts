@@ -17,6 +17,7 @@ function item(
     matricula: "M-1",
     atividade: "Atividade",
     totalLiquido: "1000.00",
+    naturezaOperacional: "PAGAMENTO_PRESTADOR",
     conta: {
       agencia: "0001",
       agenciaLegacyId: "AG-1",
@@ -68,6 +69,7 @@ test("extrai dados exclusivamente do snapshot congelado da Folha", () => {
       matricula: "P-9",
       atividade: "Coordenação",
       totalLiquido: "321.45",
+      naturezaOperacional: "PAGAMENTO_PRESTADOR",
       conta: {
         agencia: "001",
         agenciaLegacyId: "AG-7",
@@ -102,6 +104,23 @@ test("classifica conta ausente ou incompleta sem liberar pagamento", () => {
     "AGENCIA_NAO_INFORMADA",
     "TIPO_NAO_INFORMADO",
   ]);
+});
+
+test("separa guia confirmada da relação bancária e exige reprocessamento", () => {
+  const relacao = montarRelacaoPagamentos([
+    item({ id: "prestador", totalLiquido: "1000.00" }),
+    item({
+      id: "guia",
+      nome: "INSS",
+      totalLiquido: "100.00",
+      naturezaOperacional: "GUIA_RECOLHIMENTO",
+    }),
+  ]);
+  assert.equal(relacao.linhas.length, 1);
+  assert.equal(relacao.totalLiquidoCentavos, 100_000);
+  assert.equal(relacao.itensForaPagamento.length, 1);
+  assert.equal(relacao.reprocessamentoNecessario, true);
+  assert.equal(relacao.pronta, false);
 });
 
 test("recusa item duplicado e líquido negativo", () => {

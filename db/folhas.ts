@@ -249,6 +249,22 @@ async function prevalidarCriacaoFolha(
       where v.empresa_id = $1 and v.termo_id = $2 and v.meta_id = $3
         and v.ativo and v.inicio <= $4::date
         and (v.fim is null or v.fim >= $4::date)
+        and not exists (
+          select 1
+            from legado_chave chave
+            join classificacao_operacional_legado classificacao
+              on classificacao.empresa_id = chave.empresa_id
+             and classificacao.origem = chave.origem
+             and classificacao.entidade = 'prestador'
+             and classificacao.legacy_id = chave.legacy_id
+             and classificacao.status = 'CONFIRMADA'
+             and classificacao.natureza <> 'PAGAMENTO_PRESTADOR'
+           where chave.empresa_id = v.empresa_id
+             and chave.origem = 'GIW'
+             and chave.entidade = 'prestadores'
+             and chave.destino_tabela = 'prestador'
+             and chave.destino_id = pr.id
+        )
       order by p.nome_razao_social`,
     [empresaId, termoId, metaId, competencia],
   );
@@ -860,6 +876,22 @@ export async function processarFolha(
           and (ler.fim_competencia is null or ler.fim_competencia >= f.competencia)
          left join evento e on e.id = ler.evento_id and e.ativo
         where f.id = $1
+          and not exists (
+            select 1
+              from legado_chave chave
+              join classificacao_operacional_legado classificacao
+                on classificacao.empresa_id = chave.empresa_id
+               and classificacao.origem = chave.origem
+               and classificacao.entidade = 'prestador'
+               and classificacao.legacy_id = chave.legacy_id
+               and classificacao.status = 'CONFIRMADA'
+               and classificacao.natureza <> 'PAGAMENTO_PRESTADOR'
+             where chave.empresa_id = v.empresa_id
+               and chave.origem = 'GIW'
+               and chave.entidade = 'prestadores'
+               and chave.destino_tabela = 'prestador'
+               and chave.destino_id = pr.id
+          )
         order by v.id, e.codigo`,
       [
         folha.id,
@@ -1683,6 +1715,22 @@ export async function listarOpcoesNovaFolha(
       where t.empresa_id = $1 and t.ativo and m.ativo
         and t.inicio <= $2::date
         and (t.fim is null or t.fim >= $2::date)
+        and not exists (
+          select 1
+            from legado_chave chave
+            join classificacao_operacional_legado classificacao
+              on classificacao.empresa_id = chave.empresa_id
+             and classificacao.origem = chave.origem
+             and classificacao.entidade = 'prestador'
+             and classificacao.legacy_id = chave.legacy_id
+             and classificacao.status = 'CONFIRMADA'
+             and classificacao.natureza <> 'PAGAMENTO_PRESTADOR'
+           where chave.empresa_id = v.empresa_id
+             and chave.origem = 'GIW'
+             and chave.entidade = 'prestadores'
+             and chave.destino_tabela = 'prestador'
+             and chave.destino_id = pr.id
+        )
       group by t.id, m.id
       order by t.numero, m.codigo`,
     [empresaId, competenciaData],
@@ -1722,15 +1770,32 @@ export async function carregarFolha(empresaId: string, folhaId: string) {
               i.base_inss::text, i.valor_inss::text, i.base_irrf::text,
               i.valor_irrf::text, i.total_liquido::text, i.memoria,
               i.snapshots,
+              coalesce(classificacao.natureza, 'PAGAMENTO_PRESTADOR') natureza_operacional,
               coalesce(
                 jsonb_agg(to_jsonb(l) order by l.ordem)
                   filter (where l.id is not null),
                 '[]'::jsonb
               ) eventos
          from folha_item i
+         left join lateral (
+           select classificacao.natureza
+             from legado_chave chave
+             join classificacao_operacional_legado classificacao
+               on classificacao.empresa_id = chave.empresa_id
+              and classificacao.origem = chave.origem
+              and classificacao.entidade = 'prestador'
+              and classificacao.legacy_id = chave.legacy_id
+              and classificacao.status = 'CONFIRMADA'
+            where chave.empresa_id = i.empresa_id
+              and chave.origem = 'GIW'
+              and chave.entidade = 'prestadores'
+              and chave.destino_tabela = 'prestador'
+              and chave.destino_id::text = i.snapshots #>> '{prestador,id}'
+            limit 1
+         ) classificacao on true
          left join folha_item_evento l on l.folha_item_id = i.id
         where i.folha_id = $1 and i.empresa_id = $2
-        group by i.id
+        group by i.id, classificacao.natureza
         order by i.snapshots #>> '{pessoa,nome}'`,
       [folhaId, empresaId],
     ),

@@ -18,12 +18,14 @@ export type ItemRelacaoPagamento = {
   atividade: string;
   totalLiquido: string;
   conta: ContaPagamento;
+  naturezaOperacional: "PAGAMENTO_PRESTADOR" | "RETENCAO_TRIBUTARIA" | "GUIA_RECOLHIMENTO";
 };
 
 type ItemFolhaPagamento = {
   id: string;
   total_liquido: string;
   snapshots: unknown;
+  natureza_operacional?: string | null;
 };
 
 function texto(valor: string | null | undefined) {
@@ -55,6 +57,11 @@ export function extrairItemRelacaoPagamento(
     matricula: textoOuNulo(prestador?.matricula) ?? "—",
     atividade: textoOuNulo(vinculo?.atividade) ?? "—",
     totalLiquido: item.total_liquido,
+    naturezaOperacional:
+      item.natureza_operacional === "GUIA_RECOLHIMENTO" ||
+      item.natureza_operacional === "RETENCAO_TRIBUTARIA"
+        ? item.natureza_operacional
+        : "PAGAMENTO_PRESTADOR",
     conta: conta
       ? {
           agencia: textoOuNulo(conta.agencia),
@@ -85,12 +92,18 @@ function moedaCsv(centavos: number) {
 }
 
 export function montarRelacaoPagamentos(itens: ItemRelacaoPagamento[]) {
-  if (itens.length === 0) {
+  const itensForaPagamento = itens.filter(
+    (item) => item.naturezaOperacional !== "PAGAMENTO_PRESTADOR",
+  );
+  const pagamentos = itens.filter(
+    (item) => item.naturezaOperacional === "PAGAMENTO_PRESTADOR",
+  );
+  if (pagamentos.length === 0) {
     throw new Error("A Folha não possui itens para a relação de pagamentos.");
   }
   const ids = new Set<string>();
   let totalLiquidoCentavos = 0;
-  const linhas = [...itens]
+  const linhas = [...pagamentos]
     .sort(
       (a, b) =>
         a.nome.localeCompare(b.nome, "pt-BR") ||
@@ -130,7 +143,9 @@ export function montarRelacaoPagamentos(itens: ItemRelacaoPagamento[]) {
     totalLiquidoCentavos,
     aptos,
     pendentes: linhas.length - aptos,
-    pronta: aptos === linhas.length,
+    itensForaPagamento,
+    reprocessamentoNecessario: itensForaPagamento.length > 0,
+    pronta: aptos === linhas.length && itensForaPagamento.length === 0,
   };
 }
 
@@ -160,6 +175,7 @@ export function gerarRelacaoPagamentosCsv({
     "revisao",
     "folha_status",
     "liberacao_financeira",
+    "itens_fora_pagamento",
     "hash_folha",
     "status_conta",
     "pendencias",
@@ -183,6 +199,7 @@ export function gerarRelacaoPagamentosCsv({
       String(revisao),
       folhaStatus,
       liberada ? "LIBERADA" : "BLOQUEADA",
+      String(relacao.itensForaPagamento.length),
       hashFolha,
       item.apto ? "APTO" : "PENDENTE",
       item.pendencias.join("|"),
