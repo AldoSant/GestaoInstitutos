@@ -29,35 +29,32 @@ test("jornada não destrutiva do MVP publicado", async ({ page }) => {
   await test.step("consultar o fluxo mensal da folha", async () => {
     await page.goto("folhas");
     await expect(
-      page.getByRole("heading", { name: "Folhas mensais" }),
+      page.getByRole("heading", { name: "Processamentos mensais" }),
     ).toBeVisible();
     await expect(page.getByText("Competências processadas")).toBeVisible();
-    await expect(page.getByRole("link", { name: /Nova folha/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Novo processamento/i })).toBeVisible();
   });
 
-  await test.step("confirmar o isolamento da administração e do legado", async () => {
+  await test.step("confirmar que módulos técnicos e legados estão adormecidos", async () => {
     await expect(
       page.getByRole("link", { name: "Importação do GIW" }),
     ).toHaveCount(0);
-    await page.getByRole("link", { name: "Administração" }).click();
+    await page.goto("administracao");
     await expect(
-      page.getByRole("heading", { name: "Administração" }),
+      page.getByRole("heading", { name: "Visão geral" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { name: /Migração histórica/ }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: /Parâmetros fiscais/ }),
+      page.getByText("Módulo fora da rotina atual"),
     ).toBeVisible();
   });
 
   await test.step("consultar obrigações e o caminho de recolhimento", async () => {
     await page.goto("obrigacoes");
     await expect(
-      page.getByRole("heading", { name: "Obrigações e guias" }),
+      page.getByRole("heading", { name: "Guias GPS" }),
     ).toBeVisible();
     await expect(
-      page.getByText("Da folha fechada ao DARF para pagamento"),
+      page.getByText("Da folha fechada ao documento para pagamento"),
     ).toBeVisible();
   });
 });

@@ -84,7 +84,7 @@ export default async function ObrigacoesPage({
     ]);
   } catch {
     return (
-      <AppShell title="Obrigações e guias" eyebrow="Apuração previdenciária" organization="Não configurada">
+      <AppShell title="Guias GPS" eyebrow="Apuração previdenciária" organization="Não configurada">
         <section className="alert-box danger">
           <Database size={22} />
           <div><strong>Apuração indisponível</strong><p>Não foi possível carregar as obrigações. Tente novamente.</p></div>
@@ -92,29 +92,28 @@ export default async function ObrigacoesPage({
       </AppShell>
     );
   }
+  const guiasGps = obrigacoes.filter(
+    (item) => item.perfil_instrumento === "GPS_EXCECAO",
+  );
   const obrigacaoAtual =
-    obrigacoes.find((item) => item.status !== "CANCELADA") ?? obrigacoes[0];
+    guiasGps.find((item) => item.status !== "CANCELADA") ?? guiasGps[0];
   const documentoVerificado = (tipo: string) =>
     Boolean(
       obrigacaoAtual?.documentos.some(
         (documento) => documento.tipo === tipo && documento.verificado,
       ),
     );
-  const totalizador = documentoVerificado("TOTALIZADOR_DCTFWEB");
-  const recibo = documentoVerificado("RECIBO_DCTFWEB");
-  const darf = documentoVerificado("DARF");
   const gps = documentoVerificado("GPS");
-  const usaGps = obrigacaoAtual?.perfil_instrumento === "GPS_EXCECAO";
-  const documentoPagamento = usaGps ? gps : darf;
+  const documentoPagamento = gps;
 
   return (
     <AppShell
-      title="Obrigações e guias"
-      eyebrow="Apuração previdenciária"
+      title="Guias GPS"
+      eyebrow="Previdência de prestadores"
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
       notice={{
         label: "Emissão controlada",
-        text: "Segurado e patronal são apurados da Folha fechada conforme o enquadramento; o documento liberado segue o perfil de recolhimento congelado na competência.",
+        text: "As memórias GPS são preparadas a partir dos processamentos fechados e do perfil de recolhimento congelado na competência.",
       }}
     >
       {(erro || sucesso) && (
@@ -152,7 +151,7 @@ export default async function ObrigacoesPage({
         <MetricCard
           label="Documento para pagar"
           value={documentoPagamento ? "Registrado" : "Pendente"}
-          detail={usaGps ? "GPS excepcional fundamentada" : "DARF oficial da DCTFWeb"}
+          detail="GPS individual por prestador"
           icon={FileCheck2}
           tone={documentoPagamento ? "teal" : "amber"}
         />
@@ -164,9 +163,8 @@ export default async function ObrigacoesPage({
             <span className="section-kicker">Fluxo previdenciário</span>
             <h2>Da folha fechada ao documento para pagamento</h2>
             <p>
-              {usaGps
-                ? "A GPS é permitida apenas pela exceção formal congelada nesta competência."
-                : "O sistema apura e concilia; os documentos oficiais continuam vindo da DCTFWeb."}
+              A competência reproduz o fluxo histórico: uma memória GPS para
+              cada prestador PF elegível.
             </p>
           </div>
           <StatusBadge tone={documentoPagamento ? "success" : "warning"}>
@@ -174,31 +172,11 @@ export default async function ObrigacoesPage({
           </StatusBadge>
         </div>
         <ol className="process-steps obligation-steps">
-          {(usaGps
-            ? [
-                ["1. Folhas", diagnostico.apta_apuracao, `${diagnostico.folhas_fechadas} fechada(s)`],
-                ["2. Apuração", Boolean(obrigacaoAtual), obrigacaoAtual ? moeda(obrigacaoAtual.total) : "Não executada"],
-                ["3. GPS", gps, gps ? "Conferida" : "Pendente"],
-              ]
-            : [
-            [
-              "1. Folhas",
-              diagnostico.apta_apuracao,
-              `${diagnostico.folhas_fechadas} fechada(s)`,
-            ],
-            [
-              "2. Apuração",
-              Boolean(obrigacaoAtual),
-              obrigacaoAtual ? moeda(obrigacaoAtual.total) : "Não executada",
-            ],
-            [
-              "3. Totalizador",
-              totalizador,
-              totalizador ? "Conferido" : "Pendente",
-            ],
-            ["4. Recibo", recibo, recibo ? "Conferido" : "Pendente"],
-            ["5. DARF", darf, darf ? "Registrado" : "Pendente"],
-          ]).map(([titulo, concluida, detalhe], indice, etapas) => {
+          {[
+            ["1. Processamentos", diagnostico.apta_apuracao, `${diagnostico.folhas_fechadas} fechada(s)`],
+            ["2. Apuração", Boolean(obrigacaoAtual), obrigacaoAtual ? moeda(obrigacaoAtual.total) : "Não executada"],
+            ["3. GPS", gps, gps ? "Conferida" : "Pendente"],
+          ].map(([titulo, concluida, detalhe], indice, etapas) => {
             const anteriorConcluida =
               indice === 0 || Boolean(etapas[indice - 1][1]);
             return (
@@ -256,13 +234,13 @@ export default async function ObrigacoesPage({
         </form>
       </section>
 
-      {obrigacoes.map((item) => (
+      {guiasGps.map((item) => (
         <section className="panel" key={item.id}>
           <div className="panel-header">
             <div>
-              <span className="section-kicker">{competencia(item.competencia)} · Obrigação previdenciária</span>
+              <span className="section-kicker">{competencia(item.competencia)} · Guias GPS</span>
               <h2>{moeda(item.total)}</h2>
-              <p>{item.folhas} Folha(s) · {item.itens} item(ns) rastreáveis · {item.perfil_instrumento ? nomeInstrumentoRecolhimento(item.perfil_instrumento) : "Perfil histórico sem instrumento"}</p>
+              <p>{item.folhas} processamento(s) · {item.itens} item(ns) rastreáveis · {item.perfil_instrumento ? nomeInstrumentoRecolhimento(item.perfil_instrumento) : "Perfil histórico sem instrumento"}</p>
             </div>
             <div className="row-actions">
               <Link
@@ -519,10 +497,10 @@ export default async function ObrigacoesPage({
         </section>
       ))}
 
-      {obrigacoes.length === 0 && (
+      {guiasGps.length === 0 && (
         <section className="alert-box">
           <ShieldAlert size={22} />
-          <div><strong>Nenhuma competência apurada</strong><p>Feche uma Folha e execute a apuração acima.</p></div>
+          <div><strong>Nenhuma GPS preparada</strong><p>Feche um processamento e execute a apuração acima.</p></div>
         </section>
       )}
     </AppShell>

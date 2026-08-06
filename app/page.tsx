@@ -6,9 +6,7 @@ import {
   Banknote,
   CheckCircle2,
   CircleDollarSign,
-  ClipboardCheck,
   FileCheck2,
-  LockKeyhole,
   UsersRound,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -18,7 +16,6 @@ import {
   carregarDashboardOperacional,
   type CompetenciaDashboard,
 } from "@/db/dashboard";
-import { diagnosticarHomologacaoCompetencia } from "@/db/homologacoes-competencia";
 import { ROTAS, rotaComCompetencia } from "@/lib/rotas";
 import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 
@@ -37,82 +34,56 @@ function competencia(valor: string) {
 }
 
 function statusOperacional(item: CompetenciaDashboard) {
-  if (item.folhas === 0 && item.demonstrativo_id) {
-    if (item.demonstrativo_status === "FECHADO") return "Demonstrativo PJ fechado";
-    if (item.demonstrativo_status === "EM_CONFERENCIA") return "Demonstrativo PJ em conferência";
-    return "Demonstrativo PJ em preparação";
-  }
-  if (item.homologacao_status === "APROVADA") return "Fechamento aprovado";
-  if (item.status_folhas !== "FECHADA") return "Folhas pendentes";
+  if (item.folhas === 0) return "Sem processamento";
+  if (item.status_folhas !== "FECHADA") return "Processamento pendente";
   if (item.pagamentos_conformes !== item.pagamentos_total) {
     return "Pagamentos bloqueados";
   }
-  if (item.obrigacao_status !== "EMITIDA") return "Obrigação pendente";
-  return "Aguardando fechamento";
+  if (item.obrigacao_status !== "EMITIDA") return "GPS pendente";
+  return "Processamento concluído";
 }
 
 function bloqueioAtual(item: CompetenciaDashboard) {
-  if (
-    item.folhas === 0 &&
-    item.demonstrativo_id &&
-    item.demonstrativo_status !== "FECHADO"
-  ) {
+  if (item.folhas === 0 || item.status_folhas !== "FECHADA") {
     return {
-      titulo: "Demonstrativo PJ pendente",
-      texto: "Registre os documentos fiscais, confira as retenções informadas e feche o demonstrativo da competência.",
-      href: rotaComCompetencia(ROTAS.demonstrativos, item.competencia.slice(0, 7)),
-      acao: "Abrir demonstrativo",
-    };
-  }
-  if (
-    item.status_folhas !== "FECHADA" &&
-    !(item.folhas === 0 && item.demonstrativo_id)
-  ) {
-    return {
-      titulo: "Existem Folhas não fechadas",
-      texto: `${item.folhas_fechadas} de ${item.folhas} Folha(s) estão fechadas.`,
+      titulo: "Processamento mensal pendente",
+      texto: item.folhas
+        ? `${item.folhas_fechadas} de ${item.folhas} processamento(s) estão fechados.`
+        : "Crie o processamento para o termo e a meta da competência.",
       href: "/folhas",
-      acao: "Abrir Folhas",
+      acao: "Abrir processamentos",
     };
   }
   if (item.pagamentos_total !== item.pagamentos_conformes) {
     return {
       titulo: "Relação de pagamentos bloqueada",
       texto: `${item.pagamentos_total - item.pagamentos_conformes} pagamento(s) possuem dados bancários incompletos ou precisam ser atualizados.`,
-      href: rotaComCompetencia(ROTAS.fechamentoMensal, item.competencia.slice(0, 7)),
-      acao: "Abrir fechamento",
+      href: "/folhas",
+      acao: "Revisar processamentos",
     };
   }
   if (!item.obrigacao_id || item.obrigacao_status !== "EMITIDA") {
     return {
-      titulo: "Obrigação previdenciária pendente",
+      titulo: "Guia GPS pendente",
       texto: item.obrigacao_id
         ? `Estado atual: ${item.obrigacao_status?.replaceAll("_", " ")}.`
         : "A competência ainda não possui apuração previdenciária.",
       href: "/obrigacoes",
-      acao: "Abrir obrigações",
-    };
-  }
-  if (item.homologacao_status !== "APROVADA") {
-    return {
-      titulo: "Decisão mensal pendente",
-      texto: "A competência está pronta para a conferência e decisão final do RH.",
-      href: rotaComCompetencia(ROTAS.fechamentoMensal, item.competencia.slice(0, 7)),
-      acao: "Abrir fechamento",
+      acao: "Abrir guias GPS",
     };
   }
   return {
-    titulo: "Competência operacionalmente concluída",
-    texto: "Folhas, pagamentos, obrigação e fechamento estão conformes.",
-    href: rotaComCompetencia(ROTAS.fechamentoMensal, item.competencia.slice(0, 7)),
-    acao: "Abrir dossiê",
+    titulo: "Competência pronta para prestação de contas",
+    texto: "Os processamentos e as guias GPS estão registrados para consulta.",
+    href: "/obrigacoes",
+    acao: "Consultar guias GPS",
   };
 }
 
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ competencia?: string | string[] }>;
+  searchParams: Promise<{ competencia?: string | string[]; aviso?: string | string[] }>;
 }) {
   const params = await searchParams;
   const competenciaSelecionada = await lerCompetenciaContexto(
@@ -120,24 +91,12 @@ export default async function Home({
   );
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
   let dados: Awaited<ReturnType<typeof carregarDashboardOperacional>>;
-  let diagnosticoAtual: Awaited<
-    ReturnType<typeof diagnosticarHomologacaoCompetencia>
-  > | null = null;
   try {
     empresa = await resolverEmpresaAtiva();
     dados = await carregarDashboardOperacional(
       empresa.id,
       competenciaSelecionada,
     );
-    const competenciaEmFoco = dados.competencias.find(
-      (item) => item.competencia.slice(0, 7) === competenciaSelecionada,
-    );
-    if (competenciaEmFoco) {
-      diagnosticoAtual = await diagnosticarHomologacaoCompetencia(
-        empresa.id,
-        competenciaSelecionada,
-      );
-    }
   } catch {
     return (
       <AppShell
@@ -187,36 +146,28 @@ export default async function Home({
     );
   }
 
-  const versaoMensalAtual =
-    diagnosticoAtual?.hashFontes === competenciaEmFoco.homologacao_hash &&
-    diagnosticoAtual.resumo.pronta;
-  const atual: CompetenciaDashboard = {
-    ...competenciaEmFoco,
-    homologacao_status: versaoMensalAtual
-      ? competenciaEmFoco.homologacao_status
-      : null,
-  };
+  const atual: CompetenciaDashboard = competenciaEmFoco;
   const bloqueio = bloqueioAtual(atual);
   const competenciaAtual = atual.competencia.slice(0, 7);
-  const concluida = atual.homologacao_status === "APROVADA";
-  const somentePj = atual.folhas === 0 && Boolean(atual.demonstrativo_id);
+  const concluida = atual.obrigacao_status === "EMITIDA";
 
   return (
     <AppShell
       title="Visão geral"
-      eyebrow="Fechamento operacional"
+      eyebrow="Operação mensal"
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
       actions={
-        <Link
-          href={somentePj
-            ? rotaComCompetencia(ROTAS.demonstrativos, competenciaAtual)
-            : `/folhas/nova?competencia=${competenciaAtual}`}
-          className="button primary"
-        >
-          {somentePj ? "Abrir demonstrativo" : "Nova Folha"}
+        <Link href={`/folhas/nova?competencia=${competenciaAtual}`} className="button primary">
+          Novo processamento
         </Link>
       }
     >
+      {params.aviso === "modulo-reservado" && (
+        <section className="feedback-banner" role="status">
+          <strong>Módulo fora da rotina atual</strong>
+          <span>Esta função foi preservada no sistema, mas está desativada no operacional enxuto.</span>
+        </section>
+      )}
       <section className="hero-row">
         <div>
           <p className="section-kicker">Competência em foco</p>
@@ -238,9 +189,7 @@ export default async function Home({
             {concluida ? "Competência aprovada" : "Fechamento pendente"}
           </StatusBadge>
           <span>
-            {somentePj
-              ? `${atual.pagamentos_pj} pagamento(s) PJ · ${atual.prestadores} prestador(es)`
-              : `${atual.folhas} Folha(s) · ${atual.prestadores} prestador(es)`}
+            {`${atual.folhas} processamento(s) · ${atual.prestadores} prestador(es)`}
           </span>
         </div>
       </section>
@@ -254,19 +203,15 @@ export default async function Home({
           tone="blue"
         />
         <MetricCard
-          label={somentePj ? "Pagamentos brutos" : "Proventos"}
+          label="Proventos"
           value={moeda(atual.proventos)}
-          detail={somentePj
-            ? "documentos fiscais da competência"
-            : `${atual.folhas_fechadas}/${atual.folhas} Folha(s) fechada(s)`}
+          detail={`${atual.folhas_fechadas}/${atual.folhas} processamento(s) fechado(s)`}
           icon={BadgeDollarSign}
         />
         <MetricCard
-          label={somentePj ? "Retenções" : "Descontos"}
+          label="Descontos"
           value={moeda(atual.descontos)}
-          detail={somentePj
-            ? "informadas nos documentos fiscais"
-            : `INSS ${moeda(atual.inss)} · IRRF ${moeda(atual.irrf)}`}
+          detail={`INSS ${moeda(atual.inss)} · IRRF ${moeda(atual.irrf)}`}
           icon={CircleDollarSign}
           tone="amber"
         />
@@ -309,9 +254,7 @@ export default async function Home({
                     <td>
                       <strong>{competencia(item.competencia)}</strong>
                       <small>
-                        {item.folhas === 0 && item.demonstrativo_id
-                          ? `${item.pagamentos_pj} pagamento(s) PJ`
-                          : `${item.folhas} Folha(s)`}
+                        {`${item.folhas} processamento(s)`}
                       </small>
                     </td>
                     <td>
@@ -334,9 +277,7 @@ export default async function Home({
                     <td>
                       <Link
                         className="row-action"
-                        href={item.folhas === 0 && item.demonstrativo_id
-                          ? rotaComCompetencia(ROTAS.demonstrativos, item.competencia.slice(0, 7))
-                          : rotaComCompetencia(ROTAS.fechamentoMensal, item.competencia.slice(0, 7))}
+                        href={rotaComCompetencia(ROTAS.folhaMensal, item.competencia.slice(0, 7))}
                         aria-label={`Abrir ${competencia(item.competencia)}`}
                       >
                         <ArrowRight size={17} />
@@ -358,7 +299,7 @@ export default async function Home({
             )}
           </div>
           <span className="section-kicker">
-            {concluida ? "Fechamento concluído" : "Próximo bloqueio"}
+            {concluida ? "GPS registrada" : "Próximo passo"}
           </span>
           <h3>{bloqueio.titulo}</h3>
           <p>{bloqueio.texto}</p>
@@ -372,9 +313,9 @@ export default async function Home({
               <dd>{moeda(atual.obrigacao_total)}</dd>
             </div>
             <div>
-              <dt>Fechamento mensal</dt>
+              <dt>Guia GPS</dt>
               <dd>
-                {atual.homologacao_status?.replaceAll("_", " ") ?? "Pendente"}
+                {atual.obrigacao_status?.replaceAll("_", " ") ?? "Pendente"}
               </dd>
             </div>
           </dl>
@@ -393,9 +334,6 @@ export default async function Home({
             <span className="section-kicker">Etapas do mês</span>
             <h3>Da preparação ao fechamento</h3>
           </div>
-          <StatusBadge tone="info">
-            <LockKeyhole size={14} /> Controles atualizados
-          </StatusBadge>
         </div>
         <ol className="workflow">
           <li className={dados.cadastros.vinculos > 0 ? "done" : "attention"}>
@@ -408,14 +346,12 @@ export default async function Home({
               </small>
             </div>
           </li>
-          <li className={atual.status_folhas === "FECHADA" || somentePj ? "done" : "attention"}>
+          <li className={atual.status_folhas === "FECHADA" ? "done" : "attention"}>
             <span>2</span>
             <div>
-              <strong>{somentePj ? "Folha PF não aplicável" : "Cálculo e Folhas"}</strong>
+              <strong>Cálculo e processamento</strong>
               <small>
-                {somentePj
-                  ? "pagamentos PJ seguem no demonstrativo"
-                  : `${atual.folhas_fechadas}/${atual.folhas} fechada(s)`}
+                {`${atual.folhas_fechadas}/${atual.folhas} fechado(s)`}
               </small>
             </div>
           </li>
@@ -445,9 +381,9 @@ export default async function Home({
           <li className={concluida ? "done" : "attention"}>
             <span>5</span>
             <div>
-              <strong>Fechamento mensal</strong>
+              <strong>Guia GPS</strong>
               <small>
-                {atual.homologacao_status ?? "Versão ainda não aprovada"}
+                {atual.obrigacao_status ?? "Ainda não preparada"}
               </small>
             </div>
           </li>
@@ -464,15 +400,13 @@ export default async function Home({
           <ArrowRight />
         </Link>
         <Link
-          href={somentePj
-            ? rotaComCompetencia(ROTAS.demonstrativos, competenciaAtual)
-            : "/folhas"}
+          href="/folhas"
           className="quick-card"
         >
           <BadgeDollarSign />
           <span>
-            <strong>{somentePj ? "Conferir demonstrativo" : "Conferir folhas"}</strong>
-            <small>{somentePj ? "Documentos, retenções e relação PJ" : "Valores, pagamentos e relatórios"}</small>
+            <strong>Conferir processamentos</strong>
+            <small>Valores, pagamentos e relatórios</small>
           </span>
           <ArrowRight />
         </Link>
@@ -484,14 +418,11 @@ export default async function Home({
           </span>
           <ArrowRight />
         </Link>
-        <Link
-          href={rotaComCompetencia(ROTAS.fechamentoMensal, competenciaAtual)}
-          className="quick-card"
-        >
-          <ClipboardCheck />
+        <Link href="/obrigacoes" className="quick-card">
+          <FileCheck2 />
           <span>
-            <strong>Fechar competência</strong>
-            <small>Checklist e decisão final do RH</small>
+            <strong>Preparar GPS</strong>
+            <small>Memórias individuais e registro das guias</small>
           </span>
           <ArrowRight />
         </Link>

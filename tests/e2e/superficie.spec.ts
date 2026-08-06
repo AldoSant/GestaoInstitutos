@@ -23,14 +23,7 @@ const paginas = [
   "/eventos",
   "/folhas",
   "/folhas/nova?competencia=2026-06",
-  "/demonstrativos?competencia=2026-06",
   "/obrigacoes?competencia=2026-06",
-  "/fechamento-mensal?competencia=2026-06",
-  "/conferencia-entre-folhas?competencia=2026-06",
-  "/conferencia-entre-folhas/simulacoes?competencia=2026-06",
-  "/administracao",
-  "/migracoes?competencia=2026-06",
-  "/parametros",
   "/ajuda",
 ] as const;
 
@@ -120,75 +113,35 @@ test("todas as páginas e seus controles básicos estão operacionais", async ({
   expect(errosDaPagina, "Erros JavaScript durante a navegação").toEqual([]);
 });
 
-test("parâmetros separa consulta e publicação condicional do enquadramento", async ({
+test("módulos técnicos e paralelos ficam fora da superfície operacional", async ({
   page,
 }) => {
   await autenticar(page);
-  await page.goto("parametros");
-  await expect(
-    page.getByRole("heading", { name: "Enquadramento previdenciário" }),
-  ).toBeVisible();
-  await expect(page.locator("form.parameter-form")).toHaveCount(0);
-  await expect(
-    page.getByRole("heading", {
-      name: "Regime geral — Lucro Real, Presumido ou Arbitrado",
-      level: 4,
-    }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Simples Nacional — Anexo IV", level: 4 }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", {
-      name: "Contribuição sobre a receita bruta (CPRB)",
-      level: 4,
-    }),
-  ).toBeVisible();
-
-  await page.getByRole("link", { name: "Publicar nova vigência" }).click();
-  const formulario = page.locator("form.parameter-form");
-  await expect(formulario).toBeVisible();
-  await expect(formulario.locator('[name="cebasNumero"]')).toHaveCount(0);
-  await formulario.locator('[name="regime"]').selectOption("BENEFICENTE_IMUNE");
-  await expect(formulario.locator('[name="cebasNumero"]')).toBeVisible();
-  await expect(formulario.locator('[name="cebasInicio"]')).toBeVisible();
-  await expect(formulario.locator('[name="cebasFim"]')).toBeVisible();
-  await formulario.locator('[name="regime"]').selectOption("SIMPLES_SUBSTITUIDA");
-  await expect(formulario.locator('[name="cebasNumero"]')).toHaveCount(0);
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  const largura = await page.evaluate(() => ({
-    documento: document.documentElement.scrollWidth,
-    viewport: window.innerWidth,
-  }));
-  expect(largura.documento).toBeLessThanOrEqual(largura.viewport);
+  for (const rota of [
+    "/administracao",
+    "/conferencia-entre-folhas?competencia=2026-06",
+    "/demonstrativos?competencia=2026-06",
+    "/fechamento-mensal?competencia=2026-06",
+    "/fgts",
+    "/migracoes?competencia=2026-06",
+    "/parametros",
+  ]) {
+    await page.goto(rota);
+    await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
+    await expect(page.getByText("Módulo fora da rotina atual")).toBeVisible();
+  }
 });
 
 test("menu, títulos e URLs usam a mesma linguagem operacional", async ({ page }) => {
   await autenticar(page);
   const destinos = [
-    { href: "/folhas", menu: "Folhas mensais", titulo: "Folhas mensais" },
-    {
-      href: "/demonstrativos",
-      menu: "Demonstrativo mensal",
-      titulo: "Demonstrativo mensal",
-    },
+    { href: "/folhas", menu: "Processamentos mensais", titulo: "Processamentos mensais" },
     { href: "/cadastros", menu: "Cadastros", titulo: "Cadastros" },
     { href: "/termos-e-metas", menu: "Termos e metas", titulo: "Termos e metas" },
     {
       href: "/obrigacoes",
-      menu: "Obrigações e guias",
-      titulo: "Obrigações e guias",
-    },
-    {
-      href: "/fechamento-mensal",
-      menu: "Fechamento mensal",
-      titulo: "Fechamento mensal",
-    },
-    {
-      href: "/conferencia-entre-folhas",
-      menu: "Conferência entre folhas",
-      titulo: "Conferência entre folhas",
+      menu: "Guias GPS",
+      titulo: "Guias GPS",
     },
   ] as const;
 
@@ -202,12 +155,6 @@ test("menu, títulos e URLs usam a mesma linguagem operacional", async ({ page }
     ).toBeVisible();
     expect(new URL(page.url()).pathname).toBe(destino.href);
   }
-
-  await page.goto("/administracao");
-  await expect(page.locator('a.admin-card[href="/fechamento-mensal"]')).toHaveCount(0);
-  await expect(
-    page.locator('a.admin-card[href="/conferencia-entre-folhas"]'),
-  ).toHaveCount(0);
 });
 
 test("URLs antigas preservam a competência e redirecionam para o nome canônico", async ({
@@ -217,15 +164,15 @@ test("URLs antigas preservam a competência e redirecionam para o nome canônico
   const legadas = [
     {
       antiga: "/homologacoes?competencia=2026-06",
-      atual: "/fechamento-mensal?competencia=2026-06",
+      atual: "/?aviso=modulo-reservado",
     },
     {
       antiga: "/consolidacoes?competencia=2026-06",
-      atual: "/conferencia-entre-folhas?competencia=2026-06",
+      atual: "/?aviso=modulo-reservado",
     },
     {
       antiga: "/consolidacoes/simulacoes?competencia=2026-06",
-      atual: "/conferencia-entre-folhas/simulacoes?competencia=2026-06",
+      atual: "/?aviso=modulo-reservado",
     },
     {
       antiga: "/instrumentos",

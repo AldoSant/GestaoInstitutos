@@ -5,7 +5,7 @@ export default function AjudaPage() {
   return (
     <AppShell title="Ajuda" eyebrow="Guia rápido">
       <section className="panel prose-panel">
-        <h2>Como executar o fechamento mensal</h2>
+        <h2>Como executar o processamento mensal</h2>
         <ol>
           <li>
             Confira pessoas, prestadores e vínculos em{" "}
@@ -13,9 +13,6 @@ export default function AjudaPage() {
               Pessoas e vínculos
             </Link>
             .
-          </li>
-          <li>
-            Registre medições e lançamentos que alteram os valores do mês.
           </li>
           <li>
             Acesse{" "}
@@ -28,25 +25,21 @@ export default function AjudaPage() {
             Revise as pendências, confira pessoas, rubricas, descontos e valor
             líquido.
           </li>
-          <li>Registre a conferência do RH e feche a folha.</li>
           <li>
-            Finalize a apuração em{" "}
+            Quando solicitado pela própria Folha, registre a medição ou o
+            lançamento mensal do vínculo antes de recalcular.
+          </li>
+          <li>Revise a memória e feche a folha.</li>
+          <li>
+            Gere e confira as memórias em{" "}
             <Link className="text-link" href="/obrigacoes">
-              Obrigações e guias
+              Guias GPS
             </Link>
             .
           </li>
           <li>
-            Abra o{" "}
-            <Link className="text-link" href="/demonstrativos">
-              Demonstrativo mensal
-            </Link>
-            , confira pagamentos PF/PJ, retenções e guias, registre a decisão
-            e feche a competência.
-          </li>
-          <li>
-            Use <strong>Dossiê / PDF</strong> para imprimir a revisão atual ou
-            consultar um fechamento anterior preservado.
+            Use os relatórios da Folha e das GPS para a conferência e a
+            prestação de contas.
           </li>
         </ol>
 
@@ -55,8 +48,6 @@ export default function AjudaPage() {
           Leia a pendência apresentada e abra o cadastro indicado. Depois da
           correção, volte à competência e processe novamente. Uma folha fechada
           só pode ser reaberta com justificativa.
-          Um demonstrativo fechado abre uma nova revisão sem apagar pagamentos,
-          aprovação, guias ou hash da versão anterior.
         </p>
 
         <h3>Documentos oficiais</h3>

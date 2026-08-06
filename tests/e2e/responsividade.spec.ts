@@ -55,28 +55,23 @@ test("jornada principal permanece operável no celular", async ({ page }) => {
   await semEstouroHorizontal(page);
 
   let menu = await abrirMenu(page);
-  await menu.getByRole("link", { name: "Folhas mensais" }).click();
+  await menu.getByRole("link", { name: "Processamentos mensais" }).click();
   await expect(
-    page.getByRole("heading", { name: "Folhas mensais" }),
+    page.getByRole("heading", { name: "Processamentos mensais" }),
   ).toBeVisible();
   await semEstouroHorizontal(page);
 
   menu = await abrirMenu(page);
-  await menu.getByText("Pessoas e vínculos", { exact: true }).click();
+  await menu.getByText("Cadastros", { exact: true }).click();
   await menu.getByRole("link", { name: "Cadastros", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Cadastros" })).toBeVisible();
   await semEstouroHorizontal(page);
 
   menu = await abrirMenu(page);
-  await menu.getByRole("link", { name: "Obrigações e guias" }).click();
+  await menu.getByRole("link", { name: "Guias GPS" }).click();
   await expect(
-    page.getByRole("heading", { name: "Obrigações e guias" }),
+    page.getByRole("heading", { name: "Guias GPS" }),
   ).toBeVisible();
-  await semEstouroHorizontal(page);
-
-  menu = await abrirMenu(page);
-  await menu.getByRole("link", { name: "Administração" }).click();
-  await expect(page.getByRole("heading", { name: "Administração" })).toBeVisible();
   await semEstouroHorizontal(page);
 });
 

@@ -6,6 +6,22 @@ Substituição incremental de um sistema legado de gestão de institutos, começ
 
 O projeto nasceu de engenharia reversa autorizada do comportamento do sistema atual. O objetivo não é copiar defeitos ou limitações técnicas: cada regra deve ser confirmada por dados, documento, norma e teste automatizado.
 
+## Operação ativa
+
+Nesta fase, a interface publicada é deliberadamente restrita à rotina comprovada
+do GIW:
+
+1. **Cadastros** — pessoas, prestadores e vínculos;
+2. **Termos e metas**;
+3. **Processamentos mensais** — PF e PJ no mesmo lote;
+4. **Guias GPS** — memórias individuais de prestadores PF elegíveis.
+
+Medições e eventos continuam disponíveis somente quando a própria Folha os aponta
+como pré-requisito. FGTS, eSocial, demonstrativo PJ separado, consolidações/rateio,
+fechamento paralelo, migração histórica e parâmetros técnicos foram preservados no
+código e no banco, mas estão bloqueados da interface e de acessos diretos. Essa
+redução não apaga registros nem altera cálculos já existentes.
+
 ## Estado atual
 
 Este primeiro incremento contém:

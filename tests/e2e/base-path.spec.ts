@@ -32,7 +32,6 @@ test("consultas nativas preservam o prefixo público", async ({ page }) => {
   ).pathname.replace(/\/+$/u, "");
   const consultas = [
     ["cadastros", "#busca-cadastros"],
-    ["demonstrativos", "#competencia-demonstrativo"],
     ["eventos", "#busca-eventos"],
     ["termos-e-metas", "#busca-instrumentos"],
     ["medicoes", "#competencia-medicao"],

@@ -8,6 +8,14 @@
 > [Plano de substituição do GIW](PLANO_SUBSTITUICAO_GIW_MVP.md). Em caso de conflito
 > com registros anteriores, o plano novo prevalece.
 
+> **Superfície operacional enxuta em 06/08/2026:** a aplicação publicada expõe
+> Cadastros, Termos e metas, Processamentos mensais e Guias GPS. Medições e Eventos
+> seguem acessíveis apenas por pendência contextual da Folha. FGTS, eSocial,
+> demonstrativo separado, consolidações, fechamento paralelo, migração e parâmetros
+> técnicos foram colocados em modo adormecido (código e dados preservados, rota
+> redirecionada para a operação). Esta mudança não é evidência de emissão homologada:
+> o próximo portão continua sendo executar um ciclo real PF/PJ + GPS com RH.
+
 ## Decisão prioritária de 30/07/2026
 
 Foi eliminada da linha oficial de desenvolvimento a proposta de excluir toda pessoa

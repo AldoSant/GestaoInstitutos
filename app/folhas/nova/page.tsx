@@ -146,11 +146,8 @@ export default async function NovaFolhaPage({
             <AlertTriangle size={22} />
             <div>
               <strong>Recolhimento previdenciário ainda não configurado para {competenciaRotulo}</strong>
-              <p>A Folha pode ser preparada e conferida, mas a apuração de retenções ficará bloqueada até a publicação do instrumento fiscal vigente.</p>
+              <p>A Folha pode ser preparada e conferida. A apuração GPS ficará disponível quando a vigência previdenciária for publicada pela administração técnica.</p>
             </div>
-            <Link className="button secondary" href={`/parametros?novoPerfil=1&competencia=${competencia}`}>
-              Configurar recolhimento
-            </Link>
           </section>
         )}
 
@@ -332,14 +329,6 @@ export default async function NovaFolhaPage({
               >
                 Revisar medições
               </Link>
-              {vinculosPj > 0 && (
-                <Link
-                  className="button secondary"
-                  href={`/demonstrativos?competencia=${competencia}`}
-                >
-                  Registrar pagamentos PJ
-                </Link>
-              )}
             </div>
           )}
         </section>

@@ -87,6 +87,30 @@ test("proxy aceita sessão válida e tira usuário autenticado do login", () => 
   assert.equal(login.headers.get("location"), "http://localhost/");
 });
 
+test("proxy mantém módulos adormecidos fora do operacional autenticado", () => {
+  process.env.AUTH_SECRET = "segredo-de-teste-com-mais-de-trinta-e-dois-bytes";
+  const token = criarTokenSessao({ login: "admin", perfil: "ADMINISTRADOR" });
+  for (const rota of [
+    "/administracao",
+    "/conferencia-entre-folhas",
+    "/demonstrativos",
+    "/fechamento-mensal",
+    "/fgts",
+    "/migracoes",
+    "/parametros",
+  ]) {
+    const resposta = proxy(new NextRequest(`http://localhost${rota}`, {
+      headers: { cookie: `${COOKIE_SESSAO}=${token}` },
+    }));
+    assert.equal(resposta.status, 307, rota);
+    assert.equal(
+      resposta.headers.get("location"),
+      "http://localhost/?aviso=modulo-reservado",
+      rota,
+    );
+  }
+});
+
 test("proxy preserva o base path no redirecionamento", () => {
   process.env.AUTH_SECRET = "segredo-de-teste-com-mais-de-trinta-e-dois-bytes";
   const resposta = proxy(new NextRequest(

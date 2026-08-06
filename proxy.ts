@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { basePathAplicacao, caminhoAplicacao } from "@/lib/base-path";
+import { rotaModuloAdormecida } from "@/lib/operacao-enxuta";
 import { COOKIE_SESSAO, lerTokenSessao } from "@/lib/sessao";
 
 export function proxy(request: NextRequest) {
@@ -29,6 +30,16 @@ export function proxy(request: NextRequest) {
     const destino = request.nextUrl.clone();
     destino.pathname = pathnameHome;
     destino.search = "";
+    return NextResponse.redirect(destino);
+  }
+  const pathnameInterno = basePath && request.nextUrl.pathname.startsWith(basePath)
+    ? request.nextUrl.pathname.slice(basePath.length) || "/"
+    : request.nextUrl.pathname;
+  if (sessao && rotaModuloAdormecida(pathnameInterno)) {
+    const destino = request.nextUrl.clone();
+    destino.pathname = pathnameHome;
+    destino.search = "";
+    destino.searchParams.set("aviso", "modulo-reservado");
     return NextResponse.redirect(destino);
   }
   return NextResponse.next();

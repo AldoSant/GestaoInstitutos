@@ -7,18 +7,14 @@ import {
   Building2,
   ChevronDown,
   CircleHelp,
-  ClipboardCheck,
   Database,
   FileCheck2,
   FileText,
   Gauge,
-  GitMerge,
   Link2,
   ListChecks,
   LogOut,
   ReceiptText,
-  Rows3,
-  Settings2,
   ShieldCheck,
   UsersRound,
   type LucideIcon,
@@ -39,11 +35,6 @@ const pessoas: ItemNavegacao[] = [
   { href: ROTAS.instrumentos, label: "Termos e metas", icon: FileText },
   { href: ROTAS.medicoes, label: "Medições", icon: ListChecks },
   { href: ROTAS.eventos, label: "Eventos e lançamentos", icon: ReceiptText },
-];
-
-const conferencia: ItemNavegacao[] = [
-  { href: ROTAS.fechamentoMensal, label: "Fechamento mensal", icon: ClipboardCheck },
-  { href: ROTAS.conferenciaEntreFolhas, label: "Conferência entre folhas", icon: GitMerge },
 ];
 
 function estaAtivo(pathname: string, href: string) {
@@ -110,7 +101,6 @@ export function Logo() {
 }
 
 export function NavegacaoPrincipal({
-  administrador = false,
 }: {
   administrador?: boolean;
 }) {
@@ -118,41 +108,22 @@ export function NavegacaoPrincipal({
     <nav className="nav-list" aria-label="Navegação principal">
       <span className="nav-section-label">Operação</span>
       <NavLink item={{ href: ROTAS.inicio, label: "Visão geral", icon: Gauge }} />
-      <NavLink
-        item={{ href: ROTAS.folhaMensal, label: "Folhas mensais", icon: BadgeDollarSign }}
-      />
-      <NavLink
-        item={{ href: ROTAS.demonstrativos, label: "Demonstrativo mensal", icon: Rows3 }}
-      />
       <GrupoNavegacao
-        label="Pessoas e vínculos"
+        label="Cadastros"
         icon={UsersRound}
-        itens={pessoas}
+        itens={pessoas.slice(0, 3)}
+      />
+      <NavLink item={{ href: ROTAS.instrumentos, label: "Termos e metas", icon: FileText }} />
+      <NavLink
+        item={{ href: ROTAS.folhaMensal, label: "Processamentos mensais", icon: BadgeDollarSign }}
       />
       <NavLink
         item={{
           href: ROTAS.obrigacoes,
-          label: "Obrigações e guias",
+          label: "Guias GPS",
           icon: FileCheck2,
         }}
       />
-      <GrupoNavegacao
-        label="Conferência"
-        icon={ClipboardCheck}
-        itens={conferencia}
-      />
-      {administrador && (
-        <>
-          <span className="nav-section-label nav-admin-label">Gestão</span>
-          <NavLink
-            item={{
-              href: ROTAS.administracao,
-              label: "Administração",
-              icon: Settings2,
-            }}
-          />
-        </>
-      )}
     </nav>
   );
 }

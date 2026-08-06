@@ -43,11 +43,8 @@ test("telas críticas não possuem violações sérias de acessibilidade", async
   const telas = [
     { caminho: "", titulo: "Visão geral" },
     { caminho: "cadastros", titulo: "Cadastros" },
-    { caminho: "folhas", titulo: "Folhas mensais" },
-    { caminho: "demonstrativos", titulo: "Demonstrativo mensal" },
-    { caminho: "obrigacoes", titulo: "Obrigações e guias" },
-    { caminho: "fgts", titulo: "FGTS Digital" },
-    { caminho: "administracao", titulo: "Administração" },
+    { caminho: "folhas", titulo: "Processamentos mensais" },
+    { caminho: "obrigacoes", titulo: "Guias GPS" },
   ];
 
   for (const tela of telas) {

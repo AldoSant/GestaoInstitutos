@@ -23,7 +23,6 @@ import { carregarFolha } from "@/db/folhas";
 import { carregarHomologacoesFolha } from "@/db/homologacoes";
 import { nomeRegimePrevidenciario } from "@/lib/enquadramento-previdenciario";
 import { descreverProcessamento } from "@/lib/processamento-operacional";
-import { ROTAS, rotaComCompetencia } from "@/lib/rotas";
 import {
   cancelar,
   fechar,
@@ -413,12 +412,10 @@ export default async function FolhaDetalhePage({
                     </Link>
                   )}
                   {estadoProcessamento?.categoria === "CONSOLIDACAO" && (
-                    <Link
-                      className="button secondary"
-                      href={rotaComCompetencia(ROTAS.conferenciaEntreFolhas, folha.competencia.slice(0, 7))}
-                    >
-                      Conferir entre folhas
-                    </Link>
+                    <p className="field-help">
+                      Este processamento depende de uma regra de rateio que
+                      não está habilitada no operacional atual.
+                    </p>
                   )}
                   <form action={tentarNovamenteProcessamento}>
                     <input type="hidden" name="folhaId" value={folha.id} />
