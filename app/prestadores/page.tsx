@@ -170,15 +170,14 @@ export default async function PrestadoresPage({
       {modalPrestadorAberto && (
         <ModalShell
           title={prestadorEditado ? "Editar prestador" : "Cadastrar prestador"}
-          description="Associe uma pessoa e complete os dados previdenciários usados no processamento da folha."
+          description="Associe uma pessoa e defina somente os controles funcionais do prestador. NIT é informado uma única vez na ficha da pessoa."
           closeHref="/prestadores"
         >
           <form key={prestadorEditado?.id ?? "novo"} action={salvarPrestador} className="crud-form prestador-form">
             <input type="hidden" name="id" value={prestadorEditado?.id ?? ""} />
             <label className="field-wide"><span>Pessoa</span><select key={prestadorEditado?.id ?? pessoaPreselecionada ?? "novo"} name="pessoaId" required defaultValue={prestadorEditado?.pessoaId ?? pessoaPreselecionada}>{!prestadorEditado && <option value="" disabled>Selecione uma pessoa</option>}{pessoasDisponiveis.map((item) => <option key={item.id} value={item.id}>{item.nome} · {item.tipo === "FISICA" ? "PF" : "PJ"}{item.ativo ? "" : " · inativa"}</option>)}</select></label>
             <label><span>Matrícula</span><input name="matricula" required maxLength={40} defaultValue={prestadorEditado?.matricula ?? ""} /></label>
-            <label><span>NIT / PIS / PASEP</span><input name="nitPisPasep" inputMode="numeric" maxLength={20} defaultValue={prestadorEditado?.nitPisPasep ?? ""} /></label>
-            <label><span>Categoria eSocial</span><input name="categoriaContribuinte" maxLength={30} placeholder="Ex.: 701" defaultValue={prestadorEditado?.categoriaContribuinte ?? ""} /></label>
+            <p className="field-help field-wide">Para pessoa física, o sistema aplica automaticamente o cenário de contribuinte individual (701). Não há transmissão ao eSocial neste fluxo.</p>
             <label className="checkbox-field"><input name="isentoInss" type="checkbox" defaultChecked={prestadorEditado?.isentoInss ?? false} /><span>Isento de retenção de INSS</span></label>
             <button className="button primary" type="submit" disabled={pessoasDisponiveis.length === 0}>{prestadorEditado ? "Salvar prestador" : "Cadastrar prestador"}</button>
             <Link className="button secondary" href="/prestadores">Cancelar</Link>
@@ -190,7 +189,7 @@ export default async function PrestadoresPage({
         <div>
           <span className="section-kicker">Cadastro previdenciário</span>
           <h2>Prestadores da organização</h2>
-          <p>Cada pessoa pode possuir um único cadastro de prestador por organização.</p>
+          <p>Cada pessoa pode possuir um único cadastro de prestador por organização. NIT/PIS/PASEP é mantido exclusivamente na ficha da pessoa.</p>
         </div>
         <form action={caminhoAplicacao("/prestadores")} method="get" className="search-field">
           <Search size={17} />
@@ -240,7 +239,7 @@ export default async function PrestadoresPage({
                   <td><strong>{item.matricula}</strong><small>{item.pessoaLegacyId ? `Pessoa GIW ${item.pessoaLegacyId}` : "Cadastro local"}</small></td>
                   <td><strong>{item.nome}</strong><small>{item.tipo === "FISICA" ? "Pessoa física" : "Pessoa jurídica"}</small></td>
                   <td>{documento(item.cpf, item.cnpj)}</td>
-                  <td>{item.isentoInss ? <StatusBadge tone="neutral">Isento</StatusBadge> : <StatusBadge tone="info">Retém INSS</StatusBadge>}<small>{item.nitPisPasep ?? "NIT não informado"}</small></td>
+                  <td>{item.isentoInss ? <StatusBadge tone="neutral">Sem retenção</StatusBadge> : <StatusBadge tone="info">Retém INSS</StatusBadge>}<small>{item.inscricaoInss ?? "NIT não informado na pessoa"}</small></td>
                   <td>{item.atividadeAtual ?? "Sem vínculo ativo"}<small>{item.totalVinculos} vínculo(s) no histórico</small></td>
                   <td>{moeda(item.retribuicaoAtual)}</td>
                   <td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativo" : "Inativo"}</StatusBadge></td>

@@ -132,10 +132,8 @@ test("rejeita percentuais fora do contrato do Evento", () => {
   );
 });
 
-test("bloqueia Pessoa Física sem categoria previdenciária homologada", () => {
-  assert.throws(
-    () =>
-      processarVinculoFolha(
+test("aplica categoria operacional sem exigir eSocial no cadastro", () => {
+  const resultado = processarVinculoFolha(
         {
           vinculoId: "00000000-0000-4000-8000-000000000007",
           tipoPessoa: "FISICA",
@@ -151,9 +149,9 @@ test("bloqueia Pessoa Física sem categoria previdenciária homologada", () => {
           eventos: [],
         },
         REGRA_FISCAL_2026,
-      ),
-    /categoria previdenciária\/eSocial é obrigatória/,
-  );
+      );
+  assert.equal(resultado.memoria.enquadramento.categoriaAplicada, "701");
+  assert.equal(resultado.valorInssCentavos, 11_000);
 });
 
 test("limita a retenção pela base comprovada em outras fontes", () => {
@@ -197,6 +195,38 @@ test("limita a retenção pela base comprovada em outras fontes", () => {
       },
     ],
   });
+});
+
+test("não retém INSS quando outra fonte comprovada já alcançou o teto", () => {
+  const resultado = processarVinculoFolha(
+    {
+      vinculoId: "00000000-0000-4000-8000-000000000108",
+      tipoPessoa: "FISICA",
+      categoriaContribuinte: null,
+      valorRetribuicao: "12000.00",
+      descontaInss: true,
+      descontaIrrf: false,
+      isentoInss: false,
+      baseOutrasFontes: "8475.55",
+      outrasFontes: [
+        {
+          fontePagadora: "Empregador principal",
+          documentoFonte: "12345678000199",
+          baseContribuicao: "8475.55",
+          valorContribuicao: "988.09",
+          documentoReferencia: "HOL-2026-08",
+        },
+      ],
+      enquadramentoPrevidenciario: ENQUADRAMENTO_GERAL,
+      dependentesIrrf: 0,
+      eventos: [],
+    },
+    REGRA_FISCAL_2026,
+  );
+
+  assert.equal(resultado.baseInssCentavos, 0);
+  assert.equal(resultado.valorInssCentavos, 0);
+  assert.equal(resultado.memoria.inss.tetoAtingido, true);
 });
 
 test("aplica 20% ao segurado quando a beneficente está imune da patronal", () => {

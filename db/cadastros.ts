@@ -320,7 +320,6 @@ export async function carregarFichaPessoa(pessoaId: string) {
         prestador: {
           id: prestadores.id,
           matricula: prestadores.matricula,
-          nitPisPasep: prestadores.nitPisPasep,
           categoriaContribuinte: prestadores.categoriaContribuinte,
           ativo: prestadores.ativo,
         },

@@ -281,6 +281,13 @@
       "when": 1786596000000,
       "tag": "0039_individual_gps_registration",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1786682400000,
+      "tag": "0040_pessoa_nit_unico",
+      "breakpoints": true
     }
   ]
 }

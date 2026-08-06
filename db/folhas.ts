@@ -16,7 +16,6 @@ import {
   processarVinculoFolha,
   type EventoCompetencia,
 } from "@/lib/processamento-folha";
-import { resolverEnquadramentoPrestador } from "@/lib/inteligencia-contabil";
 import {
   carregarEnquadramentoPorCompetencia,
   carregarEnquadramentoPorId,
@@ -224,15 +223,12 @@ async function prevalidarCriacaoFolha(
     tipo_pessoa: "FISICA" | "JURIDICA";
     cpf: string | null;
     cnpj: string | null;
-    categoria_contribuinte: string | null;
-    nit_pis_pasep: string | null;
     exige_medicao_mensal: boolean;
     medicao_id: string | null;
     pendencias_outras_fontes: number;
   }>(
     `select v.id vinculo_id, pr.matricula, p.nome_razao_social nome,
              p.tipo tipo_pessoa, p.cpf, p.cnpj,
-             pr.categoria_contribuinte, pr.nit_pis_pasep,
              v.exige_medicao_mensal, mm.id medicao_id,
             (
               select count(*)::int
@@ -264,19 +260,8 @@ async function prevalidarCriacaoFolha(
   for (const candidato of candidatos.rows) {
     const identificacao = `${candidato.nome} (${candidato.matricula})`;
     if (candidato.tipo_pessoa === "FISICA") {
-      const decisao = resolverEnquadramentoPrestador({
-        tipoPessoa: candidato.tipo_pessoa,
-        categoriaContribuinte: candidato.categoria_contribuinte,
-      });
-      if (!decisao.suportado) {
-        problemas.push(`${identificacao}: ${decisao.motivo}`);
-        continue;
-      }
       if (!candidato.cpf) {
         problemas.push(`${identificacao}: documento fiscal não informado.`);
-      }
-      if (!candidato.nit_pis_pasep?.trim()) {
-        problemas.push(`${identificacao}: NIT/PIS/PASEP não informado.`);
       }
     } else if (!candidato.cnpj) {
       problemas.push(`${identificacao}: documento fiscal não informado.`);
@@ -730,7 +715,8 @@ export async function processarFolha(
               mm.conferente medicao_conferente,
               mm.conferida_em::text medicao_conferida_em,
                v.desconta_inss, v.desconta_irrf, pr.isento_inss,
-              pr.categoria_contribuinte, pr.nit_pis_pasep, p.tipo tipo_pessoa,
+              case when p.tipo = 'FISICA' then '701' else null end categoria_contribuinte,
+              p.inscricao_inss nit_pis_pasep, p.tipo tipo_pessoa,
               coalesce(
                 (
                   select sum(cof.base_contribuicao)
@@ -781,8 +767,8 @@ export async function processarFolha(
                 ),
                   'prestador', jsonb_build_object(
                    'id', pr.id, 'matricula', pr.matricula,
-                   'nitPisPasep', pr.nit_pis_pasep,
-                   'categoriaContribuinte', pr.categoria_contribuinte,
+                   'nitPisPasep', p.inscricao_inss,
+                   'categoriaContribuinte', case when p.tipo = 'FISICA' then '701' else null end,
                    'isentoInss', pr.isento_inss,
                    'outrasFontes', coalesce(
                      (
@@ -974,6 +960,15 @@ export async function processarFolha(
         },
         regra.parametros,
       );
+      if (
+        base.tipo_pessoa === "FISICA" &&
+        resultado.valorInssCentavos > 0 &&
+        base.nit_pis_pasep?.replace(/\D/g, "").length !== 11
+      ) {
+        throw new Error(
+          `A pessoa vinculada a ${vinculoId} possui INSS a recolher e precisa de NIT/PIS/PASEP válido na ficha da pessoa.`,
+        );
+      }
       if (ativacaoConsolidada.ativa && base.quantidade_vinculos_pessoa > 1) {
         let rateios = rateiosPorPessoa.get(base.pessoa_id);
         if (!rateios) {
@@ -1629,14 +1624,6 @@ export async function listarOpcoesNovaFolha(
             count(distinct v.id) filter (
               where p.tipo = 'FISICA'
             )::int vinculos_pf,
-            count(distinct v.id) filter (
-              where p.tipo = 'FISICA'
-                and pr.categoria_contribuinte is distinct from '701'
-            )::int enquadramentos_pendentes,
-            count(distinct v.id) filter (
-              where p.tipo = 'FISICA'
-                and nullif(btrim(pr.nit_pis_pasep), '') is null
-            )::int nit_pendente,
             count(distinct v.id) filter (
               where v.exige_medicao_mensal and mm.id is null
             )::int medicoes_pendentes,

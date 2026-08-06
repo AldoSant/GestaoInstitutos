@@ -55,8 +55,6 @@ export default async function NovaFolhaPage({
   }
   const opcoes = instrumentos.map((item) => {
     const bloqueios =
-      Number(item.enquadramentos_pendentes) +
-      Number(item.nit_pendente) +
       Number(item.medicoes_pendentes) +
       Number(item.documentos_pendentes) +
       Number(item.outras_fontes_pendentes);
@@ -257,8 +255,6 @@ export default async function NovaFolhaPage({
                           <strong>{item.bloqueios} pendência(s)</strong>
                           <small>
                             {[
-                              Number(item.enquadramentos_pendentes) > 0 && `${item.enquadramentos_pendentes} enquadramento(s)`,
-                              Number(item.nit_pendente) > 0 && `${item.nit_pendente} NIT`,
                               Number(item.documentos_pendentes) > 0 && `${item.documentos_pendentes} documento(s)`,
                               Number(item.medicoes_pendentes) > 0 && `${item.medicoes_pendentes} medição(ões)`,
                               Number(item.outras_fontes_pendentes) > 0 && `${item.outras_fontes_pendentes} outra(s) fonte(s)`,
@@ -311,7 +307,9 @@ export default async function NovaFolhaPage({
                 <strong>Há pré-requisitos pendentes</strong>
                 <p>
                   Agora você pode selecionar o termo/meta para obter a validação
-                  nominal. Use os atalhos para corrigir os cadastros bloqueadores.
+                  nominal. NIT só é exigido na ficha da pessoa quando houver INSS
+                  residual a recolher; uma outra fonte que já atingiu o teto não
+                  bloqueia o processamento.
                 </p>
               </div>
               <Link className="button secondary" href="/vinculos">

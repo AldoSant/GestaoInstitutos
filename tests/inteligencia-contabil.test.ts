@@ -14,34 +14,28 @@ test("catálogo normativo possui fonte, vigência e data de consulta", () => {
   }
 });
 
-test("libera somente o cenário 701 atualmente homologado", () => {
+test("aplica automaticamente o cenário 701 à pessoa física operacional", () => {
   const decisao = resolverEnquadramentoPrestador({
     tipoPessoa: "FISICA",
     categoriaContribuinte: "701",
   });
   assert.equal(decisao.suportado, true);
   assert.equal(decisao.cenario, "PF_CONTRIBUINTE_INDIVIDUAL_701");
+  assert.equal(decisao.categoriaAplicada, "701");
 });
 
-test("bloqueia categorias PF ausentes ou não homologadas e classifica PJ sem previdência", () => {
-  assert.equal(
-    resolverEnquadramentoPrestador({
-      tipoPessoa: "FISICA",
-      categoriaContribuinte: null,
-    }).cenario,
-    "CATEGORIA_AUSENTE",
-  );
-  assert.equal(
-    resolverEnquadramentoPrestador({
-      tipoPessoa: "FISICA",
-      categoriaContribuinte: "723",
-    }).cenario,
-    "CATEGORIA_PF_NAO_HOMOLOGADA",
-  );
+test("dispensa categoria manual e classifica PJ sem previdência", () => {
+  const pf = resolverEnquadramentoPrestador({
+    tipoPessoa: "FISICA",
+    categoriaContribuinte: null,
+  });
+  assert.equal(pf.suportado, true);
+  assert.equal(pf.categoriaAplicada, "701");
   const pj = resolverEnquadramentoPrestador({
     tipoPessoa: "JURIDICA",
     categoriaContribuinte: null,
   });
   assert.equal(pj.suportado, true);
   assert.equal(pj.cenario, "PJ_PAGAMENTO_SEM_PREVIDENCIA");
+  assert.equal(pj.categoriaAplicada, null);
 });

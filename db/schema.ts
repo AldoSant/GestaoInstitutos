@@ -282,7 +282,6 @@ export const prestadores = pgTable(
       .notNull()
       .references(() => pessoas.id),
     matricula: varchar("matricula", { length: 40 }).notNull(),
-    nitPisPasep: varchar("nit_pis_pasep", { length: 30 }),
     categoriaContribuinte: varchar("categoria_contribuinte", { length: 30 }),
     isentoInss: boolean("isento_inss").notNull().default(false),
     ativo: boolean("ativo").notNull().default(true),

@@ -36,8 +36,6 @@ export async function salvarPrestador(formData: FormData) {
     id: formData.get("id"),
     pessoaId: formData.get("pessoaId"),
     matricula: formData.get("matricula"),
-    nitPisPasep: formData.get("nitPisPasep"),
-    categoriaContribuinte: formData.get("categoriaContribuinte"),
     isentoInss: formData.get("isentoInss"),
   });
   if (!validacao.dados) redirect(destino(validacao.erros.join(" "), true));
@@ -60,8 +58,6 @@ export async function salvarPrestador(formData: FormData) {
         .set({
           pessoaId: dados.pessoaId,
           matricula: dados.matricula,
-          nitPisPasep: dados.nitPisPasep,
-          categoriaContribuinte: dados.categoriaContribuinte,
           isentoInss: dados.isentoInss,
           atualizadoEm: new Date(),
         })
@@ -73,8 +69,6 @@ export async function salvarPrestador(formData: FormData) {
         empresaId: empresa.id,
         pessoaId: dados.pessoaId,
         matricula: dados.matricula,
-        nitPisPasep: dados.nitPisPasep,
-        categoriaContribuinte: dados.categoriaContribuinte,
         isentoInss: dados.isentoInss,
       });
     }

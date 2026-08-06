@@ -118,11 +118,6 @@ export function processarVinculoFolha(
     tipoPessoa: entrada.tipoPessoa,
     categoriaContribuinte: entrada.categoriaContribuinte,
   });
-  if (!enquadramento.suportado) {
-    throw new Error(
-      `${enquadramento.motivo} Dados necessários: ${enquadramento.dadosNecessarios.join(", ")}.`,
-    );
-  }
   if (!Number.isSafeInteger(entrada.dependentesIrrf) || entrada.dependentesIrrf < 0) {
     throw new Error("A quantidade de dependentes para IRRF é inválida.");
   }
@@ -330,6 +325,7 @@ export function processarVinculoFolha(
       },
       enquadramento: {
         cenario: enquadramento.cenario,
+        categoriaAplicada: enquadramento.categoriaAplicada,
         fundamentos: enquadramento.fundamentos,
       },
     },

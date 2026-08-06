@@ -76,73 +76,34 @@ export type DecisaoEnquadramento =
       cenario:
         | "PF_CONTRIBUINTE_INDIVIDUAL_701"
         | "PJ_PAGAMENTO_SEM_PREVIDENCIA";
+      categoriaAplicada: string | null;
       fundamentos: string[];
     }
-  | {
-      suportado: false;
-      cenario:
-        | "CATEGORIA_AUSENTE"
-        | "CATEGORIA_PF_NAO_HOMOLOGADA"
-        | "PESSOA_JURIDICA_FORA_DA_FOLHA";
-      motivo: string;
-      dadosNecessarios: string[];
-      fundamentos: string[];
-    };
 
 export function resolverEnquadramentoPrestador(
   entrada: EnquadramentoPrestador,
 ): DecisaoEnquadramento {
-  const categoria = entrada.categoriaContribuinte?.trim() || null;
   if (entrada.tipoPessoa === "JURIDICA") {
     return {
       suportado: true,
       cenario: "PJ_PAGAMENTO_SEM_PREVIDENCIA",
+      categoriaAplicada: null,
       fundamentos: [
         FONTES_NORMATIVAS.EFD_REINF_DCTFWEB.codigo,
-      ],
-    };
-  }
-  if (!categoria) {
-    return {
-      suportado: false,
-      cenario: "CATEGORIA_AUSENTE",
-      motivo:
-        "A categoria previdenciária/eSocial é obrigatória para selecionar a regra correta.",
-      dadosNecessarios: [
-        "categoria do trabalhador no eSocial",
-        "NIT/PIS/PASEP",
-        "declaração e comprovantes de outras fontes pagadoras, quando houver",
-      ],
-      fundamentos: [
-        FONTES_NORMATIVAS.ESOCIAL_S_1_3.codigo,
-        FONTES_NORMATIVAS.CONTRIBUINTE_INDIVIDUAL.codigo,
-      ],
-    };
-  }
-  if (categoria !== "701") {
-    return {
-      suportado: false,
-      cenario: "CATEGORIA_PF_NAO_HOMOLOGADA",
-      motivo: `A categoria eSocial ${categoria} ainda não possui regra homologada neste motor.`,
-      dadosNecessarios: [
-        "categoria eSocial confirmada",
-        "incidências da rubrica S-1010",
-        "tratamento previdenciário e tributário específico",
-      ],
-      fundamentos: [
-        FONTES_NORMATIVAS.ESOCIAL_S_1_3.codigo,
-        FONTES_NORMATIVAS.CONTRIBUINTE_INDIVIDUAL.codigo,
       ],
     };
   }
   return {
     suportado: true,
     cenario: "PF_CONTRIBUINTE_INDIVIDUAL_701",
+    // O operacional atual trata PF como contribuinte individual. "701" é
+    // aplicado internamente; não é uma exigência de cadastro nem transmissão
+    // ao eSocial, que permanece fora desta superfície.
+    categoriaAplicada: "701",
     fundamentos: [
       FONTES_NORMATIVAS.CONTRIBUINTE_INDIVIDUAL.codigo,
       FONTES_NORMATIVAS.INSS_2026.codigo,
       FONTES_NORMATIVAS.IRRF_2026.codigo,
-      FONTES_NORMATIVAS.ESOCIAL_S_1_3.codigo,
     ],
   };
 }

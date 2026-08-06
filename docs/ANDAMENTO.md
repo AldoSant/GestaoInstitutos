@@ -16,6 +16,16 @@
 > redirecionada para a operação). Esta mudança não é evidência de emissão homologada:
 > o próximo portão continua sendo executar um ciclo real PF/PJ + GPS com RH.
 
+> **Ajuste cadastral e previdenciário em 06/08/2026:** NIT/PIS/PASEP passa a ter
+> fonte única na ficha de Pessoa; a migração `0040` aproveita o NIT já cadastrado e
+> só recupera o dado antigo de Prestador quando a ficha estiver vazia. Para o
+> operacional atual, PF recebe a classificação interna `701` automaticamente, sem
+> exigir categoria eSocial no cadastro. Uma outra fonte pagadora verificada reduz a
+> base até o teto de 2026 (R$ 8.475,55); sem INSS residual, não há bloqueio por NIT.
+> O NIT continua obrigatório somente quando houver INSS individual a identificar na
+> GPS. PJ permanece pagamento sem retenção automática: qualquer retenção depende da
+> matriz fiscal/nota aplicável, não de uma regra presumida.
+
 ## Decisão prioritária de 30/07/2026
 
 Foi eliminada da linha oficial de desenvolvimento a proposta de excluir toda pessoa

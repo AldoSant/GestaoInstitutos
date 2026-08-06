@@ -14,7 +14,7 @@ export async function carregarPrestadores(busca = "") {
         eq(prestadores.empresaId, empresa.id),
         or(
           ilike(prestadores.matricula, termo),
-          ilike(prestadores.nitPisPasep, termo),
+          ilike(pessoas.inscricaoInss, termo),
           ilike(pessoas.nomeRazaoSocial, termo),
           ...(digitos
             ? [ilike(pessoas.cpf, `%${digitos}%`), ilike(pessoas.cnpj, `%${digitos}%`)]
@@ -29,8 +29,7 @@ export async function carregarPrestadores(busca = "") {
         id: prestadores.id,
         pessoaId: prestadores.pessoaId,
         matricula: prestadores.matricula,
-        nitPisPasep: prestadores.nitPisPasep,
-        categoriaContribuinte: prestadores.categoriaContribuinte,
+        inscricaoInss: pessoas.inscricaoInss,
         isentoInss: prestadores.isentoInss,
         ativo: prestadores.ativo,
         nome: pessoas.nomeRazaoSocial,

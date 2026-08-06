@@ -46,17 +46,18 @@ try {
   );
   assert.equal(instrumento.rowCount, 1, "Instrumento sintético não encontrado.");
   const classificados = await getPool().query(
-    `update prestador
-        set categoria_contribuinte = '701',
-            nit_pis_pasep = coalesce(nit_pis_pasep, '12345678901'),
+    `update pessoa pessoa_ci
+        set inscricao_inss = coalesce(pessoa_ci.inscricao_inss, '12345678901'),
             atualizado_em = now()
-      where empresa_id = $1 and matricula = 'CI-0001'`,
+       from prestador prestador_ci
+      where pessoa_ci.id = prestador_ci.pessoa_id
+        and pessoa_ci.empresa_id = $1 and prestador_ci.matricula = 'CI-0001'`,
     [empresa.id],
   );
   assert.equal(
     classificados.rowCount,
     1,
-    "Prestador sintético não pôde ser classificado na categoria 701.",
+    "Pessoa sintética não pôde receber a inscrição INSS.",
   );
   const vinculoMedido = await getPool().query<{ id: string }>(
     `update prestador_vinculo v
