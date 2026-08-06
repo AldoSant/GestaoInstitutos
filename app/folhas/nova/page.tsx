@@ -11,6 +11,7 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { MetricCard, StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
+import { listarEnquadramentos } from "@/db/enquadramentos";
 import { listarOpcoesNovaFolha } from "@/db/folhas";
 import { listarPerfisRecolhimento } from "@/db/perfis-recolhimento";
 import { caminhoAplicacao } from "@/lib/base-path";
@@ -36,11 +37,13 @@ export default async function NovaFolhaPage({
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
   let instrumentos: Awaited<ReturnType<typeof listarOpcoesNovaFolha>>;
   let perfisRecolhimento: Awaited<ReturnType<typeof listarPerfisRecolhimento>>;
+  let enquadramentos: Awaited<ReturnType<typeof listarEnquadramentos>>;
   try {
     empresa = await resolverEmpresaAtiva();
-    [instrumentos, perfisRecolhimento] = await Promise.all([
+    [instrumentos, perfisRecolhimento, enquadramentos] = await Promise.all([
       listarOpcoesNovaFolha(empresa.id, competencia),
       listarPerfisRecolhimento(empresa.id),
+      listarEnquadramentos(empresa.id),
     ]);
   } catch {
     return (
@@ -53,6 +56,13 @@ export default async function NovaFolhaPage({
       </AppShell>
     );
   }
+  const competenciaData = `${competencia}-01`;
+  const enquadramentoPrevidenciario = enquadramentos.find(
+    (item) =>
+      item.publicado &&
+      item.inicio_vigencia <= competenciaData &&
+      item.fim_vigencia >= competenciaData,
+  );
   const opcoes = instrumentos.map((item) => {
     const bloqueios =
       Number(item.medicoes_pendentes) +
@@ -63,11 +73,15 @@ export default async function NovaFolhaPage({
       bloqueios,
       vinculosPf: Number(item.vinculos_pf),
       vinculosPj: Number(item.vinculos) - Number(item.vinculos_pf),
-      selecionavel: Number(item.vinculos) > 0 && !item.folha_existente,
+      selecionavel:
+        Number(item.vinculos) > 0 &&
+        !item.folha_existente &&
+        Boolean(enquadramentoPrevidenciario),
       pronta:
         Number(item.vinculos) > 0 &&
         bloqueios === 0 &&
-        !item.folha_existente,
+        !item.folha_existente &&
+        Boolean(enquadramentoPrevidenciario),
     };
   });
   const opcoesProntas = opcoes.filter((item) => item.pronta);
@@ -82,7 +96,6 @@ export default async function NovaFolhaPage({
     0,
   );
   const primeiraOpcao = opcoesProntas[0] ?? opcoesSelecionaveis[0];
-  const competenciaData = `${competencia}-01`;
   const perfilRecolhimento = perfisRecolhimento.find(
     (item) =>
       item.publicado &&
@@ -138,6 +151,17 @@ export default async function NovaFolhaPage({
             A seleção de Termo e Meta abaixo sempre corresponde à competência escolhida aqui.
           </p>
         </section>
+
+        {!enquadramentoPrevidenciario && (
+          <section className="alert-box warning">
+            <AlertTriangle size={22} />
+            <div>
+              <strong>Configuração inicial da empresa necessária para {competenciaRotulo}</strong>
+              <p>Antes do primeiro processamento, confirme uma vez o enquadramento previdenciário do IGP. Não é uma categoria eSocial do prestador.</p>
+            </div>
+            <Link className="button primary" href={`/configuracao-inicial?competencia=${competencia}`}>Configurar empresa</Link>
+          </section>
+        )}
 
         {!perfilRecolhimento && (
           <section className="alert-box warning">
@@ -203,12 +227,14 @@ export default async function NovaFolhaPage({
                         ? "folha já criada"
                         : item.vinculos === 0
                           ? "sem vínculos"
-                          : `${item.vinculosPf} PF + ${item.vinculosPj} PJ · ${item.bloqueios} pendência(s) para resolver`}
+                          : !enquadramentoPrevidenciario
+                            ? "configuração inicial da empresa pendente"
+                            : `${item.vinculosPf} PF + ${item.vinculosPj} PJ · ${item.bloqueios} pendência(s) para resolver`}
                   </option>
                 ))}
               </select>
             </label>
-            <button className="button primary" type="submit" disabled={!opcoesSelecionaveis.length}>
+            <button className="button primary" type="submit" disabled={!opcoesSelecionaveis.length || !enquadramentoPrevidenciario}>
               <PlayCircle size={16} /> Validar e gerar processamento mensal
             </button>
           </form>
@@ -248,7 +274,12 @@ export default async function NovaFolhaPage({
                       <small>{item.vinculosPj} PJ</small>
                     </td>
                     <td>
-                      {item.bloqueios === 0 ? (
+                      {!enquadramentoPrevidenciario ? (
+                        <>
+                          <strong>Configuração inicial</strong>
+                          <small>enquadramento da empresa</small>
+                        </>
+                      ) : item.bloqueios === 0 ? (
                         <strong>Sem bloqueios</strong>
                       ) : (
                         <>
@@ -306,12 +337,12 @@ export default async function NovaFolhaPage({
               <div>
                 <strong>Há pré-requisitos pendentes</strong>
                 <p>
-                  Agora você pode selecionar o termo/meta para obter a validação
-                  nominal. NIT só é exigido na ficha da pessoa quando houver INSS
-                  residual a recolher; uma outra fonte que já atingiu o teto não
-                  bloqueia o processamento.
+                  {!enquadramentoPrevidenciario
+                    ? "Conclua primeiro a configuração inicial da empresa. Depois, a tela apontará apenas as pendências do termo e dos prestadores."
+                    : "Agora você pode selecionar o termo/meta para obter a validação nominal. NIT só é exigido na ficha da pessoa quando houver INSS residual a recolher; uma outra fonte que já atingiu o teto não bloqueia o processamento."}
                 </p>
               </div>
+              {!enquadramentoPrevidenciario && <Link className="button primary" href={`/configuracao-inicial?competencia=${competencia}`}>Configurar empresa</Link>}
               <Link className="button secondary" href="/vinculos">
                 Revisar vínculos
               </Link>

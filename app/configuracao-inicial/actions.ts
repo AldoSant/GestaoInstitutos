@@ -1,0 +1,68 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { resolverEmpresaAtiva } from "@/db/cadastros";
+import { publicarEnquadramento } from "@/db/enquadramentos";
+import { exigirAdministrador } from "@/lib/autorizacao";
+import { caminhoAplicacao } from "@/lib/base-path";
+import { validarEnquadramentoPrevidenciario } from "@/lib/enquadramento-previdenciario";
+
+function competenciaValida(valor: string) {
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(valor);
+}
+
+export async function concluirConfiguracaoInicial(formData: FormData) {
+  await exigirAdministrador();
+  const competencia = String(formData.get("competencia") ?? "");
+  const destino = competenciaValida(competencia)
+    ? caminhoAplicacao(`/folhas/nova?competencia=${competencia}`)
+    : caminhoAplicacao("/folhas/nova");
+  const validacao = validarEnquadramentoPrevidenciario({
+    regime: formData.get("regime"),
+    inicioVigencia: formData.get("inicioVigencia"),
+    fimVigencia: formData.get("fimVigencia"),
+    cebasNumero: formData.get("cebasNumero"),
+    cebasInicio: formData.get("cebasInicio"),
+    cebasFim: formData.get("cebasFim"),
+    evidencia: formData.get("evidencia"),
+  });
+  if (!validacao.dados) {
+    redirect(
+      `${caminhoAplicacao("/configuracao-inicial")}?erro=${encodeURIComponent(validacao.erros.join(" "))}&competencia=${encodeURIComponent(competencia)}`,
+    );
+  }
+
+  let erro = "";
+  try {
+    const empresa = await resolverEmpresaAtiva();
+    await publicarEnquadramento({
+      empresaId: empresa.id,
+      dados: validacao.dados,
+      ator: "CONFIGURACAO_INICIAL",
+    });
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "constraint" in error &&
+      error.constraint === "ex_enquadramento_publicado_sem_sobreposicao"
+    ) {
+      erro = "Já existe um enquadramento publicado para parte desta vigência.";
+    } else {
+      erro = error instanceof Error ? error.message : "Não foi possível concluir a configuração.";
+    }
+  }
+  if (erro) {
+    redirect(
+      `${caminhoAplicacao("/configuracao-inicial")}?erro=${encodeURIComponent(erro)}&competencia=${encodeURIComponent(competencia)}`,
+    );
+  }
+
+  revalidatePath("/");
+  revalidatePath("/folhas");
+  revalidatePath("/folhas/nova");
+  redirect(
+    `${destino}${destino.includes("?") ? "&" : "?"}sucesso=${encodeURIComponent("Configuração previdenciária da empresa concluída.")}`,
+  );
+}
