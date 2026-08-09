@@ -24,9 +24,17 @@ async function definirLookup(formulario, nome, valor) {
 
 async function lerPagina(consulta) {
   return consulta.locator("body").evaluate((body) => {
+    const tabelas = Array.from(body.querySelectorAll("table")).map((item) => ({
+      id: item.id || null,
+      headers: item.querySelectorAll("thead th").length,
+      rows: item.querySelectorAll("tbody tr").length,
+      cells: item.querySelectorAll("tbody tr td").length,
+    }));
     const tabela = body.querySelector("#results-table") ??
-      Array.from(body.querySelectorAll("table")).find((item) => item.querySelector("tbody tr"));
-    if (!tabela) return { headers: [], rows: [] };
+      Array.from(body.querySelectorAll("table"))
+        .filter((item) => item.querySelectorAll("tbody tr td").length > 0)
+        .sort((a, b) => b.querySelectorAll("tbody tr td").length - a.querySelectorAll("tbody tr td").length)[0];
+    if (!tabela) return { headers: [], rows: [], tabelas };
     return {
       headers: Array.from(tabela.querySelectorAll("thead th"), (cell) =>
         (cell.textContent ?? "").replace(/\s+/g, " ").trim(),
@@ -36,6 +44,7 @@ async function lerPagina(consulta) {
           (cell.textContent ?? "").replace(/\s+/g, " ").trim(),
         ))
         .filter((row) => row.some(Boolean)),
+      tabelas,
     };
   });
 }
