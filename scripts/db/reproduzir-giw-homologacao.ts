@@ -19,7 +19,7 @@ type ItemLegado = {
   cnpj: string | null;
   total_proventos: string;
   vinculo_id: string | null;
-  resolucao: "LEGADO" | "VINCULO_UNICO" | "SEM_DESTINO";
+  resolucao: "LEGADO" | "ROTULO_UNICO" | "VINCULO_UNICO" | "SEM_DESTINO";
 };
 
 type FolhaAlvo = {
@@ -77,12 +77,13 @@ async function carregarItens(empresaId: string, filtroCompetencias: string[]) {
   const resultado = await getPool().query<ItemLegado>(
     `select f.id folha_legado_id, f.legacy_id folha_legacy_id,
             to_char(f.competencia, 'YYYY-MM') competencia,
-            coalesce(termo.destino_id, vinculo_mapeado.termo_id, candidato.termo_id) termo_id,
-            coalesce(meta.destino_id, vinculo_mapeado.meta_id, candidato.meta_id) meta_id,
+            coalesce(termo.destino_id, rotulo.termo_id, vinculo_mapeado.termo_id, candidato.termo_id) termo_id,
+            coalesce(meta.destino_id, rotulo.meta_id, vinculo_mapeado.meta_id, candidato.meta_id) meta_id,
             i.legacy_id item_legacy_id, i.pessoa_legacy_id,
             i.vinculo_legacy_id, i.cpf, i.cnpj, i.total_proventos::text,
             coalesce(vinculo.destino_id, candidato.vinculo_id) vinculo_id,
             case when vinculo.destino_id is not null then 'LEGADO'
+                 when rotulo.termo_id is not null and rotulo.meta_id is not null then 'ROTULO_UNICO'
                  when candidato.vinculo_id is not null then 'VINCULO_UNICO'
                  else 'SEM_DESTINO' end resolucao
        from legado_folha f
@@ -101,6 +102,17 @@ async function carregarItens(empresaId: string, filtroCompetencias: string[]) {
         and vinculo.destino_tabela = 'prestador_vinculo'
        left join prestador_vinculo vinculo_mapeado
          on vinculo_mapeado.empresa_id = f.empresa_id and vinculo_mapeado.id = vinculo.destino_id
+       left join lateral (
+         select (array_agg(t.id order by t.id))[1] termo_id,
+                (array_agg(m.id order by m.id))[1] meta_id
+           from termo t
+           join termo_meta m on m.termo_id = t.id and m.ativo
+          where t.empresa_id = f.empresa_id and t.ativo
+            and lower(btrim(m.descricao)) = lower(btrim(f.meta_legacy_id))
+            and t.inicio <= f.competencia
+            and (t.fim is null or t.fim >= f.competencia)
+         having count(*) = 1
+       ) rotulo on true
        left join lateral (
          select (array_agg(v.id order by v.id))[1] vinculo_id,
                 (array_agg(v.termo_id order by v.id))[1] termo_id,
@@ -121,8 +133,8 @@ async function carregarItens(empresaId: string, filtroCompetencias: string[]) {
               or (i.cpf is not null and pessoa_atual.cpf = i.cpf)
               or (i.cnpj is not null and pessoa_atual.cnpj = i.cnpj)
             )
-            and (termo.destino_id is null or v.termo_id = termo.destino_id)
-            and (meta.destino_id is null or v.meta_id = meta.destino_id)
+            and (coalesce(termo.destino_id, rotulo.termo_id) is null or v.termo_id = coalesce(termo.destino_id, rotulo.termo_id))
+            and (coalesce(meta.destino_id, rotulo.meta_id) is null or v.meta_id = coalesce(meta.destino_id, rotulo.meta_id))
             and v.inicio <= f.competencia and (v.fim is null or v.fim >= f.competencia)
          having count(*) = 1
        ) candidato on true
@@ -225,7 +237,7 @@ async function executar() {
     folhasAtuaisEmConflito: precondicoes.conflitos.length,
     medicoesAtuaisEmConflito: precondicoes.medicoesExistentes.length,
     resolucao: Object.fromEntries(
-      ["LEGADO", "VINCULO_UNICO", "SEM_DESTINO"].map((tipo) => [
+      ["LEGADO", "ROTULO_UNICO", "VINCULO_UNICO", "SEM_DESTINO"].map((tipo) => [
         tipo,
         itens.filter((item) => item.resolucao === tipo).length,
       ]),
