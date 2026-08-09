@@ -137,7 +137,7 @@ recusado pelo servidor. O teste de restauração agora exige ao menos 39 tabelas
 Em uma instalação sem Docker, a alternativa é `npm ci` seguido de
 `npm run db:migrate` com `DATABASE_URL` configurada.
 
-Depois das migrações, publique o enquadramento real em `/parametros`. O bootstrap
+Depois das migrações, conclua o onboarding em `/configuracao-inicial`. O bootstrap
 abaixo é adequado somente quando o contador confirmou expressamente o regime geral:
 
 ```bash
