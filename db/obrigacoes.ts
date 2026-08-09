@@ -269,21 +269,31 @@ export async function apurarRetencoesSegurados({
             perfil_recolhimento_id, competencia, beneficiario_nome,
             identificador, codigo_receita, principal, juros, multa, total,
             status, snapshot)
-         select item.empresa_id, item.obrigacao_id, item.id, $2::uuid, $3::date,
-                item.snapshot #>> '{pessoa,nome}',
-                regexp_replace(item.snapshot #>> '{prestador,nitPisPasep}', '\\D', '', 'g'),
-                $4, item.valor, 0, 0, item.valor, 'PREPARADA',
+           select item.empresa_id, item.obrigacao_id, item.id, $2::uuid, $3::date,
+                 item.snapshot #>> '{pessoa,nome}',
+                 identificacao.nit,
+                 $4, item.valor, 0, 0, item.valor, 'PREPARADA',
                 jsonb_build_object(
                   'obrigacaoItemId', item.id,
                   'folhaItemId', item.folha_item_id,
                   'fonte', item.snapshot,
                   'perfilRecolhimentoId', ($2::uuid)::text
                 )
-           from obrigacao_fiscal_item item
-          where item.obrigacao_id = $1
-            and item.natureza = 'SEGURADO'
-            and item.valor > 0
-          order by item.id`,
+            from obrigacao_fiscal_item item
+            cross join lateral (
+              select regexp_replace(
+                coalesce(
+                  nullif(item.snapshot #>> '{pessoa,inscricaoInss}', ''),
+                  nullif(item.snapshot #>> '{prestador,nitPisPasep}', '')
+                ),
+                '\\D', '', 'g'
+              ) nit
+            ) identificacao
+           where item.obrigacao_id = $1
+             and item.natureza = 'SEGURADO'
+             and item.valor > 0
+             and identificacao.nit ~ '^[0-9]{8,14}$'
+           order by item.id`,
         [
           obrigacaoId,
           perfilRecolhimento.id,
@@ -310,10 +320,26 @@ export async function apurarRetencoesSegurados({
        returning o.id, o.principal::text, o.total::text, x.itens`,
       [obrigacaoId],
     );
+    const gpsSemIdentificador = await client.query<{ total: number }>(
+      `select count(*)::int total
+         from obrigacao_fiscal_item item
+        where item.obrigacao_id = $1
+          and item.natureza = 'SEGURADO'
+          and item.valor > 0
+          and regexp_replace(
+            coalesce(
+              nullif(item.snapshot #>> '{pessoa,inscricaoInss}', ''),
+              nullif(item.snapshot #>> '{prestador,nitPisPasep}', '')
+            ),
+            '\\D', '', 'g'
+          ) !~ '^[0-9]{8,14}$'`,
+      [obrigacaoId],
+    );
     return {
       ...atualizada.rows[0],
       folhas: resumo.fechadas,
       pendentes: resumo.pendentes,
+      gpsSemIdentificador: gpsSemIdentificador.rows[0]?.total ?? 0,
       bloqueioMotivo,
     };
   });

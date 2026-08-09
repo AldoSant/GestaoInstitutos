@@ -775,10 +775,11 @@ export async function processarFolha(
               e.tipo_calculo evento_tipo_calculo, ler.valor::text evento_valor,
               e.incide_inss evento_incide_inss, e.incide_irrf evento_incide_irrf,
               jsonb_build_object(
-                'pessoa', jsonb_build_object(
-                  'id', p.id, 'tipo', p.tipo, 'nome', p.nome_razao_social,
-                  'cpf', p.cpf, 'cnpj', p.cnpj
-                ),
+                 'pessoa', jsonb_build_object(
+                   'id', p.id, 'tipo', p.tipo, 'nome', p.nome_razao_social,
+                   'cpf', p.cpf, 'cnpj', p.cnpj,
+                   'inscricaoInss', p.inscricao_inss
+                 ),
                   'prestador', jsonb_build_object(
                    'id', pr.id, 'matricula', pr.matricula,
                    'nitPisPasep', p.inscricao_inss,
