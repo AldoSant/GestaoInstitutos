@@ -1,4 +1,5 @@
 import { decimalParaInteiro } from "./dinheiro";
+import { gerarLinhaDigitavelGps, vencimentoNominalGps } from "./linha-digitavel-gps";
 
 type ItemGps = {
   id: string;
@@ -14,6 +15,8 @@ export type MemoriaGpsIndividual = {
   codigoReceita: string;
   competencia: string;
   valorCentavos: number;
+  vencimento: string;
+  linhaDigitavel: string;
 };
 
 function objeto(valor: unknown) {
@@ -61,7 +64,9 @@ export function montarMemoriasGpsIndividuais({
       const pessoa = objeto(snapshot.pessoa);
       const prestador = objeto(snapshot.prestador);
       const nome = texto(pessoa.nome);
-      const identificador = texto(prestador.nitPisPasep).replace(/\D/g, "");
+      const identificador = texto(
+        pessoa.inscricaoInss || prestador.nitPisPasep,
+      ).replace(/\D/g, "");
       if (!nome) throw new Error("A memória GPS exige o nome do prestador congelado.");
       if (!/^\d{8,14}$/.test(identificador)) {
         throw new Error(`A memória GPS de ${nome} exige NIT/PIS/PASEP válido.`);
@@ -82,6 +87,13 @@ export function montarMemoriasGpsIndividuais({
         codigoReceita: codigoReceita!,
         competencia,
         valorCentavos,
+        vencimento: vencimentoNominalGps(competencia.slice(0, 7)),
+        linhaDigitavel: gerarLinhaDigitavelGps({
+          codigoReceita: codigoReceita!,
+          competencia: competencia.slice(0, 7),
+          identificador,
+          totalCentavos: valorCentavos,
+        }),
       };
     })
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR") || a.itemId.localeCompare(b.itemId));

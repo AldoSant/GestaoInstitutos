@@ -11,6 +11,8 @@ test("exporta memórias GPS em CSV sem fórmulas de planilha", () => {
       codigoReceita: "1007",
       competencia: "2026-07-01",
       valorCentavos: 11_000,
+      vencimento: "2026-08-20",
+      linhaDigitavel: "85800000001-6 10000270100-2 70001234567-3 89012026070-6",
     },
   ]);
   assert.match(csv, /^\uFEFFordem;/);
@@ -23,6 +25,7 @@ test("recusa CSV sem memória ou com item repetido", () => {
   const item = {
     itemId: "item-1", nome: "Prestador", identificador: "12345678901",
     codigoReceita: "1007", competencia: "2026-07-01", valorCentavos: 1,
+    vencimento: "2026-08-20", linhaDigitavel: "85800000000-0 01000270100-0 70001234567-8 89012026070-6",
   };
   assert.throws(() => gerarCsvMemoriasGps([item, item]), /duplicado/);
 });

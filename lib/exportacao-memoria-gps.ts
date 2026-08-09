@@ -3,12 +3,14 @@ import type { MemoriaGpsIndividual } from "./memoria-gps";
 const CABECALHO = [
   "ordem",
   "competencia",
+  "vencimento",
   "codigo_receita",
   "identificador_nit_pis_pasep",
   "prestador",
   "principal_inss",
   "juros_multa",
   "total_conferencia",
+  "linha_digitavel",
   "fonte_folha_item",
 ] as const;
 
@@ -33,12 +35,14 @@ export function gerarCsvMemoriasGps(memorias: MemoriaGpsIndividual[]) {
     return [
       String(indice + 1),
       celula(item.competencia.slice(0, 7)),
+      celula(item.vencimento),
       celula(item.codigoReceita),
       celula(item.identificador),
       celula(item.nome),
       moedaCsv(item.valorCentavos),
       "0,00",
       moedaCsv(item.valorCentavos),
+      celula(item.linhaDigitavel),
       celula(item.itemId),
     ].join(";");
   });

@@ -90,7 +90,7 @@ export default async function MemoriasGpsPage({
       <article className="print-sheet">
         <header className="print-header">
           <div>
-            <span>Memórias individuais de recolhimento</span>
+            <span>Guias da Previdência Social (GPS)</span>
             <h1>{empresa.razaoSocial}</h1>
             <p>CNPJ {formatarCnpj(empresa.cnpj)}</p>
           </div>
@@ -101,10 +101,10 @@ export default async function MemoriasGpsPage({
           </div>
         </header>
         <section className="print-warning">
-          <strong>Memória interna; não é guia de arrecadação nem contém linha digitável.</strong>
+          <strong>GPS individual com linha digitável para o fluxo legado.</strong>
           <p>
-            Use apenas quando a exceção GPS estiver formalmente confirmada. O
-            vencimento, código de barras e a autenticação devem vir do canal oficial competente.
+            Confira os dados antes do pagamento. A autenticação bancária será
+            registrada depois da quitação no canal bancário.
           </p>
         </section>
         {memorias.map((item, indice) => (
@@ -129,8 +129,9 @@ export default async function MemoriasGpsPage({
               <div><dt>Principal INSS</dt><dd>{moeda(item.valorCentavos)}</dd></div>
               <div><dt>Juros e multa</dt><dd>R$ 0,00</dd></div>
               <div><dt>Total para conferência</dt><dd>{moeda(item.valorCentavos)}</dd></div>
-              <div><dt>Vencimento</dt><dd>Confirmar no canal oficial</dd></div>
+              <div><dt>Vencimento nominal</dt><dd>{item.vencimento.split("-").reverse().join("/")}</dd></div>
             </dl>
+            <p className="gps-digitavel"><strong>Linha digitável</strong><br />{item.linhaDigitavel}</p>
           </section>
         ))}
       </article>
