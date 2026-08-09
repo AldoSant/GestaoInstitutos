@@ -31,6 +31,7 @@
     "giw:coletar:eventos": "node scripts/giw/coletar-eventos.mjs",
     "giw:coletar:instrumentos": "node scripts/giw/coletar-instrumentos.mjs",
     "giw:mapear:historico": "node scripts/giw/mapear-historico.mjs",
+    "giw:inspecionar:consultas": "node scripts/giw/inspecionar-consultas-movimentos.mjs",
     "giw:inventariar:insumos": "tsx scripts/importacao/inventariar-insumos.ts",
     "giw:auditar:migracao": "tsx scripts/importacao/auditar-migracao.ts",
     "giw:importar:lote": "tsx scripts/importacao/importar-lote.ts",
