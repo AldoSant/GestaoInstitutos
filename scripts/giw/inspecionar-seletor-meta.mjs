@@ -36,6 +36,7 @@ try {
     .frameLocator('iframe[name="mainform"]');
   const meta = formulario.locator("#WFRInput1026012");
   await meta.waitFor();
+  const termo = formulario.locator("#WFRInput1026011");
   if (process.env.GIW_TERMO_BUSCA) {
     await formulario.locator("#WFRInput1026011").fill(process.env.GIW_TERMO_BUSCA);
     await new Promise((resolveWait) => setTimeout(resolveWait, 750));
@@ -45,6 +46,10 @@ try {
     await new Promise((resolveWait) => setTimeout(resolveWait, 750));
   }
   const estrutura = await meta.evaluate((element) => {
+    const limpar = (html) => html.replace(/value="[^"]*"/gi, 'value=""');
+    return limpar(element.parentElement?.outerHTML ?? element.outerHTML);
+  });
+  const estruturaTermo = await termo.evaluate((element) => {
     const limpar = (html) => html.replace(/value="[^"]*"/gi, 'value=""');
     return limpar(element.parentElement?.outerHTML ?? element.outerHTML);
   });
@@ -66,7 +71,8 @@ try {
   await writeFile(output, `${JSON.stringify({
     schemaVersion: "1.0", mode: "READ_ONLY_SELECTOR_DISCOVERY",
     source: { system: "GIW", baseUrl: giwBaseUrl, extractedAt: new Date().toISOString() },
-    metaInputParent: estrutura, janelasAntes: antes, janelasDepois: depois, popups,
+    metaInputParent: estrutura, termoInputParent: estruturaTermo,
+    janelasAntes: antes, janelasDepois: depois, popups,
     requisicoes: requisicoes.slice(-50),
     respostasLookup: respostasLookup.slice(-10),
   }, null, 2)}\n`, { mode: 0o600 });
