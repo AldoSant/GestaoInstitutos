@@ -23,6 +23,7 @@
     "db:smoke:folha": "tsx scripts/db/smoke-folha.ts",
     "db:smoke:folha-consolidada": "tsx scripts/db/smoke-folha-consolidada.ts",
     "db:comparar:giw": "tsx scripts/db/comparar-paralelo-giw.ts",
+    "db:reproduzir:giw": "tsx scripts/db/reproduzir-giw-homologacao.ts",
     "worker:start": "tsx scripts/worker/executar.ts",
     "worker:validar-regra": "tsx scripts/worker/enfileirar-validacao.ts",
     "giw:coletar:pessoas": "node scripts/giw/coletar-pessoas.mjs",

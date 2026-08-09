@@ -44,9 +44,10 @@ export async function carregarPerfilRecolhimentoPorCompetencia(
   const data = competenciaNormalizada(competencia);
   const resultado = await executor.query<LinhaPerfilRecolhimento>(
     `select ${campos}
-       from perfil_recolhimento_previdenciario
+      from perfil_recolhimento_previdenciario
       where empresa_id = $1 and publicado
         and inicio_vigencia <= $2::date and fim_vigencia >= $2::date
+      order by inicio_vigencia desc, criado_em desc
       limit 1`,
     [empresaId, data],
   );

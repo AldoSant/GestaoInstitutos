@@ -282,11 +282,9 @@ async function prevalidarCriacaoFolha(
     } else if (!candidato.cnpj) {
       problemas.push(`${identificacao}: documento fiscal não informado.`);
     }
-    if (candidato.exige_medicao_mensal && !candidato.medicao_id) {
-      problemas.push(
-        `${identificacao}: medição mensal obrigatória não registrada para a competência.`,
-      );
-    }
+    // A medição é um complemento de conferência, não uma condição para pagar.
+    // O GIW sempre permitiu apurar a retribuição contratada quando não havia
+    // medição destacada no mês. Se existir, ela continua prevalecendo no cálculo.
     if (
       candidato.tipo_pessoa === "FISICA" &&
       candidato.pendencias_outras_fontes > 0
@@ -931,11 +929,9 @@ export async function processarFolha(
     >();
     for (const [vinculoId, grupo] of agrupados) {
       const base = grupo[0];
-      if (base.exige_medicao_mensal && !base.medicao_id) {
-        throw new Error(
-          `O Vínculo ${vinculoId} exige medição mensal para a competência.`,
-        );
-      }
+      // Sem medição mensal, o processamento usa valor_retribuicao do vínculo.
+      // A regra é intencionalmente compatível com o fluxo operacional legado;
+      // uma medição conferida, quando disponível, continua substituindo o valor.
       const eventos: EventoCompetencia[] = grupo
         .filter((linha) => linha.evento_id !== null)
         .map((linha) => ({
