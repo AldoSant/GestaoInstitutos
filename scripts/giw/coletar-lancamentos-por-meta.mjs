@@ -87,10 +87,23 @@ async function proximaPagina(consulta) {
 const { browser, page, sistema, menu } = await abrirSessaoGiw();
 try {
   const requisicoes = [];
+  const respostasNavegacao = [];
   page.on("request", (request) => {
     const url = request.url();
     if (url.includes("/instituto/")) {
       requisicoes.push({ metodo: request.method(), url: url.replace(/([?&](?:senha|password)=[^&]*)/gi, "$1=REDACTED") });
+    }
+  });
+  page.on("response", async (response) => {
+    if (!response.url().includes("/navigate.do?")) return;
+    try {
+      respostasNavegacao.push({
+        status: response.status(),
+        url: response.url(),
+        corpo: await response.text(),
+      });
+    } catch {
+      // A coleta de grade continua útil mesmo se o navegador descartar a resposta.
     }
   });
   await abrirMenuMovimentacao(menu);
@@ -126,6 +139,7 @@ try {
     source: { system: "GIW", formId: "464569425", baseUrl: giwBaseUrl, extractedAt: new Date().toISOString() },
     filter: { termoId, metaId, termoLabel, metaLabel },
     requisicoes: requisicoes.slice(-100),
+    respostasNavegacao: respostasNavegacao.slice(-20),
     pages,
   }, null, 2)}\n`, { mode: 0o600 });
   console.log(`Lançamentos GIW coletados em ${output}. Páginas: ${pages.length}; linhas: ${pages.reduce((total, page) => total + page.rows.length, 0)}.`);
