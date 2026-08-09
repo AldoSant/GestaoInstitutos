@@ -83,7 +83,9 @@ async function carregarItens(empresaId: string, filtroCompetencias: string[]) {
             i.vinculo_legacy_id, i.cpf, i.cnpj, i.total_proventos::text,
             coalesce(vinculo.destino_id, candidato.vinculo_id) vinculo_id,
             case when vinculo.destino_id is not null then 'LEGADO'
-                 when rotulo.termo_id is not null and rotulo.meta_id is not null then 'ROTULO_UNICO'
+                 when candidato.vinculo_id is not null
+                   and rotulo.termo_id is not null and rotulo.meta_id is not null
+                   then 'ROTULO_UNICO'
                  when candidato.vinculo_id is not null then 'VINCULO_UNICO'
                  else 'SEM_DESTINO' end resolucao
        from legado_folha f
