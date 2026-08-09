@@ -38,11 +38,15 @@ async function lerPagina(consulta) {
       rows: item.querySelectorAll("tbody tr").length,
       cells: item.querySelectorAll("tbody tr td").length,
     }));
+    const mensagens = Array.from(body.querySelectorAll('[role="alert"], .alert, .modal, [id^="modalConfirm"]'))
+      .map((item) => (item.textContent ?? "").replace(/\s+/g, " ").trim())
+      .filter(Boolean)
+      .slice(0, 10);
     const tabela = body.querySelector("#results-table") ??
       Array.from(body.querySelectorAll("table"))
         .filter((item) => item.querySelectorAll("tbody tr td").length > 0)
         .sort((a, b) => b.querySelectorAll("tbody tr td").length - a.querySelectorAll("tbody tr td").length)[0];
-    if (!tabela) return { headers: [], rows: [], tabelas };
+    if (!tabela) return { headers: [], rows: [], tabelas, mensagens };
     return {
       headers: Array.from(tabela.querySelectorAll("thead th"), (cell) =>
         (cell.textContent ?? "").replace(/\s+/g, " ").trim(),
@@ -53,6 +57,7 @@ async function lerPagina(consulta) {
         ))
         .filter((row) => row.some(Boolean)),
       tabelas,
+      mensagens,
     };
   });
 }
