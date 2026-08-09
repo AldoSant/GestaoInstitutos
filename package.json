@@ -35,6 +35,7 @@
     "giw:coletar:eventos": "node scripts/giw/coletar-eventos.mjs",
     "giw:coletar:instrumentos": "node scripts/giw/coletar-instrumentos.mjs",
     "giw:mapear:historico": "node scripts/giw/mapear-historico.mjs",
+    "giw:coletar:lancamentos": "node scripts/giw/coletar-lancamentos-por-meta.mjs",
     "giw:inspecionar:consultas": "node scripts/giw/inspecionar-consultas-movimentos.mjs",
     "giw:inspecionar:seletor-meta": "node scripts/giw/inspecionar-seletor-meta.mjs",
     "giw:inventariar:insumos": "tsx scripts/importacao/inventariar-insumos.ts",
