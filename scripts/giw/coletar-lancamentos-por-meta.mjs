@@ -4,8 +4,13 @@ import { abrirMenuMovimentacao, abrirSessaoGiw, giwBaseUrl } from "./cliente.mjs
 
 const termoId = process.env.GIW_TERMO_ID?.trim();
 const metaId = process.env.GIW_META_ID?.trim();
+const termoLabel = process.env.GIW_TERMO_LABEL?.trim();
+const metaLabel = process.env.GIW_META_LABEL?.trim();
 if (!/^\d+$/.test(termoId ?? "") || !/^\d+$/.test(metaId ?? "")) {
   throw new Error("GIW_TERMO_ID e GIW_META_ID numéricos são obrigatórios.");
+}
+if (!termoLabel || !metaLabel) {
+  throw new Error("GIW_TERMO_LABEL e GIW_META_LABEL são obrigatórios.");
 }
 const output = resolve(
   process.env.GIW_OUTPUT_LANCAMENTOS ??
@@ -13,7 +18,10 @@ const output = resolve(
 );
 const maxPages = Number(process.env.GIW_MAP_MAX_PAGES ?? "100");
 
-async function definirLookup(formulario, nome, valor) {
+async function definirLookup(formulario, nome, valor, label) {
+  const visivel = formulario.locator(`input#${nome}`);
+  if (await visivel.count() !== 1) throw new Error(`Campo visível ${nome} não encontrado.`);
+  await visivel.fill(label);
   const oculto = formulario.locator(`input[type="hidden"][name="${nome}"]`);
   if (await oculto.count() !== 1) throw new Error(`Campo interno ${nome} não encontrado.`);
   await oculto.evaluate((element, value) => {
@@ -72,8 +80,8 @@ try {
   const formulario = sistema
     .frameLocator('iframe[src*="formID=464569425"]')
     .frameLocator('iframe[name="mainform"]');
-  await definirLookup(formulario, "WFRInput1026011", termoId);
-  await definirLookup(formulario, "WFRInput1026012", metaId);
+  await definirLookup(formulario, "WFRInput1026011", termoId, termoLabel);
+  await definirLookup(formulario, "WFRInput1026012", metaId, metaLabel);
   await formulario.getByRole("button", { name: "Pesquisar", exact: true }).click();
   await new Promise((resolveWait) => setTimeout(resolveWait, 1_000));
   const iframeConsulta = formulario.locator('iframe[src^="basic_query.jsp"]');
@@ -93,7 +101,7 @@ try {
     schemaVersion: "1.0",
     mode: "READ_ONLY_HISTORICAL_LAUNCHES",
     source: { system: "GIW", formId: "464569425", baseUrl: giwBaseUrl, extractedAt: new Date().toISOString() },
-    filter: { termoId, metaId },
+    filter: { termoId, metaId, termoLabel, metaLabel },
     pages,
   }, null, 2)}\n`, { mode: 0o600 });
   console.log(`Lançamentos GIW coletados em ${output}. Páginas: ${pages.length}; linhas: ${pages.reduce((total, page) => total + page.rows.length, 0)}.`);
