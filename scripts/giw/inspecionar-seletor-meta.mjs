@@ -16,6 +16,10 @@ try {
     .frameLocator('iframe[name="mainform"]');
   const meta = formulario.locator("#WFRInput1026012");
   await meta.waitFor();
+  if (process.env.GIW_META_BUSCA) {
+    await meta.fill(process.env.GIW_META_BUSCA);
+    await new Promise((resolveWait) => setTimeout(resolveWait, 750));
+  }
   const estrutura = await meta.evaluate((element) => {
     const limpar = (html) => html.replace(/value="[^"]*"/gi, 'value=""');
     return limpar(element.parentElement?.outerHTML ?? element.outerHTML);
