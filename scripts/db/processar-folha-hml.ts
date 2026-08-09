@@ -7,10 +7,15 @@ const empresaId = argumento("--empresa-id");
 const termoId = argumento("--termo-id");
 const metaId = argumento("--meta-id");
 const competencia = argumento("--competencia");
-if (!empresaId || !termoId || !metaId || !competencia) throw new Error("Use --empresa-id, --termo-id, --meta-id e --competencia.");
+const folhaExistenteId = argumento("--folha-id");
+if (!empresaId || !competencia || (!folhaExistenteId && (!termoId || !metaId))) {
+  throw new Error("Use --empresa-id, --competencia e --folha-id; ou informe --termo-id e --meta-id para criar uma Folha.");
+}
 
 try {
-  const folha = await criarFolha({ empresaId, termoId, metaId, competencia, ator: "PROCESSAMENTO_HML" });
+  const folha = folhaExistenteId
+    ? { id: folhaExistenteId, revisao: 1 }
+    : await criarFolha({ empresaId, termoId, metaId, competencia, ator: "PROCESSAMENTO_HML" });
   await processarFolha(folha.id, "PROCESSAMENTO_HML", empresaId, folha.revisao);
   await registrarConferenciaFolha({ empresaId, folhaId: folha.id, resultado: "APROVADA", conferente: "PROCESSAMENTO_HML", confirmouCadastros: true, confirmouValores: true, confirmouRubricas: true, observacao: "Ciclo automatizado de homologação do MVP." });
   await fecharFolha(folha.id, "PROCESSAMENTO_HML");
