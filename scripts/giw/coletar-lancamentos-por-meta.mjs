@@ -84,8 +84,15 @@ async function proximaPagina(consulta) {
   throw new Error("A paginação de lançamentos não respondeu.");
 }
 
-const { browser, sistema, menu } = await abrirSessaoGiw();
+const { browser, page, sistema, menu } = await abrirSessaoGiw();
 try {
+  const requisicoes = [];
+  page.on("request", (request) => {
+    const url = request.url();
+    if (url.includes("/instituto/")) {
+      requisicoes.push({ metodo: request.method(), url: url.replace(/([?&](?:senha|password)=[^&]*)/gi, "$1=REDACTED") });
+    }
+  });
   await abrirMenuMovimentacao(menu);
   const link = menu.locator("a").filter({ hasText: /lançamentos?.*eventos?/i });
   if (await link.count() !== 1) throw new Error("Menu de lançamentos de eventos não identificado.");
@@ -118,6 +125,7 @@ try {
     mode: "READ_ONLY_HISTORICAL_LAUNCHES",
     source: { system: "GIW", formId: "464569425", baseUrl: giwBaseUrl, extractedAt: new Date().toISOString() },
     filter: { termoId, metaId, termoLabel, metaLabel },
+    requisicoes: requisicoes.slice(-100),
     pages,
   }, null, 2)}\n`, { mode: 0o600 });
   console.log(`Lançamentos GIW coletados em ${output}. Páginas: ${pages.length}; linhas: ${pages.reduce((total, page) => total + page.rows.length, 0)}.`);
