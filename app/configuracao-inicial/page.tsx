@@ -3,15 +3,19 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { listarEnquadramentos } from "@/db/enquadramentos";
+import { listarPerfisRecolhimento } from "@/db/perfis-recolhimento";
 import { exigirAdministrador } from "@/lib/autorizacao";
 import { caminhoAplicacao } from "@/lib/base-path";
+import { destinoInternoSeguro } from "@/lib/bloqueios-orientados";
 import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 import { nomeRegimePrevidenciario } from "@/lib/enquadramento-previdenciario";
+import { nomeInstrumentoRecolhimento } from "@/lib/perfil-recolhimento";
 import { EnquadramentoInicialForm } from "./enquadramento-inicial-form";
+import { PerfilRecolhimentoInicialForm } from "./perfil-recolhimento-inicial-form";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = Promise<{ competencia?: string | string[]; erro?: string | string[] }>;
+type SearchParams = Promise<{ competencia?: string | string[]; erro?: string | string[]; etapa?: string | string[]; retorno?: string | string[] }>;
 
 function primeiro(valor: string | string[] | undefined) {
   return Array.isArray(valor) ? valor[0] ?? "" : valor ?? "";
@@ -23,25 +27,75 @@ export default async function ConfiguracaoInicialPage({ searchParams }: { search
   const competencia = await lerCompetenciaContexto(params.competencia);
   const competenciaData = `${competencia}-01`;
   const empresa = await resolverEmpresaAtiva();
-  const enquadramentos = await listarEnquadramentos(empresa.id);
+  const [enquadramentos, perfisRecolhimento] = await Promise.all([
+    listarEnquadramentos(empresa.id),
+    listarPerfisRecolhimento(empresa.id),
+  ]);
   const vigente = enquadramentos.find(
     (item) => item.publicado && item.inicio_vigencia <= competenciaData && item.fim_vigencia >= competenciaData,
   );
   const erro = primeiro(params.erro);
+  const retorno = destinoInternoSeguro(
+    primeiro(params.retorno),
+    `/folhas/nova?competencia=${competencia}`,
+  );
+  const etapaRecolhimento = primeiro(params.etapa) === "recolhimento";
+  const perfilVigente = perfisRecolhimento.find(
+    (item) => item.publicado && item.inicio_vigencia <= competenciaData && item.fim_vigencia >= competenciaData,
+  );
 
   return (
     <AppShell title="Configuração inicial" eyebrow="Empresa · uma vez" organization={empresa.nomeFantasia ?? empresa.razaoSocial}>
-      <Link href={caminhoAplicacao(`/folhas/nova?competencia=${competencia}`)} className="back-link"><ArrowLeft size={16} /> Voltar à folha</Link>
+      <Link href={caminhoAplicacao(retorno)} className="back-link"><ArrowLeft size={16} /> Voltar ao fluxo anterior</Link>
       {erro && <section className="feedback-banner error" role="alert"><strong>Configuração não concluída</strong><span>{erro}</span></section>}
-      {vigente ? (
+      {etapaRecolhimento ? (
+        !vigente ? (
+          <section className="alert-box warning">
+            <AlertTriangle size={22} />
+            <div>
+              <strong>Confirme primeiro o enquadramento da empresa</strong>
+              <p>Ele define as contribuições aplicáveis. Em seguida, você poderá informar como a empresa recolhe nesta competência.</p>
+              <Link className="button primary" href={caminhoAplicacao(`/configuracao-inicial?competencia=${competencia}&retorno=${encodeURIComponent(retorno)}`)}>Configurar enquadramento</Link>
+            </div>
+          </section>
+        ) : perfilVigente ? (
+          <section className="panel onboarding-complete">
+            <CircleCheck size={28} />
+            <div>
+              <span className="section-kicker">Recolhimento configurado</span>
+              <h2>{nomeInstrumentoRecolhimento(perfilVigente.instrumento)}</h2>
+              <p>Esta regra já cobre {competencia}. Volte ao fluxo anterior para continuar.</p>
+            </div>
+            <Link className="button primary" href={caminhoAplicacao(retorno)}>Continuar</Link>
+          </section>
+        ) : (
+          <>
+            <section className="onboarding-hero">
+              <div className="onboarding-hero-icon"><Settings2 size={25} /></div>
+              <div>
+                <span className="section-kicker">Configuração da empresa</span>
+                <h2>Como o IGP recolhe a previdência?</h2>
+                <p>Esta é uma decisão única por vigência. Ela habilita a apuração sem expor parâmetros técnicos na rotina de folha.</p>
+              </div>
+            </section>
+            <section className="panel cadastro-section">
+              <div className="panel-header"><div><span className="section-kicker">Regra de recolhimento</span><h2>Definir a vigência</h2><p>Use a confirmação documentada do RH/contabilidade antes de salvar.</p></div></div>
+              <PerfilRecolhimentoInicialForm competencia={competencia} retorno={retorno} />
+            </section>
+          </>
+        )
+      ) : vigente ? (
         <section className="panel onboarding-complete">
           <CircleCheck size={28} />
           <div>
             <span className="section-kicker">Empresa configurada</span>
             <h2>{nomeRegimePrevidenciario(vigente.regime)}</h2>
-            <p>Já existe uma vigência publicada para {competencia}. Volte à folha para continuar. Alterações legais futuras exigem uma nova vigência auditável.</p>
+            <p>Já existe uma vigência publicada para {competencia}. Alterações legais futuras exigem uma nova vigência auditável.</p>
           </div>
-          <Link className="button primary" href={caminhoAplicacao(`/folhas/nova?competencia=${competencia}`)}>Continuar para a folha</Link>
+          <div className="row-actions">
+            {!perfilVigente && <Link className="button secondary" href={caminhoAplicacao(`/configuracao-inicial?competencia=${competencia}&etapa=recolhimento&retorno=${encodeURIComponent(retorno)}`)}>Configurar recolhimento</Link>}
+            <Link className="button primary" href={caminhoAplicacao(retorno)}>Continuar</Link>
+          </div>
         </section>
       ) : (
         <>

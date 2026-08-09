@@ -3,18 +3,19 @@ import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
-  Database,
   PlayCircle,
   UsersRound,
   WalletCards,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { BloqueioOrientado } from "@/components/bloqueio-orientado";
 import { MetricCard, StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { listarEnquadramentos } from "@/db/enquadramentos";
 import { listarOpcoesNovaFolha } from "@/db/folhas";
 import { listarPerfisRecolhimento } from "@/db/perfis-recolhimento";
 import { caminhoAplicacao } from "@/lib/base-path";
+import { orientarBloqueio } from "@/lib/bloqueios-orientados";
 import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 import { nomeInstrumentoRecolhimento } from "@/lib/perfil-recolhimento";
 import { criarNovaFolha } from "../actions";
@@ -49,10 +50,12 @@ export default async function NovaFolhaPage({
     return (
       <AppShell title="Novo processamento" eyebrow="PF, PJ e GPS" organization="Não configurada">
         <Link href="/folhas" className="back-link"><ArrowLeft size={16} /> Voltar</Link>
-        <section className="alert-box danger">
-          <Database size={22} />
-          <div><strong>Cadastro indisponível</strong><p>Não foi possível carregar os termos e metas disponíveis.</p></div>
-        </section>
+        <BloqueioOrientado bloqueio={{
+          titulo: "Não foi possível carregar os cadastros",
+          causa: "Os termos e metas desta competência não ficaram disponíveis agora.",
+          impacto: "Nenhum processamento será criado até que a lista seja carregada.",
+          acao: { rotulo: "Tentar novamente", href: "/folhas/nova" },
+        }} />
       </AppShell>
     );
   }
@@ -112,9 +115,11 @@ export default async function NovaFolhaPage({
       >
         <Link href="/folhas" className="back-link"><ArrowLeft size={16} /> Voltar</Link>
         {erro && (
-          <section className="feedback-banner error" role="alert">
-            <strong>Processamento não criado</strong><span>{erro}</span>
-          </section>
+          <BloqueioOrientado bloqueio={orientarBloqueio({
+            erro,
+            competencia,
+            retorno: `/folhas/nova?competencia=${competencia}`,
+          })} />
         )}
         <section className="metrics-grid" aria-label="Pré-requisitos da folha">
           <MetricCard
@@ -159,7 +164,7 @@ export default async function NovaFolhaPage({
               <strong>Configuração inicial da empresa necessária para {competenciaRotulo}</strong>
               <p>Antes do primeiro processamento, confirme uma vez o enquadramento previdenciário do IGP. Não é uma categoria eSocial do prestador.</p>
             </div>
-            <Link className="button primary" href={`/configuracao-inicial?competencia=${competencia}`}>Configurar empresa</Link>
+            <Link className="button primary" href={caminhoAplicacao(`/configuracao-inicial?competencia=${competencia}&retorno=${encodeURIComponent(`/folhas/nova?competencia=${competencia}`)}`)}>Configurar empresa</Link>
           </section>
         )}
 
@@ -168,7 +173,8 @@ export default async function NovaFolhaPage({
             <AlertTriangle size={22} />
             <div>
               <strong>Recolhimento previdenciário ainda não configurado para {competenciaRotulo}</strong>
-              <p>A Folha pode ser preparada e conferida. A apuração GPS ficará disponível quando a vigência previdenciária for publicada pela administração técnica.</p>
+              <p>A Folha pode ser preparada e conferida. Para concluir a GPS, informe uma vez como a empresa recolhe nesta vigência.</p>
+              <Link className="button secondary" href={caminhoAplicacao(`/configuracao-inicial?competencia=${competencia}&etapa=recolhimento&retorno=${encodeURIComponent(`/folhas/nova?competencia=${competencia}`)}`)}>Configurar recolhimento da empresa</Link>
             </div>
           </section>
         )}

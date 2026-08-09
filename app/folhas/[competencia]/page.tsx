@@ -16,12 +16,14 @@ import {
   XCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { BloqueioOrientado } from "@/components/bloqueio-orientado";
 import { ProcessingAutoRefresh } from "@/components/processing-auto-refresh";
 import { StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { carregarFolha } from "@/db/folhas";
 import { carregarHomologacoesFolha } from "@/db/homologacoes";
 import { nomeRegimePrevidenciario } from "@/lib/enquadramento-previdenciario";
+import { orientarBloqueio } from "@/lib/bloqueios-orientados";
 import { descreverProcessamento } from "@/lib/processamento-operacional";
 import {
   cancelar,
@@ -225,10 +227,16 @@ export default async function FolhaDetalhePage({
         }
       >
         <Link href="/folhas" className="back-link"><ArrowLeft size={16} /> Voltar para folhas</Link>
-        {(erro || sucesso) && (
-          <section className={`feedback-banner ${erro ? "error" : "success"}`} role="status">
-            <strong>{erro ? "Operação não concluída" : "Operação concluída"}</strong>
-            <span>{erro || sucesso}</span>
+        {erro && (
+          <BloqueioOrientado bloqueio={orientarBloqueio({
+            erro,
+            competencia: folha.competencia.slice(0, 7),
+            retorno: `/folhas/${folha.id}`,
+          })} />
+        )}
+        {sucesso && (
+          <section className="feedback-banner success" role="status">
+            <strong>Operação concluída</strong><span>{sucesso}</span>
           </section>
         )}
         <section className="detail-summary">

@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   Calculator,
   CheckCircle2,
-  Database,
   Download,
   FileCheck2,
   FileText,
@@ -13,6 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { BloqueioOrientado } from "@/components/bloqueio-orientado";
 import { MetricCard, StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import {
@@ -20,6 +20,7 @@ import {
   listarObrigacoes,
 } from "@/db/obrigacoes";
 import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
+import { orientarBloqueio } from "@/lib/bloqueios-orientados";
 import { nomeInstrumentoRecolhimento } from "@/lib/perfil-recolhimento";
 import {
   apurarObrigacao,
@@ -85,10 +86,12 @@ export default async function ObrigacoesPage({
   } catch {
     return (
       <AppShell title="Guias GPS" eyebrow="Apuração previdenciária" organization="Não configurada">
-        <section className="alert-box danger">
-          <Database size={22} />
-          <div><strong>Apuração indisponível</strong><p>Não foi possível carregar as obrigações. Tente novamente.</p></div>
-        </section>
+        <BloqueioOrientado bloqueio={{
+          titulo: "Não foi possível carregar a apuração",
+          causa: "As informações desta competência não ficaram disponíveis agora.",
+          impacto: "Nenhuma guia será alterada até que a apuração possa ser carregada.",
+          acao: { rotulo: "Tentar novamente", href: "/obrigacoes" },
+        }} />
       </AppShell>
     );
   }
@@ -116,10 +119,16 @@ export default async function ObrigacoesPage({
         text: "As memórias GPS são preparadas a partir dos processamentos fechados e do perfil de recolhimento congelado na competência.",
       }}
     >
-      {(erro || sucesso) && (
-        <section className={`feedback-banner ${erro ? "error" : "success"}`} role="status">
-          <strong>{erro ? "Apuração não concluída" : "Apuração concluída"}</strong>
-          <span>{erro || sucesso}</span>
+      {erro && (
+        <BloqueioOrientado bloqueio={orientarBloqueio({
+          erro,
+          competencia: competenciaSelecionada,
+          retorno: `/obrigacoes?competencia=${competenciaSelecionada}`,
+        })} />
+      )}
+      {sucesso && (
+        <section className="feedback-banner success" role="status">
+          <strong>Apuração concluída</strong><span>{sucesso}</span>
         </section>
       )}
 

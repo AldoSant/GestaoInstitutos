@@ -10,6 +10,7 @@ import {
   solicitarRetificacaoObrigacao,
 } from "@/db/obrigacoes";
 import { validarDocumentoObrigacao } from "@/lib/documentos-obrigacao";
+import { caminhoAplicacao } from "@/lib/base-path";
 
 export async function apurarObrigacao(formData: FormData) {
   const competencia = String(formData.get("competencia") ?? "");
@@ -29,7 +30,10 @@ export async function apurarObrigacao(formData: FormData) {
   const params = new URLSearchParams({
     [erro ? "erro" : "sucesso"]: erro || sucesso,
   });
-  redirect(`/obrigacoes?${params.toString()}`);
+  if (/^\d{4}-(0[1-9]|1[0-2])$/.test(competencia)) {
+    params.set("competencia", competencia);
+  }
+  redirect(caminhoAplicacao(`/obrigacoes?${params.toString()}`));
 }
 
 export async function registrarDocumento(formData: FormData) {

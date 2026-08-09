@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { CheckCircle2, ExternalLink, FileCheck2, FileText, ReceiptText } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { BloqueioOrientado } from "@/components/bloqueio-orientado";
 import { StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { carregarEspelhoObrigacao, listarGuiasGpsIndividuais } from "@/db/obrigacoes";
 import { registrarGuiaGps } from "./actions";
+import { orientarBloqueio } from "@/lib/bloqueios-orientados";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +41,12 @@ export default async function RegistroGpsPage({
   if (dados.obrigacao.perfil_instrumento !== "GPS_EXCECAO") {
     return (
       <AppShell title="GPS individuais" eyebrow="Recolhimento previdenciário">
-        <section className="alert-box danger"><FileText size={22} /><div><strong>Operação indisponível</strong><p>Esta obrigação não usa o perfil GPS excepcional.</p></div></section>
+        <BloqueioOrientado bloqueio={{
+          titulo: "Esta obrigação não usa GPS individual",
+          causa: "A competência foi configurada com outro instrumento de recolhimento.",
+          impacto: "Não há GPS individual a registrar nesta tela.",
+          acao: { rotulo: "Voltar às obrigações", href: "/obrigacoes" },
+        }} />
       </AppShell>
     );
   }
@@ -53,7 +60,11 @@ export default async function RegistroGpsPage({
       eyebrow={`Competência ${dados.obrigacao.competencia.slice(0, 7).split("-").reverse().join("/")}`}
       actions={<><Link className="button secondary" href={`/obrigacoes/${id}/gps`}><FileText size={16} /> Memórias para conferência</Link><Link className="button secondary" href="/obrigacoes">Voltar às obrigações</Link></>}
     >
-      {erro && <section className="alert-box danger"><FileText size={20} /><div><strong>Registro não concluído</strong><p>{erro}</p></div></section>}
+      {erro && <BloqueioOrientado bloqueio={orientarBloqueio({
+        erro,
+        competencia: dados.obrigacao.competencia.slice(0, 7),
+        retorno: `/obrigacoes/${id}/gps/registro`,
+      })} />}
       {sucesso && <section className="alert-box success"><CheckCircle2 size={20} /><div><strong>Registro concluído</strong><p>{sucesso}</p></div></section>}
       <section className="section-card">
         <div className="panel-header">
