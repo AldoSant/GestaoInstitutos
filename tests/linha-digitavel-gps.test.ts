@@ -10,18 +10,18 @@ test("reproduz a linha GPS histórica do GIW para competência mensal", () => {
       identificador: "20000000000",
       totalCentavos: 49_438,
     }),
-    "85800000004-6 94380270100-1 70002000000-0 00002026050-0",
+    "85820000004-0 94380270100-1 70002000000-0 00002026053-9",
   );
 });
 
-test("preserva o indicador de competências consolidadas do layout GPS", () => {
+test("aceita o indicador excepcional explicitamente informado", () => {
   assert.equal(
     gerarLinhaDigitavelGps({
       codigoReceita: "1163",
       competencia: "2023-12",
       identificador: "13954495138",
       totalCentavos: 14_711,
-      competenciasConsolidadas: 3,
+      indicadorLayout: 3,
     }),
     "85830000001-7 47110270116-9 30001395449-0 51382023123-5",
   );

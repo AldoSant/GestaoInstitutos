@@ -30,7 +30,7 @@ test("prepara uma memória individual de GPS a partir de item fechado", () => {
       competencia: "2026-07-01",
       valorCentavos: 11_000,
       vencimento: "2026-08-20",
-      linhaDigitavel: "85800000001-1 10000270100-2 70001234567-3 89012026070-7",
+      linhaDigitavel: "85820000001-5 10000270100-2 70001234567-3 89012026073-1",
     },
   ]);
 });

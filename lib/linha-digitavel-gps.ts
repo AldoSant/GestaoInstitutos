@@ -3,7 +3,7 @@ type DadosGps = {
   competencia: string;
   identificador: string;
   totalCentavos: number;
-  competenciasConsolidadas?: number;
+  indicadorLayout?: number;
 };
 
 function somenteDigitos(valor: string) {
@@ -21,17 +21,10 @@ function modulo11(digitos: string) {
   return resultado >= 10 ? 0 : resultado;
 }
 
-function dacGpsLegada(digitos: string) {
-  const dac = modulo11(digitos);
-  // A emissão histórica do GIW normaliza 4 e 8 para 0. As referências
-  // preservadas cobrem os casos normalizados e os resultados regulares.
-  return dac === 4 || dac === 8 ? 0 : dac;
-}
-
 /**
  * Reproduz a representação numérica de GPS com código de barras usada pelo
  * legado GIW. O campo livre usa o layout histórico: 02701 + os três últimos
- * dígitos do código + identificador com 14 posições + AAAAMM + consolidação.
+ * dígitos do código + identificador com 14 posições + AAAAMM + indicador.
  */
 export function gerarLinhaDigitavelGps(dados: DadosGps) {
   const identificador = somenteDigitos(dados.identificador);
@@ -47,9 +40,11 @@ export function gerarLinhaDigitavelGps(dados: DadosGps) {
   if (!Number.isSafeInteger(dados.totalCentavos) || dados.totalCentavos <= 0 || dados.totalCentavos > 99_999_999_999) {
     throw new Error("GPS exige total positivo compatível com a linha digitável.");
   }
-  const consolidacao = dados.competenciasConsolidadas ?? 0;
-  if (!Number.isInteger(consolidacao) || consolidacao < 0 || consolidacao > 9) {
-    throw new Error("Quantidade de competências consolidadas inválida para GPS.");
+  // As 169 GPS únicas fornecidas pelo GIW usam o indicador 3. Ele é parte do
+  // layout legado, não uma inferência do número de competências processadas.
+  const indicadorLayout = dados.indicadorLayout ?? 3;
+  if (!Number.isInteger(indicadorLayout) || indicadorLayout < 0 || indicadorLayout > 9) {
+    throw new Error("Indicador de layout inválido para GPS.");
   }
 
   const campoLivre = [
@@ -57,10 +52,10 @@ export function gerarLinhaDigitavelGps(dados: DadosGps) {
     dados.codigoReceita.slice(1),
     identificador.padStart(14, "0"),
     dados.competencia.replace("-", ""),
-    String(consolidacao),
+    String(indicadorLayout),
   ].join("");
   const semDacGeral = `858${String(dados.totalCentavos).padStart(11, "0")}${campoLivre}`;
-  const codigoBarras = `${semDacGeral.slice(0, 3)}${dacGpsLegada(semDacGeral)}${semDacGeral.slice(3)}`;
+  const codigoBarras = `${semDacGeral.slice(0, 3)}${modulo11(semDacGeral)}${semDacGeral.slice(3)}`;
   if (codigoBarras.length !== 44) {
     throw new Error("Não foi possível compor o código de barras da GPS.");
   }
@@ -68,7 +63,7 @@ export function gerarLinhaDigitavelGps(dados: DadosGps) {
   if (!blocos || blocos.length !== 4) {
     throw new Error("Não foi possível segmentar a linha digitável da GPS.");
   }
-  return blocos.map((bloco) => `${bloco}-${dacGpsLegada(bloco)}`).join(" ");
+  return blocos.map((bloco) => `${bloco}-${modulo11(bloco)}`).join(" ");
 }
 
 export function vencimentoNominalGps(competencia: string) {
