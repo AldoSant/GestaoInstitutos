@@ -7,10 +7,23 @@ const output = resolve(process.env.GIW_OUTPUT_SELETOR_META ?? ".private/importac
 const { browser, page, sistema, menu } = await abrirSessaoGiw();
 try {
   const requisicoes = [];
+  const respostasLookup = [];
   page.on("request", (request) => {
     const url = request.url();
     if (url.includes("GIW") || url.includes("lookup") || url.includes("query")) {
       requisicoes.push({ metodo: request.method(), url: url.replace(/([?&](?:password|senha)=[^&]*)/gi, "$1=REDACTED") });
+    }
+  });
+  page.on("response", async (response) => {
+    if (!response.url().includes("/search.do?")) return;
+    try {
+      respostasLookup.push({
+        status: response.status(),
+        url: response.url(),
+        corpo: (await response.text()).slice(0, 20_000),
+      });
+    } catch {
+      // A inspeção permanece útil mesmo se o navegador descartar a resposta.
     }
   });
   await abrirMenuMovimentacao(menu);
@@ -36,6 +49,7 @@ try {
   if ((await botaoMeta.count()) !== 1) throw new Error("Botão do lookup de Meta não encontrado.");
   await botaoMeta.click();
   await new Promise((resolveWait) => setTimeout(resolveWait, 750));
+  await new Promise((resolveWait) => setTimeout(resolveWait, 750));
   const depois = await sistema.locator('[id^="WFRIframeForm"]').evaluateAll((items) =>
     items.map((item) => ({ id: item.id, iframe: item.querySelector("iframe")?.getAttribute("src") ?? null })),
   );
@@ -50,6 +64,7 @@ try {
     source: { system: "GIW", baseUrl: giwBaseUrl, extractedAt: new Date().toISOString() },
     metaInputParent: estrutura, janelasAntes: antes, janelasDepois: depois, popups,
     requisicoes: requisicoes.slice(-50),
+    respostasLookup: respostasLookup.slice(-10),
   }, null, 2)}\n`, { mode: 0o600 });
   console.log(`Seletor de Meta inspecionado em ${output}.`);
 } finally {
