@@ -79,6 +79,16 @@ async function descreverConsulta(consulta) {
   });
 }
 
+async function fecharFormulario(sistema, formId) {
+  const janela = sistema.locator(`#WFRIframeForm${formId}`);
+  const fechar = janela.locator(".OptionClose");
+  if ((await fechar.count()) !== 1) {
+    throw new Error(`Botão de fechamento do formulário ${formId} não encontrado.`);
+  }
+  await fechar.click();
+  await janela.waitFor({ state: "detached" });
+}
+
 const { browser, sistema, menu } = await abrirSessaoGiw();
 try {
   const resultado = {
@@ -96,6 +106,7 @@ try {
       formId: item.formId,
       consulta: await descreverConsulta(consulta),
     };
+    await fecharFormulario(sistema, item.formId);
   }
   await mkdir(dirname(output), { recursive: true });
   await writeFile(output, `${JSON.stringify(resultado, null, 2)}\n`, { mode: 0o600 });
