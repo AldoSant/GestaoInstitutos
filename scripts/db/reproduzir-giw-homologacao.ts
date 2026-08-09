@@ -17,6 +17,7 @@ type ItemLegado = {
   vinculo_legacy_id: string | null;
   total_proventos: string;
   vinculo_id: string | null;
+  resolucao: "LEGADO" | "VINCULO_UNICO" | "SEM_DESTINO";
 };
 
 type FolhaAlvo = {
@@ -74,10 +75,14 @@ async function carregarItens(empresaId: string, filtroCompetencias: string[]) {
   const resultado = await getPool().query<ItemLegado>(
     `select f.id folha_legado_id, f.legacy_id folha_legacy_id,
             to_char(f.competencia, 'YYYY-MM') competencia,
-            termo.destino_id termo_id, meta.destino_id meta_id,
+            coalesce(termo.destino_id, vinculo_mapeado.termo_id, candidato.termo_id) termo_id,
+            coalesce(meta.destino_id, vinculo_mapeado.meta_id, candidato.meta_id) meta_id,
             i.legacy_id item_legacy_id, i.pessoa_legacy_id,
             i.vinculo_legacy_id, i.total_proventos::text,
-            coalesce(vinculo.destino_id, candidato.vinculo_id) vinculo_id
+            coalesce(vinculo.destino_id, candidato.vinculo_id) vinculo_id,
+            case when vinculo.destino_id is not null then 'LEGADO'
+                 when candidato.vinculo_id is not null then 'VINCULO_UNICO'
+                 else 'SEM_DESTINO' end resolucao
        from legado_folha f
        join legado_folha_item i on i.folha_legado_id = f.id
        left join legado_chave termo
@@ -92,8 +97,12 @@ async function carregarItens(empresaId: string, filtroCompetencias: string[]) {
          on vinculo.empresa_id = f.empresa_id and vinculo.origem = 'GIW'
         and vinculo.entidade = 'vinculos' and vinculo.legacy_id = i.vinculo_legacy_id
         and vinculo.destino_tabela = 'prestador_vinculo'
+       left join prestador_vinculo vinculo_mapeado
+         on vinculo_mapeado.empresa_id = f.empresa_id and vinculo_mapeado.id = vinculo.destino_id
        left join lateral (
-         select v.id vinculo_id
+         select (array_agg(v.id order by v.id))[1] vinculo_id,
+                (array_agg(v.termo_id order by v.id))[1] termo_id,
+                (array_agg(v.meta_id order by v.id))[1] meta_id
            from legado_chave pessoa
            join prestador p on p.empresa_id = pessoa.empresa_id
                             and p.pessoa_id = pessoa.destino_id and p.ativo
@@ -102,11 +111,11 @@ async function carregarItens(empresaId: string, filtroCompetencias: string[]) {
           where pessoa.empresa_id = f.empresa_id and pessoa.origem = 'GIW'
             and pessoa.entidade = 'pessoas' and pessoa.legacy_id = i.pessoa_legacy_id
             and pessoa.destino_tabela = 'pessoa'
-            and v.termo_id = termo.destino_id and v.meta_id = meta.destino_id
+            and (termo.destino_id is null or v.termo_id = termo.destino_id)
+            and (meta.destino_id is null or v.meta_id = meta.destino_id)
             and v.inicio <= f.competencia and (v.fim is null or v.fim >= f.competencia)
-          order by v.id
-          limit 1
-       ) candidato on vinculo.destino_id is null
+         having count(*) = 1
+       ) candidato on true
       where f.empresa_id = $1 and f.origem = 'GIW'
         and (cardinality($2::text[]) = 0 or to_char(f.competencia, 'YYYY-MM') = any($2::text[]))
       order by f.competencia, f.legacy_id, i.legacy_id`,
@@ -205,6 +214,12 @@ async function executar() {
     vinculosRepetidosNaCompetencia: precondicoes.conflitosItens.length,
     folhasAtuaisEmConflito: precondicoes.conflitos.length,
     medicoesAtuaisEmConflito: precondicoes.medicoesExistentes.length,
+    resolucao: Object.fromEntries(
+      ["LEGADO", "VINCULO_UNICO", "SEM_DESTINO"].map((tipo) => [
+        tipo,
+        itens.filter((item) => item.resolucao === tipo).length,
+      ]),
+    ),
   };
   console.log(JSON.stringify(resumo, null, 2));
   if (precondicoes.semDestino.length || precondicoes.conflitosItens.length || precondicoes.conflitos.length || precondicoes.medicoesExistentes.length) {
