@@ -23,6 +23,7 @@
     "db:bootstrap:perfil-gps": "tsx scripts/db/bootstrap-perfil-gps.ts",
     "db:processar:folha-hml": "tsx scripts/db/processar-folha-hml.ts",
     "db:apurar:gps-hml": "tsx scripts/db/apurar-gps-hml.ts",
+    "db:verificar:gps-hml": "tsx scripts/db/verificar-gps-hml.ts",
     "db:smoke:folha": "tsx scripts/db/smoke-folha.ts",
     "db:smoke:folha-consolidada": "tsx scripts/db/smoke-folha-consolidada.ts",
     "db:comparar:giw": "tsx scripts/db/comparar-paralelo-giw.ts",
