@@ -26,6 +26,14 @@
 > GPS. PJ permanece pagamento sem retenção automática: qualquer retenção depende da
 > matriz fiscal/nota aplicável, não de uma regra presumida.
 
+> **Regressão objetiva GIW em 09/08/2026:** o acervo privado de abril, maio e junho
+> passa a ser um *golden master* executável. `npm run db:comparar:giw` compara o
+> resultado fechado do motor novo com cada Pessoa e GPS histórica, em centavos, e
+> encerra com falha em qualquer ausência, quantidade ou valor divergente. O relatório
+> detalhado fica obrigatoriamente em `.private`; o Git preserva apenas código e dados
+> sintéticos. O próximo passo é executar esse gate no PostgreSQL de homologação após
+> gerar os três ciclos pelo motor atual.
+
 ## Decisão prioritária de 30/07/2026
 
 Foi eliminada da linha oficial de desenvolvimento a proposta de excluir toda pessoa

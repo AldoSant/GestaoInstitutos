@@ -61,6 +61,35 @@ recusa qualquer fechamento inconsistente.
 O modo padrão do importador é sempre `dry-run`. Só há gravação quando `--aplicar` é
 informado explicitamente.
 
+## Regressão automática: GIW versus resultado novo
+
+Após processar e fechar as Folhas da competência no sistema novo e apurar as GPS
+individuais quando o perfil de recolhimento aplicável for `GPS_EXCECAO`, execute a
+comparação paralela. Ela usa o acervo histórico privado já importado como *golden
+master* e compara por Pessoa reconciliada, sempre em centavos:
+
+- Folha: proventos, descontos, líquido, base de INSS e INSS;
+- GPS: beneficiário, quantidade, principal e total;
+- ausência de uma Pessoa ou uma GPS em qualquer lado também reprova o resultado.
+
+O terminal mostra apenas contagens agregadas. O detalhamento, que contém chaves de
+cadastros, só pode ser gravado dentro de `.private`:
+
+```bash
+set -a; . ~/.config/gestao-institutos-hml.env; set +a
+npm run db:comparar:giw -- \
+  --competencia 2026-04 \
+  --competencia 2026-05 \
+  --competencia 2026-06 \
+  --relatorio .private/relatorios/comparacao-paralela-giw-2026-04-a-06.json
+```
+
+Sem `--competencia`, o comando compara todas as competências históricas do GIW
+importadas na empresa. O processo termina com código `2` caso haja divergência; isso
+permite usá-lo como portão objetivo antes do corte. Ele não grava nem altera registros.
+Uma comparação aprovada comprova a reprodução do acervo recebido; não transforma uma
+GPS histórica em autorização fiscal para pagamentos futuros.
+
 ## Preparar a empresa-base
 
 O banco precisa ter uma empresa ativa antes da importação. O comando é repetível e
