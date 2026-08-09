@@ -4,8 +4,15 @@ import { abrirMenuMovimentacao, abrirSessaoGiw, giwBaseUrl } from "./cliente.mjs
 
 const output = resolve(process.env.GIW_OUTPUT_SELETOR_META ?? ".private/importacoes/giw/seletor-meta.json");
 
-const { browser, sistema, menu } = await abrirSessaoGiw();
+const { browser, page, sistema, menu } = await abrirSessaoGiw();
 try {
+  const requisicoes = [];
+  page.on("request", (request) => {
+    const url = request.url();
+    if (url.includes("GIW") || url.includes("lookup") || url.includes("query")) {
+      requisicoes.push({ metodo: request.method(), url: url.replace(/([?&](?:password|senha)=[^&]*)/gi, "$1=REDACTED") });
+    }
+  });
   await abrirMenuMovimentacao(menu);
   const link = menu.locator("a").filter({ hasText: /lançamentos?.*eventos?/i });
   if ((await link.count()) !== 1) throw new Error("Menu de lançamentos de eventos não identificado.");
@@ -42,6 +49,7 @@ try {
     schemaVersion: "1.0", mode: "READ_ONLY_SELECTOR_DISCOVERY",
     source: { system: "GIW", baseUrl: giwBaseUrl, extractedAt: new Date().toISOString() },
     metaInputParent: estrutura, janelasAntes: antes, janelasDepois: depois, popups,
+    requisicoes: requisicoes.slice(-50),
   }, null, 2)}\n`, { mode: 0o600 });
   console.log(`Seletor de Meta inspecionado em ${output}.`);
 } finally {
