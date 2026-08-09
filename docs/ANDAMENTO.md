@@ -34,6 +34,14 @@
 > sintéticos. O próximo passo é executar esse gate no PostgreSQL de homologação após
 > gerar os três ciclos pelo motor atual.
 
+> **Mapa de Vínculos históricos em 09/08/2026:** quando a evidência não possuir o
+> identificador interno do Vínculo, o sistema agora exporta uma relação privada por
+> item de Folha e só aceita sua aplicação após confirmar, em prévia, que o Vínculo
+> indicado pertence à mesma Pessoa. A aplicação é idempotente, auditada como execução
+> de importação e restrita à HML mediante confirmação explícita. Isso remove o trabalho
+> técnico repetitivo, mas não substitui a fonte histórica: os 240 itens sem Vínculo
+> ainda precisam de backup/exportação contratual que comprove a relação.
+
 ## Decisão prioritária de 30/07/2026
 
 Foi eliminada da linha oficial de desenvolvimento a proposta de excluir toda pessoa

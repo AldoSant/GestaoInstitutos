@@ -90,6 +90,39 @@ permite usá-lo como portão objetivo antes do corte. Ele não grava nem altera 
 Uma comparação aprovada comprova a reprodução do acervo recebido; não transforma uma
 GPS histórica em autorização fiscal para pagamentos futuros.
 
+### Quando a evidência não traz o Vínculo histórico
+
+Os espelhos de Folha e GPS podem identificar com segurança a Pessoa, os valores e a
+Meta, mas não necessariamente o identificador interno do Vínculo usado pelo GIW. Não
+crie um Vínculo novo nem associe por semelhança de nome para contornar essa lacuna.
+Exporte a planilha JSON privada, complete cada relação a partir da fonte contratual ou
+do backup do GIW e execute primeiro a prévia:
+
+```bash
+set -a; . ~/.config/gestao-institutos-hml.env; set +a
+npm run db:exportar:pendencias-replay-giw -- \
+  --empresa-id UUID-DA-EMPRESA \
+  --saida .private/relatorios/mapeamento-replay-giw.json
+
+npm run db:aplicar:mapeamento-replay-giw -- \
+  --arquivo .private/relatorios/mapeamento-replay-giw.json \
+  --empresa-id UUID-DA-EMPRESA
+```
+
+O arquivo exige, para cada item, `vinculoId`, `confirmadoPor` e `justificativa`.
+A prévia valida que o Vínculo pertence à mesma Pessoa do item histórico. Apenas após
+ela fechar sem pendências, e somente na homologação descartável, aplique:
+
+```bash
+GIW_REPLAY_MAPEAMENTO=CONFIRMADO \
+npm run db:aplicar:mapeamento-replay-giw -- \
+  --arquivo .private/relatorios/mapeamento-replay-giw.json \
+  --empresa-id UUID-DA-EMPRESA --aplicar --confirmar-homologacao
+```
+
+O registro é idempotente, fica associado à execução de importação e é consumido pelo
+replay histórico. Nenhuma destas etapas usa produção ou expõe o arquivo no Git.
+
 ## Preparar a empresa-base
 
 O banco precisa ter uma empresa ativa antes da importação. O comando é repetível e

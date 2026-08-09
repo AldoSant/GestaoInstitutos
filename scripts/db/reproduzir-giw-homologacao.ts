@@ -19,7 +19,7 @@ type ItemLegado = {
   cnpj: string | null;
   total_proventos: string;
   vinculo_id: string | null;
-  resolucao: "LEGADO" | "ROTULO_UNICO" | "VINCULO_UNICO" | "SEM_DESTINO";
+  resolucao: "LEGADO" | "MAPEAMENTO_CONFIRMADO" | "ROTULO_UNICO" | "VINCULO_UNICO" | "SEM_DESTINO";
 };
 
 type FolhaAlvo = {
@@ -81,8 +81,9 @@ async function carregarItens(empresaId: string, filtroCompetencias: string[]) {
             coalesce(meta.destino_id, rotulo.meta_id, vinculo_mapeado.meta_id, candidato.meta_id) meta_id,
             i.legacy_id item_legacy_id, i.pessoa_legacy_id,
             i.vinculo_legacy_id, i.cpf, i.cnpj, i.total_proventos::text,
-            coalesce(vinculo.destino_id, candidato.vinculo_id) vinculo_id,
+            coalesce(vinculo.destino_id, item_mapeado.destino_id, candidato.vinculo_id) vinculo_id,
             case when vinculo.destino_id is not null then 'LEGADO'
+                 when item_mapeado.destino_id is not null then 'MAPEAMENTO_CONFIRMADO'
                  when candidato.vinculo_id is not null
                    and rotulo.termo_id is not null and rotulo.meta_id is not null
                    then 'ROTULO_UNICO'
@@ -102,6 +103,11 @@ async function carregarItens(empresaId: string, filtroCompetencias: string[]) {
          on vinculo.empresa_id = f.empresa_id and vinculo.origem = 'GIW'
         and vinculo.entidade = 'vinculos' and vinculo.legacy_id = i.vinculo_legacy_id
         and vinculo.destino_tabela = 'prestador_vinculo'
+       left join legado_chave item_mapeado
+         on item_mapeado.empresa_id = f.empresa_id and item_mapeado.origem = 'GIW'
+        and item_mapeado.entidade = 'folha_itens_vinculo'
+        and item_mapeado.legacy_id = concat(f.legacy_id, '/', i.legacy_id)
+        and item_mapeado.destino_tabela = 'prestador_vinculo'
        left join prestador_vinculo vinculo_mapeado
          on vinculo_mapeado.empresa_id = f.empresa_id and vinculo_mapeado.id = vinculo.destino_id
        left join lateral (
@@ -239,7 +245,7 @@ async function executar() {
     folhasAtuaisEmConflito: precondicoes.conflitos.length,
     medicoesAtuaisEmConflito: precondicoes.medicoesExistentes.length,
     resolucao: Object.fromEntries(
-      ["LEGADO", "ROTULO_UNICO", "VINCULO_UNICO", "SEM_DESTINO"].map((tipo) => [
+      ["LEGADO", "MAPEAMENTO_CONFIRMADO", "ROTULO_UNICO", "VINCULO_UNICO", "SEM_DESTINO"].map((tipo) => [
         tipo,
         itens.filter((item) => item.resolucao === tipo).length,
       ]),
