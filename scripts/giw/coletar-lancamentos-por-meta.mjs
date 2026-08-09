@@ -45,11 +45,16 @@ async function lerPagina(consulta) {
       .map((item) => (item.textContent ?? "").replace(/\s+/g, " ").trim())
       .filter(Boolean)
       .slice(0, 10);
+    const frames = Array.from(body.querySelectorAll("iframe"), (frame) => ({
+      id: frame.id || null,
+      name: frame.getAttribute("name"),
+      src: frame.getAttribute("src"),
+    }));
     const tabela = body.querySelector("#results-table") ??
       Array.from(body.querySelectorAll("table"))
         .filter((item) => item.querySelectorAll("tbody tr td").length > 0)
         .sort((a, b) => b.querySelectorAll("tbody tr td").length - a.querySelectorAll("tbody tr td").length)[0];
-    if (!tabela) return { headers: [], rows: [], tabelas, mensagens };
+    if (!tabela) return { headers: [], rows: [], tabelas, mensagens, frames };
     return {
       headers: Array.from(tabela.querySelectorAll("thead th"), (cell) =>
         (cell.textContent ?? "").replace(/\s+/g, " ").trim(),
@@ -61,6 +66,7 @@ async function lerPagina(consulta) {
         .filter((row) => row.some(Boolean)),
       tabelas,
       mensagens,
+      frames,
     };
   });
 }
@@ -91,8 +97,10 @@ try {
   await definirLookup(formulario, "WFRInput1026011", termoId, termoLabel);
   await definirLookup(formulario, "WFRInput1026012", metaId, metaLabel);
   await formulario.getByRole("button", { name: "Pesquisar", exact: true }).click();
-  await new Promise((resolveWait) => setTimeout(resolveWait, 1_000));
   const iframeConsulta = formulario.locator('iframe[src^="basic_query.jsp"]');
+  for (let tentativa = 0; tentativa < 50 && await iframeConsulta.count() === 0; tentativa += 1) {
+    await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+  }
   const consulta = await iframeConsulta.count() === 1
     ? formulario.frameLocator('iframe[src^="basic_query.jsp"]')
     : formulario;
