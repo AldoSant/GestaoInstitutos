@@ -39,12 +39,15 @@ async function abrirConsulta(formulario) {
   const existente = formulario.locator('iframe[src^="basic_query.jsp"]');
   if ((await existente.count()) === 0) {
     const aba = formulario.getByRole("tab", { name: /localizar/i });
-    if ((await aba.count()) !== 1) throw new Error("Aba Localizar não encontrada.");
-    await aba.click();
+    if ((await aba.count()) === 1) await aba.click();
   }
-  const consulta = formulario.frameLocator('iframe[src^="basic_query.jsp"]');
-  await consulta.locator("body").waitFor();
-  return consulta;
+  if ((await existente.count()) === 1) {
+    const consulta = formulario.frameLocator('iframe[src^="basic_query.jsp"]');
+    await consulta.locator("body").waitFor();
+    return consulta;
+  }
+  // Alguns formulários GIW já são a própria tela de consulta, sem aba/iframe.
+  return formulario;
 }
 
 async function descreverConsulta(consulta) {
