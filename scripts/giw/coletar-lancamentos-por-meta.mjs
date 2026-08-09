@@ -22,12 +22,15 @@ async function definirLookup(formulario, nome, valor, label) {
   const visivel = formulario.locator(`input#${nome}`);
   if (await visivel.count() !== 1) throw new Error(`Campo visível ${nome} não encontrado.`);
   await visivel.fill(label);
+  await new Promise((resolveWait) => setTimeout(resolveWait, 600));
+  await visivel.press("ArrowDown");
+  await visivel.press("Enter");
   const oculto = formulario.locator(`input[type="hidden"][name="${nome}"]`);
   if (await oculto.count() !== 1) throw new Error(`Campo interno ${nome} não encontrado.`);
-  await oculto.evaluate((element, value) => {
-    element.value = value;
-    element.dispatchEvent(new Event("change", { bubbles: true }));
-  }, valor);
+  await new Promise((resolveWait) => setTimeout(resolveWait, 300));
+  if (await oculto.inputValue() !== valor) {
+    throw new Error(`O lookup ${nome} não confirmou o identificador solicitado.`);
+  }
 }
 
 async function lerPagina(consulta) {
