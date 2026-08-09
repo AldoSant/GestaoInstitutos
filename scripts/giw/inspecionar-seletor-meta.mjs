@@ -20,18 +20,24 @@ try {
     const limpar = (html) => html.replace(/value="[^"]*"/gi, 'value=""');
     return limpar(element.parentElement?.outerHTML ?? element.outerHTML);
   });
-  const botoes = formulario.locator("button");
   const antes = await sistema.locator('[id^="WFRIframeForm"]').evaluateAll((items) => items.map((item) => item.id));
-  await botoes.nth(2).click();
+  const botaoMeta = meta.locator("xpath=following-sibling::button");
+  if ((await botaoMeta.count()) !== 1) throw new Error("Botão do lookup de Meta não encontrado.");
+  await botaoMeta.click();
   await new Promise((resolveWait) => setTimeout(resolveWait, 750));
   const depois = await sistema.locator('[id^="WFRIframeForm"]').evaluateAll((items) =>
     items.map((item) => ({ id: item.id, iframe: item.querySelector("iframe")?.getAttribute("src") ?? null })),
+  );
+  const popups = await formulario.locator("body").evaluate((body) =>
+    Array.from(body.querySelectorAll("[role='dialog'], .dropdown-menu, .lookup-results, .ui-autocomplete"))
+      .map((item) => ({ tag: item.tagName, id: item.id || null, className: item.className, texto: (item.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 500) }))
+      .filter((item) => item.texto || item.id || item.className),
   );
   await mkdir(dirname(output), { recursive: true });
   await writeFile(output, `${JSON.stringify({
     schemaVersion: "1.0", mode: "READ_ONLY_SELECTOR_DISCOVERY",
     source: { system: "GIW", baseUrl: giwBaseUrl, extractedAt: new Date().toISOString() },
-    metaInputParent: estrutura, janelasAntes: antes, janelasDepois: depois,
+    metaInputParent: estrutura, janelasAntes: antes, janelasDepois: depois, popups,
   }, null, 2)}\n`, { mode: 0o600 });
   console.log(`Seletor de Meta inspecionado em ${output}.`);
 } finally {
