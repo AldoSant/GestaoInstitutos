@@ -42,6 +42,22 @@ function competencias() {
   return [...new Set(valores)].sort();
 }
 
+async function resolverEmpresa() {
+  const empresaId = argumentos("--empresa-id")[0];
+  if (!empresaId) return resolverEmpresaAtiva();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(empresaId)) {
+    throw new Error("--empresa-id deve ser um UUID válido.");
+  }
+  const resultado = await getPool().query<{ id: string }>(
+    "select id from empresa where id = $1 and ativo",
+    [empresaId],
+  );
+  if (resultado.rowCount !== 1) {
+    throw new Error("A empresa informada não existe ou não está ativa nesta homologação.");
+  }
+  return { id: resultado.rows[0].id };
+}
+
 function hashEvidencia(item: ItemLegado) {
   return createHash("sha256")
     .update(JSON.stringify({
@@ -177,7 +193,7 @@ async function executar() {
   if (executarDeVerdade && (process.env.GIW_REPLAY_HOMOLOGACAO !== "CONFIRMADO" || !process.argv.includes("--confirmar-homologacao"))) {
     throw new Error("Para gravar, use GIW_REPLAY_HOMOLOGACAO=CONFIRMADO e --confirmar-homologacao.");
   }
-  const empresa = await resolverEmpresaAtiva();
+  const empresa = await resolverEmpresa();
   const itens = await carregarItens(empresa.id, competencias());
   const alvos = agrupar(itens);
   const precondicoes = await validarPrecondicoes(empresa.id, itens, alvos);
