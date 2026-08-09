@@ -269,7 +269,7 @@ export async function apurarRetencoesSegurados({
             perfil_recolhimento_id, competencia, beneficiario_nome,
             identificador, codigo_receita, principal, juros, multa, total,
             status, snapshot)
-         select item.empresa_id, item.obrigacao_id, item.id, $2, $3::date,
+         select item.empresa_id, item.obrigacao_id, item.id, $2::uuid, $3::date,
                 item.snapshot #>> '{pessoa,nome}',
                 regexp_replace(item.snapshot #>> '{prestador,nitPisPasep}', '\\D', '', 'g'),
                 $4, item.valor, 0, 0, item.valor, 'PREPARADA',
@@ -277,7 +277,7 @@ export async function apurarRetencoesSegurados({
                   'obrigacaoItemId', item.id,
                   'folhaItemId', item.folha_item_id,
                   'fonte', item.snapshot,
-                  'perfilRecolhimentoId', $2::text
+                  'perfilRecolhimentoId', ($2::uuid)::text
                 )
            from obrigacao_fiscal_item item
           where item.obrigacao_id = $1
