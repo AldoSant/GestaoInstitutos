@@ -139,8 +139,8 @@ export default async function NovaFolhaPage({
           />
         </section>
 
-        <section className="panel compact-panel">
-          <form action={caminhoAplicacao("/folhas/nova")} method="get" className="search-field">
+        <section className="panel competencia-preparo">
+          <form action={caminhoAplicacao("/folhas/nova")} method="get" className="competencia-preparo-form">
             <label>
               <span>Competência para preparar</span>
               <input name="competencia" type="month" required defaultValue={competencia} />
