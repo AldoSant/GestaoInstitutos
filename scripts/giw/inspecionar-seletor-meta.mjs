@@ -53,6 +53,14 @@ try {
     const limpar = (html) => html.replace(/value="[^"]*"/gi, 'value=""');
     return limpar(element.parentElement?.outerHTML ?? element.outerHTML);
   });
+  const camposLookup = await formulario.locator('input[id*="1026011"], input[name*="1026011"], input[id*="1026012"], input[name*="1026012"]').evaluateAll((campos) =>
+    campos.map((campo) => ({
+      id: campo.id || null,
+      name: campo.getAttribute("name"),
+      type: campo.getAttribute("type"),
+      value: campo.getAttribute("type") === "hidden" ? "REDACTED" : campo.getAttribute("value"),
+    })),
+  );
   const antes = await sistema.locator('[id^="WFRIframeForm"]').evaluateAll((items) => items.map((item) => item.id));
   const botaoMeta = meta.locator("xpath=following-sibling::button");
   if ((await botaoMeta.count()) !== 1) throw new Error("Botão do lookup de Meta não encontrado.");
@@ -72,6 +80,7 @@ try {
     schemaVersion: "1.0", mode: "READ_ONLY_SELECTOR_DISCOVERY",
     source: { system: "GIW", baseUrl: giwBaseUrl, extractedAt: new Date().toISOString() },
     metaInputParent: estrutura, termoInputParent: estruturaTermo,
+    camposLookup,
     janelasAntes: antes, janelasDepois: depois, popups,
     requisicoes: requisicoes.slice(-50),
     respostasLookup: respostasLookup.slice(-10),
