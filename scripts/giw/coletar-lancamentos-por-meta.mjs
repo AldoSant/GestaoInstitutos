@@ -66,7 +66,11 @@ try {
   await definirLookup(formulario, "WFRInput1026011", termoId);
   await definirLookup(formulario, "WFRInput1026012", metaId);
   await formulario.getByRole("button", { name: "Pesquisar", exact: true }).click();
-  const consulta = formulario.frameLocator('iframe[src^="basic_query.jsp"]');
+  await new Promise((resolveWait) => setTimeout(resolveWait, 1_000));
+  const iframeConsulta = formulario.locator('iframe[src^="basic_query.jsp"]');
+  const consulta = await iframeConsulta.count() === 1
+    ? formulario.frameLocator('iframe[src^="basic_query.jsp"]')
+    : formulario;
   await consulta.locator("body").waitFor();
 
   const pages = [];
