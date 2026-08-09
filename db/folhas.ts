@@ -988,15 +988,9 @@ export async function processarFolha(
         },
         regra.parametros,
       );
-      if (
-        base.tipo_pessoa === "FISICA" &&
-        resultado.valorInssCentavos > 0 &&
-        base.nit_pis_pasep?.replace(/\D/g, "").length !== 11
-      ) {
-        throw new Error(
-          `A pessoa vinculada a ${vinculoId} possui INSS a recolher e precisa de NIT/PIS/PASEP válido na ficha da pessoa.`,
-        );
-      }
+      // NIT é requisito de identificação da GPS, não do cálculo da Folha.
+      // A Folha precisa continuar processável para permitir conferência e a
+      // regularização dirigida da pessoa antes da emissão individual da guia.
       if (ativacaoConsolidada.ativa && base.quantidade_vinculos_pessoa > 1) {
         let rateios = rateiosPorPessoa.get(base.pessoa_id);
         if (!rateios) {
