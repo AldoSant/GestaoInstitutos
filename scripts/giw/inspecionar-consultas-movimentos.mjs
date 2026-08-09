@@ -75,7 +75,17 @@ async function descreverConsulta(consulta) {
         for: element.getAttribute("for"),
       }))
       .filter((item) => item.texto);
-    return { titulo: normalizar(document.title), rotulos, campos };
+    const grades = Array.from(body.querySelectorAll("table, [role='grid']"))
+      .filter(visivel)
+      .map((grade) => ({
+        id: grade.id || null,
+        cabecalhos: Array.from(grade.querySelectorAll("th"), (celula) => normalizar(celula.textContent)),
+        linhas: Array.from(grade.querySelectorAll("tbody tr, tr[role='listitem']"))
+          .slice(0, 5)
+          .map((linha) => Array.from(linha.querySelectorAll("td"), (celula) => normalizar(celula.textContent))),
+      }))
+      .filter((grade) => grade.cabecalhos.length || grade.linhas.length);
+    return { titulo: normalizar(document.title), rotulos, campos, grades };
   });
 }
 
@@ -101,6 +111,10 @@ try {
     await abrirMenuMovimentacao(menu);
     await clicarMenu(menu, item);
     const formulario = await abrirFormulario(sistema, item.formId);
+    if (item.entidade === "lancamentos_eventos" && process.env.GIW_INSPECIONAR_PESQUISA === "true") {
+      await formulario.getByRole("button", { name: "Pesquisar", exact: true }).click();
+      await new Promise((resolveWait) => setTimeout(resolveWait, 1_500));
+    }
     const consulta = await abrirConsulta(formulario);
     resultado.formularios[item.entidade] = {
       formId: item.formId,
