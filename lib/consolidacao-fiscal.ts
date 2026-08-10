@@ -82,6 +82,21 @@ function hashOutrasFontes(fonte: EntradaVinculoFolha) {
   );
 }
 
+function totaisIrrfOutrasFontes(fonte: EntradaVinculoFolha) {
+  return fonte.outrasFontes.reduce(
+    (totais, outra) => ({
+      rendimentos:
+        totais.rendimentos + decimalParaInteiro(outra.remuneracao ?? "0", 2),
+      inssDedutivel:
+        totais.inssDedutivel +
+        decimalParaInteiro(outra.inssDedutivelIrrf ?? "0", 2),
+      irrfRetido:
+        totais.irrfRetido + decimalParaInteiro(outra.irrfRetido ?? "0", 2),
+    }),
+    { rendimentos: 0, inssDedutivel: 0, irrfRetido: 0 },
+  );
+}
+
 function exigirMesmoContexto(fontes: EntradaVinculoFolha[]) {
   const primeira = fontes[0];
   const ids = new Set<string>();
@@ -133,7 +148,11 @@ function exigirMesmoContexto(fontes: EntradaVinculoFolha[]) {
       );
     }
   }
-  return { primeira, baseOutrasFontes };
+  return {
+    primeira,
+    baseOutrasFontes,
+    irrfOutrasFontes: totaisIrrfOutrasFontes(primeira),
+  };
 }
 
 function exigirSomaRateio(
@@ -183,7 +202,7 @@ export function processarPessoaConsolidada(
   const fontes = [...fontesRecebidas].sort((a, b) =>
     a.vinculoId.localeCompare(b.vinculoId),
   );
-  const { primeira, baseOutrasFontes } = exigirMesmoContexto(fontes);
+  const { primeira, baseOutrasFontes, irrfOutrasFontes } = exigirMesmoContexto(fontes);
   const preliminares = fontes.map((entrada) => {
     const individual = processarVinculoFolha(entrada, regra);
     const linhas = individual.linhas.filter(
@@ -250,15 +269,19 @@ export function processarPessoaConsolidada(
   const fontesIrrf = preliminares.filter(
     ({ entrada }) => entrada.descontaIrrf,
   );
-  const rendimentosIrrfCentavos = fontesIrrf.reduce(
+  const rendimentosIrrfInternosCentavos = fontesIrrf.reduce(
     (soma, fonte) => soma + fonte.baseIrrfBrutaCentavos,
     0,
   );
+  const rendimentosIrrfCentavos =
+    rendimentosIrrfInternosCentavos + irrfOutrasFontes.rendimentos;
   const irrf =
     fontesIrrf.length > 0
       ? calcularIrrf2026({
           rendimentos: deCentavos(rendimentosIrrfCentavos),
-          inssDedutivel: deCentavos(valorInssCentavos),
+          inssDedutivel: deCentavos(
+            valorInssCentavos + irrfOutrasFontes.inssDedutivel,
+          ),
           dependentes: primeira.dependentesIrrf,
           regra,
         })
@@ -289,8 +312,12 @@ export function processarPessoaConsolidada(
     paraCentavos(irrf.reducao),
     pesosIrrf,
   );
+  const valorIrrfInstitutoCentavos = Math.max(
+    0,
+    paraCentavos(irrf.valor) - irrfOutrasFontes.irrfRetido,
+  );
   const valoresIrrfRateados = ratearCentavos(
-    paraCentavos(irrf.valor),
+    valorIrrfInstitutoCentavos,
     pesosIrrf,
   );
 
@@ -368,7 +395,7 @@ export function processarPessoaConsolidada(
   );
   exigirSomaRateio(
     "valorIrrfCentavos",
-    paraCentavos(irrf.valor),
+    valorIrrfInstitutoCentavos,
     fontesCalculadas.map((fonte) => fonte.valorIrrfCentavos),
   );
   return {
@@ -384,7 +411,7 @@ export function processarPessoaConsolidada(
     baseIrrfCentavos: paraCentavos(irrf.base),
     irrfBrutoCentavos: paraCentavos(irrf.impostoBruto),
     irrfReducaoCentavos: paraCentavos(irrf.reducao),
-    valorIrrfCentavos: paraCentavos(irrf.valor),
+    valorIrrfCentavos: valorIrrfInstitutoCentavos,
     memoria: {
       versao: 1,
       modo: "SIMULACAO_NAO_HOMOLOGADA" as const,
@@ -395,6 +422,9 @@ export function processarPessoaConsolidada(
       dependentesIrrf: primeira.dependentesIrrf,
       outrasFontes: {
         baseContribuidaCentavos: baseOutrasFontes,
+        rendimentosTributaveisCentavos: irrfOutrasFontes.rendimentos,
+        inssDedutivelIrrfCentavos: irrfOutrasFontes.inssDedutivel,
+        irrfRetidoCentavos: irrfOutrasFontes.irrfRetido,
         comprovantes: primeira.outrasFontes,
       },
       previdencia: primeira.enquadramentoPrevidenciario,
@@ -406,12 +436,14 @@ export function processarPessoaConsolidada(
       },
       irrf: {
         rendimentosCentavos: rendimentosIrrfCentavos,
+        rendimentosInstitutoCentavos: rendimentosIrrfInternosCentavos,
         metodoDeducao: irrf.metodoDeducao,
         deducaoUtilizadaCentavos: paraCentavos(irrf.deducaoUtilizada),
         baseCentavos: paraCentavos(irrf.base),
         impostoBrutoCentavos: paraCentavos(irrf.impostoBruto),
         reducaoCentavos: paraCentavos(irrf.reducao),
-        valorCentavos: paraCentavos(irrf.valor),
+        valorCentavos: valorIrrfInstitutoCentavos,
+        irrfRetidoEmOutraFonteCentavos: irrfOutrasFontes.irrfRetido,
       },
       rateios: fontesCalculadas.map((fonte) => ({
         vinculoId: fonte.vinculoId,

@@ -34,6 +34,8 @@ export async function carregarOutrasFontes(
       fonte_pagadora: string;
       documento_fonte: string;
       remuneracao: string;
+      inss_dedutivel_irrf: string;
+      irrf_retido: string;
       base_contribuicao: string;
       valor_contribuicao: string;
       documento_referencia: string;
@@ -41,7 +43,8 @@ export async function carregarOutrasFontes(
       observacao: string | null;
     }>(
       `select id, competencia::text, fonte_pagadora, documento_fonte,
-              remuneracao::text, base_contribuicao::text,
+              remuneracao::text, inss_dedutivel_irrf::text, irrf_retido::text,
+              base_contribuicao::text,
               valor_contribuicao::text, documento_referencia,
               comprovante_verificado, observacao
          from contribuicao_outra_fonte

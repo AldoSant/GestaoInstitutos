@@ -90,8 +90,11 @@ type LinhaVinculo = {
 type EntradaOutraFonte = {
   fontePagadora: string;
   documentoFonte: string;
+  remuneracao: string;
   baseContribuicao: string;
   valorContribuicao: string;
+  inssDedutivelIrrf: string;
+  irrfRetido: string;
   documentoReferencia: string;
 };
 
@@ -626,8 +629,11 @@ export async function processarFolha(
                     jsonb_build_object(
                       'fontePagadora', cof.fonte_pagadora,
                       'documentoFonte', cof.documento_fonte,
+                      'remuneracao', cof.remuneracao::text,
                       'baseContribuicao', cof.base_contribuicao::text,
                       'valorContribuicao', cof.valor_contribuicao::text,
+                      'inssDedutivelIrrf', cof.inss_dedutivel_irrf::text,
+                      'irrfRetido', cof.irrf_retido::text,
                       'documentoReferencia', cof.documento_referencia
                     )
                     order by cof.fonte_pagadora, cof.documento_referencia
@@ -667,11 +673,14 @@ export async function processarFolha(
                      (
                        select jsonb_agg(
                          jsonb_build_object(
-                           'fontePagadora', cof.fonte_pagadora,
-                           'documentoFonte', cof.documento_fonte,
-                           'baseContribuicao', cof.base_contribuicao::text,
-                           'valorContribuicao', cof.valor_contribuicao::text,
-                           'documentoReferencia', cof.documento_referencia
+                          'fontePagadora', cof.fonte_pagadora,
+                          'documentoFonte', cof.documento_fonte,
+                          'remuneracao', cof.remuneracao::text,
+                          'baseContribuicao', cof.base_contribuicao::text,
+                          'valorContribuicao', cof.valor_contribuicao::text,
+                          'inssDedutivelIrrf', cof.inss_dedutivel_irrf::text,
+                          'irrfRetido', cof.irrf_retido::text,
+                          'documentoReferencia', cof.documento_referencia
                          )
                          order by cof.fonte_pagadora, cof.documento_referencia
                        )

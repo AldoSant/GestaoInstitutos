@@ -8,6 +8,7 @@ import {
   processarVinculoFolha,
   type EntradaVinculoFolha,
 } from "../lib/processamento-folha";
+import { calcularIrrf2026 } from "../lib/calculos";
 import { REGRA_FISCAL_2026 } from "../lib/regras-fiscais";
 
 const ENQUADRAMENTO_GERAL = {
@@ -219,6 +220,36 @@ test("aplica dependentes e dedução previdenciária uma vez no IRRF mensal", ()
     consolidado.fontes.reduce((soma, item) => soma + item.valorIrrfCentavos, 0),
     consolidado.valorIrrfCentavos,
   );
+});
+
+test("abate IRRF já recolhido em outra fonte antes de ratear entre as Folhas", () => {
+  const outrasFontes = [{
+    fontePagadora: "Outra contratante",
+    documentoFonte: "12345678000199",
+    remuneracao: "3000.00",
+    baseContribuicao: "0.00",
+    valorContribuicao: "0.00",
+    inssDedutivelIrrf: "0.00",
+    irrfRetido: "100.00",
+    documentoReferencia: "INF-2026-08",
+  }];
+  const fontes = [
+    fonte("00000000-0000-4000-8000-000000000151", "2000.00", { outrasFontes }),
+    fonte("00000000-0000-4000-8000-000000000152", "1000.00", { outrasFontes }),
+  ];
+  const consolidado = processarPessoaConsolidada(fontes, REGRA_FISCAL_2026);
+  const total = calcularIrrf2026({ rendimentos: 6000, inssDedutivel: 330 });
+
+  assert.equal(consolidado.rendimentosIrrfCentavos, 600_000);
+  assert.equal(
+    consolidado.valorIrrfCentavos,
+    Math.max(0, Math.round(total.valor * 100) - 10_000),
+  );
+  assert.equal(
+    consolidado.fontes.reduce((soma, item) => soma + item.valorIrrfCentavos, 0),
+    consolidado.valorIrrfCentavos,
+  );
+  assert.equal(consolidado.memoria.outrasFontes.irrfRetidoCentavos, 10_000);
 });
 
 test("rejeita fontes com contextos fiscais incompatíveis", () => {

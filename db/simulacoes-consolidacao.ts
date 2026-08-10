@@ -264,8 +264,11 @@ async function carregarLinhasFontes(
                 jsonb_build_object(
                   'fontePagadora', outra.fonte_pagadora,
                   'documentoFonte', outra.documento_fonte,
+                  'remuneracao', outra.remuneracao::text,
                   'baseContribuicao', outra.base_contribuicao::text,
                   'valorContribuicao', outra.valor_contribuicao::text,
+                  'inssDedutivelIrrf', outra.inss_dedutivel_irrf::text,
+                  'irrfRetido', outra.irrf_retido::text,
                   'documentoReferencia', outra.documento_referencia
                 )
                 order by outra.documento_fonte, outra.documento_referencia,

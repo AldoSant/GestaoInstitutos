@@ -6,6 +6,8 @@ export type OutraFonteCadastro = {
   fontePagadora: string;
   documentoFonte: string;
   remuneracao: string;
+  inssDedutivelIrrf: string;
+  irrfRetido: string;
   baseContribuicao: string;
   valorContribuicao: string;
   documentoReferencia: string;
@@ -29,7 +31,7 @@ function moedaNaoNegativa(valor: unknown, campo: string, erros: string[]) {
     erros.push(`${campo} deve ser um valor monetário não negativo.`);
     return null;
   }
-  return normalizado;
+  return Number(normalizado).toFixed(2);
 }
 
 export function validarOutraFonte(input: Record<string, unknown>) {
@@ -41,6 +43,16 @@ export function validarOutraFonte(input: Record<string, unknown>) {
   const documentoReferencia = texto(input.documentoReferencia);
   const observacao = texto(input.observacao) || null;
   const remuneracao = moedaNaoNegativa(input.remuneracao, "Remuneração", erros);
+  const inssDedutivelIrrf = moedaNaoNegativa(
+    input.inssDedutivelIrrf || "0",
+    "INSS dedutível no IRRF",
+    erros,
+  );
+  const irrfRetido = moedaNaoNegativa(
+    input.irrfRetido || "0",
+    "IRRF já retido pela fonte",
+    erros,
+  );
   const baseContribuicao = moedaNaoNegativa(
     input.baseContribuicao,
     "Base de contribuição",
@@ -79,6 +91,8 @@ export function validarOutraFonte(input: Record<string, unknown>) {
   if (
     erros.length ||
     remuneracao === null ||
+    inssDedutivelIrrf === null ||
+    irrfRetido === null ||
     baseContribuicao === null ||
     valorContribuicao === null
   ) {
@@ -91,6 +105,8 @@ export function validarOutraFonte(input: Record<string, unknown>) {
       fontePagadora,
       documentoFonte,
       remuneracao,
+      inssDedutivelIrrf,
+      irrfRetido,
       baseContribuicao,
       valorContribuicao,
       documentoReferencia,

@@ -122,6 +122,8 @@ export async function salvarOutraFonte(formData: FormData) {
     fontePagadora: formData.get("fontePagadora"),
     documentoFonte: formData.get("documentoFonte"),
     remuneracao: formData.get("remuneracao"),
+    inssDedutivelIrrf: formData.get("inssDedutivelIrrf"),
+    irrfRetido: formData.get("irrfRetido"),
     baseContribuicao: formData.get("baseContribuicao"),
     valorContribuicao: formData.get("valorContribuicao"),
     documentoReferencia: formData.get("documentoReferencia"),
@@ -153,12 +155,13 @@ export async function salvarOutraFonte(formData: FormData) {
       insert into contribuicao_outra_fonte
         (empresa_id, prestador_id, competencia, fonte_pagadora,
          documento_fonte, remuneracao, base_contribuicao,
-         valor_contribuicao, documento_referencia,
+         inss_dedutivel_irrf, irrf_retido, valor_contribuicao, documento_referencia,
          comprovante_verificado, observacao)
       values
         (${empresa.id}, ${dados.prestadorId}, ${`${dados.competencia}-01`}::date,
          ${dados.fontePagadora}, ${dados.documentoFonte}, ${dados.remuneracao},
-         ${dados.baseContribuicao}, ${dados.valorContribuicao},
+         ${dados.baseContribuicao}, ${dados.inssDedutivelIrrf}, ${dados.irrfRetido},
+         ${dados.valorContribuicao},
          ${dados.documentoReferencia}, ${dados.comprovanteVerificado},
          ${dados.observacao})
     `);

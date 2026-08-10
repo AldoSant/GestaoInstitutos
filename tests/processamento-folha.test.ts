@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { processarVinculoFolha } from "../lib/processamento-folha";
+import { calcularIrrf2026 } from "../lib/calculos";
 import { REGRA_FISCAL_2026 } from "../lib/regras-fiscais";
 
 const ENQUADRAMENTO_GERAL = {
@@ -185,6 +186,9 @@ test("limita a retenção pela base comprovada em outras fontes", () => {
   assert.equal(resultado.valorInssCentavos, 49_231);
   assert.deepEqual(resultado.memoria.outrasFontes, {
     baseContribuidaCentavos: 400_000,
+    rendimentosTributaveisCentavos: 0,
+    inssDedutivelIrrfCentavos: 0,
+    irrfRetidoCentavos: 0,
     comprovantes: [
       {
         fontePagadora: "Outra contratante",
@@ -195,6 +199,41 @@ test("limita a retenção pela base comprovada em outras fontes", () => {
       },
     ],
   });
+});
+
+test("considera rendimentos e IRRF já retido em comprovante de outra fonte", () => {
+  const resultado = processarVinculoFolha(
+    {
+      vinculoId: "00000000-0000-4000-8000-000000000208",
+      tipoPessoa: "FISICA",
+      categoriaContribuinte: "701",
+      valorRetribuicao: "3000.00",
+      descontaInss: false,
+      descontaIrrf: true,
+      isentoInss: false,
+      baseOutrasFontes: "0",
+      outrasFontes: [{
+        fontePagadora: "Outra contratante",
+        documentoFonte: "12345678000199",
+        remuneracao: "3000.00",
+        baseContribuicao: "0.00",
+        valorContribuicao: "0.00",
+        inssDedutivelIrrf: "0.00",
+        irrfRetido: "100.00",
+        documentoReferencia: "INF-2026-08",
+      }],
+      enquadramentoPrevidenciario: ENQUADRAMENTO_GERAL,
+      dependentesIrrf: 0,
+      eventos: [],
+    },
+    REGRA_FISCAL_2026,
+  );
+  const total = calcularIrrf2026({ rendimentos: 6000, inssDedutivel: 0 });
+
+  assert.equal(resultado.baseIrrfCentavos, Math.round(total.base * 100));
+  assert.equal(resultado.valorIrrfCentavos, Math.max(0, Math.round(total.valor * 100) - 10_000));
+  assert.equal(resultado.memoria.outrasFontes.rendimentosTributaveisCentavos, 300_000);
+  assert.equal(resultado.memoria.outrasFontes.irrfRetidoCentavos, 10_000);
 });
 
 test("não retém INSS quando outra fonte comprovada já alcançou o teto", () => {

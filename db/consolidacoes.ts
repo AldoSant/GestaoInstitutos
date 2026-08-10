@@ -3,6 +3,7 @@ import {
   conteudoFontesConsolidacao,
   normalizarAtualizacaoCaso,
   type FonteConsolidacao,
+  type OutraFonteConsolidacao,
 } from "@/lib/caso-consolidacao";
 import { hashJson } from "@/lib/json-canonico";
 import { getPool } from "./index";
@@ -17,6 +18,7 @@ type ConflitoConsolidacao = {
   quantidade_vinculos: number;
   retribuicao_prevista: string;
   base_outras_fontes: string;
+  outras_fontes: OutraFonteConsolidacao[];
   medicao_pendente: boolean;
   fontes: FonteConsolidacao[];
   hash_fontes: string;
@@ -180,6 +182,31 @@ async function executarDiagnostico(
                 ),
                 0
               )::text base_outras_fontes,
+              coalesce(
+                (
+                  select jsonb_agg(
+                    jsonb_build_object(
+                      'documentoFonte', outra.documento_fonte,
+                      'documentoReferencia', outra.documento_referencia,
+                      'remuneracao', outra.remuneracao::text,
+                      'baseContribuicao', outra.base_contribuicao::text,
+                      'valorContribuicao', outra.valor_contribuicao::text,
+                      'inssDedutivelIrrf', outra.inss_dedutivel_irrf::text,
+                      'irrfRetido', outra.irrf_retido::text
+                    )
+                    order by outra.documento_fonte, outra.documento_referencia
+                  )
+                    from contribuicao_outra_fonte outra
+                    join prestador prestador_outra
+                      on prestador_outra.id = outra.prestador_id
+                     and prestador_outra.empresa_id = outra.empresa_id
+                   where outra.empresa_id = $1
+                     and outra.competencia = $2::date
+                     and outra.comprovante_verificado
+                     and prestador_outra.pessoa_id = fonte.pessoa_id
+                ),
+                '[]'::jsonb
+              ) outras_fontes,
               bool_or(
                 fonte.exige_medicao_mensal and fonte.medicao_id is null
               ) medicao_pendente,
@@ -221,6 +248,7 @@ async function executarDiagnostico(
         competencia,
         pessoaId: conflito.pessoa_id,
         baseOutrasFontes: conflito.base_outras_fontes,
+        outrasFontes: conflito.outras_fontes,
         fontes: conflito.fontes,
       }),
     ),

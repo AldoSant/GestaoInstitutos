@@ -256,7 +256,7 @@ export default async function PrestadoresPage({
       {outrasFontes && (
         <ModalShell
           title={`Outras fontes de ${outrasFontes.prestador.nome}`}
-          description="Somente comprovantes verificados reduzem a base residual de INSS durante o processamento da folha."
+          description="Somente comprovantes verificados entram no teto de INSS e, quando informados, na consolidação de IRRF da competência."
           closeHref="/prestadores"
         >
           <form action={salvarOutraFonte} className="crud-form">
@@ -264,9 +264,11 @@ export default async function PrestadoresPage({
             <label><span>Competência</span><input name="competencia" type="month" required /></label>
             <label className="field-wide"><span>Fonte pagadora</span><input name="fontePagadora" required maxLength={180} /></label>
             <label><span>CPF/CNPJ da fonte</span><input name="documentoFonte" inputMode="numeric" required maxLength={18} /></label>
-            <label><span>Remuneração</span><input name="remuneracao" inputMode="decimal" required placeholder="0,00" /></label>
+            <label><span>Rendimentos tributáveis</span><input name="remuneracao" inputMode="decimal" required placeholder="0,00" /></label>
             <label><span>Base de contribuição</span><input name="baseContribuicao" inputMode="decimal" required placeholder="0,00" /></label>
             <label><span>Contribuição retida</span><input name="valorContribuicao" inputMode="decimal" required placeholder="0,00" /></label>
+            <label><span>INSS dedutível no IRRF</span><input name="inssDedutivelIrrf" inputMode="decimal" placeholder="0,00" defaultValue="0,00" /></label>
+            <label><span>IRRF já retido pela fonte</span><input name="irrfRetido" inputMode="decimal" placeholder="0,00" defaultValue="0,00" /></label>
             <label className="field-wide"><span>Referência do comprovante</span><input name="documentoReferencia" required maxLength={160} placeholder="Recibo, demonstrativo ou protocolo" /></label>
             <label className="field-wide"><span>Observação</span><textarea name="observacao" maxLength={2000} rows={3} /></label>
             <label className="checkbox-field"><input name="comprovanteVerificado" type="checkbox" /><span>Comprovante conferido</span></label>
@@ -274,15 +276,15 @@ export default async function PrestadoresPage({
           </form>
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Competência</th><th>Fonte</th><th>Remuneração</th><th>Base</th><th>Retido</th><th>Comprovante</th><th>Ação</th></tr></thead>
+              <thead><tr><th>Competência</th><th>Fonte</th><th>Rendimentos</th><th>INSS</th><th>IRRF</th><th>Comprovante</th><th>Ação</th></tr></thead>
               <tbody>
                 {outrasFontes.fontes.map((item) => (
                   <tr key={item.id}>
                     <td>{item.competencia.slice(0, 7).split("-").reverse().join("/")}</td>
                     <td><strong>{item.fonte_pagadora}</strong><small>{documento(item.documento_fonte.length === 11 ? item.documento_fonte : null, item.documento_fonte.length === 14 ? item.documento_fonte : null)}</small></td>
                     <td>{moeda(item.remuneracao)}</td>
-                    <td>{moeda(item.base_contribuicao)}</td>
-                    <td>{moeda(item.valor_contribuicao)}</td>
+                    <td><small>Base: {moeda(item.base_contribuicao)}</small><br />{moeda(item.valor_contribuicao)}</td>
+                    <td><small>Dedutível: {moeda(item.inss_dedutivel_irrf)}</small><br />{moeda(item.irrf_retido)}</td>
                     <td><StatusBadge tone={item.comprovante_verificado ? "success" : "warning"}>{item.comprovante_verificado ? "Verificado" : "Pendente"}</StatusBadge><small>{item.documento_referencia}</small></td>
                     <td>
                       <form action={excluirOutraFonte}>

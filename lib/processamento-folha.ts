@@ -48,8 +48,11 @@ export type EntradaVinculoFolha = {
   outrasFontes: Array<{
     fontePagadora: string;
     documentoFonte: string;
+    remuneracao?: string;
     baseContribuicao: string;
     valorContribuicao: string;
+    inssDedutivelIrrf?: string;
+    irrfRetido?: string;
     documentoReferencia: string;
   }>;
   enquadramentoPrevidenciario: {
@@ -187,6 +190,19 @@ export function processarVinculoFolha(
   if (baseOutrasFontesCentavos < 0) {
     throw new Error("A base contribuída em outras fontes não pode ser negativa.");
   }
+  const rendimentosOutrasFontesCentavos = entrada.outrasFontes.reduce(
+    (total, fonte) => total + decimalParaInteiro(fonte.remuneracao ?? "0", 2),
+    0,
+  );
+  const inssDedutivelOutrasFontesCentavos = entrada.outrasFontes.reduce(
+    (total, fonte) =>
+      total + decimalParaInteiro(fonte.inssDedutivelIrrf ?? "0", 2),
+    0,
+  );
+  const irrfRetidoOutrasFontesCentavos = entrada.outrasFontes.reduce(
+    (total, fonte) => total + decimalParaInteiro(fonte.irrfRetido ?? "0", 2),
+    0,
+  );
 
   const inss =
     !pessoaJuridica && entrada.descontaInss && !entrada.isentoInss
@@ -215,8 +231,12 @@ export function processarVinculoFolha(
   const irrf =
     !pessoaJuridica && entrada.descontaIrrf
       ? calcularIrrf2026({
-          rendimentos: deCentavos(baseIrrfBrutaCentavos),
-          inssDedutivel: deCentavos(valorInssCentavos),
+          rendimentos: deCentavos(
+            baseIrrfBrutaCentavos + rendimentosOutrasFontesCentavos,
+          ),
+          inssDedutivel: deCentavos(
+            valorInssCentavos + inssDedutivelOutrasFontesCentavos,
+          ),
           dependentes: entrada.dependentesIrrf,
           regra,
         })
@@ -229,7 +249,10 @@ export function processarVinculoFolha(
           reducao: 0,
           valor: 0,
         };
-  const valorIrrfCentavos = paraCentavos(irrf.valor);
+  const valorIrrfCentavos = Math.max(
+    0,
+    paraCentavos(irrf.valor) - irrfRetidoOutrasFontesCentavos,
+  );
 
   if (!pessoaJuridica) linhas.push(
     {
@@ -288,6 +311,9 @@ export function processarVinculoFolha(
       baseInssLimitadaCentavos: baseInssCentavos,
       outrasFontes: {
         baseContribuidaCentavos: baseOutrasFontesCentavos,
+        rendimentosTributaveisCentavos: rendimentosOutrasFontesCentavos,
+        inssDedutivelIrrfCentavos: inssDedutivelOutrasFontesCentavos,
+        irrfRetidoCentavos: irrfRetidoOutrasFontesCentavos,
         comprovantes: entrada.outrasFontes,
       },
       previdencia: pessoaJuridica
@@ -314,6 +340,8 @@ export function processarVinculoFolha(
       },
       irrf: {
         baseBrutaCentavos: baseIrrfBrutaCentavos,
+        rendimentosConsideradosCentavos:
+          baseIrrfBrutaCentavos + rendimentosOutrasFontesCentavos,
         dependentes: entrada.dependentesIrrf,
         metodoDeducao: irrf.metodoDeducao,
         deducaoUtilizadaCentavos: paraCentavos(irrf.deducaoUtilizada),
@@ -321,6 +349,7 @@ export function processarVinculoFolha(
         impostoBrutoCentavos: paraCentavos(irrf.impostoBruto),
         reducaoCentavos: paraCentavos(irrf.reducao),
         valorCentavos: valorIrrfCentavos,
+        irrfRetidoEmOutraFonteCentavos: irrfRetidoOutrasFontesCentavos,
         isento: pessoaJuridica || !entrada.descontaIrrf,
       },
       enquadramento: {

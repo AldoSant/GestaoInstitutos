@@ -316,6 +316,15 @@ export const contribuicoesOutrasFontes = pgTable(
     fontePagadora: varchar("fonte_pagadora", { length: 180 }).notNull(),
     documentoFonte: varchar("documento_fonte", { length: 14 }).notNull(),
     remuneracao: numeric("remuneracao", { precision: 18, scale: 2 }).notNull(),
+    inssDedutivelIrrf: numeric("inss_dedutivel_irrf", {
+      precision: 18,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    irrfRetido: numeric("irrf_retido", { precision: 18, scale: 2 })
+      .notNull()
+      .default("0"),
     baseContribuicao: numeric("base_contribuicao", {
       precision: 18,
       scale: 2,
@@ -361,6 +370,8 @@ export const contribuicoesOutrasFontes = pgTable(
     check(
       "ck_outra_fonte_valores",
       sql`${table.remuneracao} >= 0
+          and ${table.inssDedutivelIrrf} >= 0
+          and ${table.irrfRetido} >= 0
           and ${table.baseContribuicao} >= 0
           and ${table.valorContribuicao} >= 0
           and ${table.valorContribuicao} <= ${table.baseContribuicao}`,

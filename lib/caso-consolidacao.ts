@@ -25,16 +25,34 @@ export type FonteConsolidacao = {
   folhaStatus: string | null;
 };
 
+export type OutraFonteConsolidacao = {
+  documentoFonte: string;
+  documentoReferencia: string;
+  remuneracao: string;
+  baseContribuicao: string;
+  valorContribuicao: string;
+  inssDedutivelIrrf: string;
+  irrfRetido: string;
+};
+
 export function conteudoFontesConsolidacao(input: {
   competencia: string;
   pessoaId: string;
   baseOutrasFontes: string;
+  outrasFontes?: OutraFonteConsolidacao[];
   fontes: FonteConsolidacao[];
 }) {
   return {
     competencia: input.competencia,
     pessoaId: input.pessoaId,
     baseOutrasFontes: input.baseOutrasFontes,
+    outrasFontes: [...(input.outrasFontes ?? [])]
+      .sort(
+        (a, b) =>
+          a.documentoFonte.localeCompare(b.documentoFonte) ||
+          a.documentoReferencia.localeCompare(b.documentoReferencia),
+      )
+      .map((fonte) => ({ ...fonte })),
     fontes: [...input.fontes]
       .sort((a, b) => a.vinculoId.localeCompare(b.vinculoId))
       .map((fonte) => ({
