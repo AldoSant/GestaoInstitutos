@@ -10,7 +10,6 @@ import {
   validarStatusCancelamentoFolha,
 } from "@/lib/cancelamento";
 import { normalizarConferenciaFolha } from "@/lib/conferencia-folha";
-import { validarAusenciaDeConflitoPessoaCompetencia } from "@/lib/consolidacao-folha";
 import { calcularHashResultadoFolha } from "@/lib/hash-folha";
 import {
   processarVinculoFolha,
@@ -254,100 +253,6 @@ async function prevalidarCriacaoFolha(
   // identificação, retenção ou emissão da GPS conforme o caso; não podem
   // impedir a apuração de uma retribuição que o GIW já processava. O cadastro
   // pendente é tratado na etapa específica que efetivamente precisa dele.
-}
-
-async function validarPessoaEmFolhaUnicaNaCompetencia(
-  client: PoolClient,
-  {
-    empresaId,
-    termoId,
-    metaId,
-    competencia,
-    folhaAtualId = null,
-  }: {
-    empresaId: string;
-    termoId: string;
-    metaId: string;
-    competencia: string;
-    folhaAtualId?: string | null;
-  },
-) {
-  const conflitos = await client.query<{
-    pessoa_id: string;
-    nome: string;
-    matricula: string;
-    folha_id: string;
-    termo_numero: string;
-    meta_codigo: string;
-  }>(
-    `select distinct pessoa.id pessoa_id, pessoa.nome_razao_social nome, atual.matricula,
-            f.id folha_id, termo.numero termo_numero, meta.codigo meta_codigo
-       from prestador_vinculo vinculo_atual
-       join prestador atual
-         on atual.id = vinculo_atual.prestador_id
-        and atual.empresa_id = vinculo_atual.empresa_id
-       join pessoa
-         on pessoa.id = atual.pessoa_id
-        and pessoa.empresa_id = atual.empresa_id
-       join folha f
-         on f.empresa_id = vinculo_atual.empresa_id
-        and f.competencia = $4::date
-        and f.status <> 'CANCELADA'
-        and ($5::uuid is null or f.id <> $5::uuid)
-       join prestador_vinculo vinculo_existente
-         on vinculo_existente.empresa_id = f.empresa_id
-        and vinculo_existente.termo_id = f.termo_id
-        and vinculo_existente.meta_id = f.meta_id
-        and vinculo_existente.ativo
-        and vinculo_existente.inicio <= f.competencia
-        and (
-          vinculo_existente.fim is null
-          or vinculo_existente.fim >= f.competencia
-        )
-       join prestador existente
-         on existente.id = vinculo_existente.prestador_id
-        and existente.empresa_id = vinculo_existente.empresa_id
-        and existente.pessoa_id = atual.pessoa_id
-       join termo on termo.id = f.termo_id
-       join termo_meta meta on meta.id = f.meta_id
-      where vinculo_atual.empresa_id = $1
-        and vinculo_atual.termo_id = $2
-        and vinculo_atual.meta_id = $3
-        and vinculo_atual.ativo
-        and vinculo_atual.inicio <= $4::date
-        and (
-          vinculo_atual.fim is null
-          or vinculo_atual.fim >= $4::date
-        )
-      order by pessoa.nome_razao_social
-      limit 8`,
-    [empresaId, termoId, metaId, competencia, folhaAtualId],
-  );
-  if (conflitos.rowCount === 0) return;
-  const ativacao = avaliarAtivacaoConsolidacaoProdutiva({
-    empresaId,
-    competencia,
-  });
-  if (!ativacao.ativa) {
-    validarAusenciaDeConflitoPessoaCompetencia(
-      conflitos.rows.map((item) => ({
-        nome: item.nome,
-        matricula: item.matricula,
-        folhaId: item.folha_id,
-        termoNumero: item.termo_numero,
-        metaCodigo: item.meta_codigo,
-      })),
-    );
-    return;
-  }
-  for (const pessoaId of new Set(conflitos.rows.map((item) => item.pessoa_id))) {
-    await carregarRateioProdutivoHomologado({
-      empresaId,
-      pessoaId,
-      competencia,
-      executor: client,
-    });
-  }
 }
 
 async function validarConsolidacaoProdutivaFechamento(
