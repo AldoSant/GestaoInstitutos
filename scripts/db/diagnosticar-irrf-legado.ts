@@ -41,6 +41,7 @@ try {
     pessoa_legacy_id: string;
     proventos: string;
     inss: string;
+    base_irrf: string;
     irrf: string;
     dependentes: number;
   }>(
@@ -49,6 +50,7 @@ try {
               i.pessoa_legacy_id,
               sum(i.total_proventos)::text proventos,
               sum(i.valor_inss)::text inss,
+              sum(i.base_irrf)::text base_irrf,
               sum(i.valor_irrf)::text irrf
          from legado_folha f
          join legado_folha_item i on i.folha_legado_id = f.id
@@ -79,6 +81,8 @@ try {
     coincideHistorica: number;
     coincideAmbas: number;
     naoExplicada: number;
+    baseCoincideVigente: number;
+    irrfCoincideBaseHistorica: number;
   }>();
   for (const linha of resultado.rows) {
     const atual = porCompetencia.get(linha.competencia) ?? {
@@ -88,6 +92,8 @@ try {
       coincideHistorica: 0,
       coincideAmbas: 0,
       naoExplicada: 0,
+      baseCoincideVigente: 0,
+      irrfCoincideBaseHistorica: 0,
     };
     atual.pessoas += 1;
     const esperadoCentavos = Math.round(Number(linha.irrf) * 100);
@@ -101,12 +107,26 @@ try {
     const historica = Math.round(
       calcularIrrf2026({ ...entrada, regra: regraSemSimplificadoSemReducao }).valor * 100,
     );
+    const sobreBaseHistorica = Math.round(
+      calcularIrrf2026({
+        rendimentos: Number(linha.base_irrf),
+        inssDedutivel: 0,
+        regra: regraSemSimplificadoSemReducao,
+      }).valor * 100,
+    );
+    const baseVigente = Math.round(calcularIrrf2026(entrada).base * 100);
     const correspondeVigente = vigente === esperadoCentavos;
     const correspondeHistorica = historica === esperadoCentavos;
     if (correspondeVigente) atual.coincideVigente += 1;
     if (correspondeHistorica) atual.coincideHistorica += 1;
     if (correspondeVigente && correspondeHistorica) atual.coincideAmbas += 1;
     if (!correspondeVigente && !correspondeHistorica) atual.naoExplicada += 1;
+    if (baseVigente === Math.round(Number(linha.base_irrf) * 100)) {
+      atual.baseCoincideVigente += 1;
+    }
+    if (sobreBaseHistorica === esperadoCentavos) {
+      atual.irrfCoincideBaseHistorica += 1;
+    }
     porCompetencia.set(linha.competencia, atual);
   }
 
