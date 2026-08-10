@@ -4,7 +4,10 @@ import { resolverEmpresaAtiva } from "../../db/cadastros";
 import { criarFolha, fecharFolha, processarFolha, registrarConferenciaFolha } from "../../db/folhas";
 import { salvarMedicaoMensal } from "../../db/medicoes";
 import { apurarRetencoesSegurados } from "../../db/obrigacoes";
-import { publicarPerfilRecolhimento } from "../../db/perfis-recolhimento";
+import {
+  carregarPerfilRecolhimentoPorCompetencia,
+  publicarPerfilRecolhimento,
+} from "../../db/perfis-recolhimento";
 import { getPool } from "../../db";
 
 type ItemLegado = {
@@ -224,7 +227,9 @@ async function validarPrecondicoes(empresaId: string, itens: ItemLegado[], alvos
           and status <> 'CANCELADA'`,
       [empresaId, alvo.termoId, alvo.metaId, `${alvo.competencia}-01`],
     );
-    if (existente.rowCount) conflitos.push(`${alvo.competencia} (${existente.rows[0].status})`);
+    if (existente.rowCount && existente.rows[0].status !== "FECHADA") {
+      conflitos.push(`${alvo.competencia} (${existente.rows[0].status})`);
+    }
   }
   for (const item of itens.filter((item) => item.vinculo_id)) {
     const medicao = await getPool().query<{ id: string }>(
@@ -247,6 +252,28 @@ async function publicarGpsHistorica(empresaId: string, competencia: string) {
   );
   if (codigo.rows.length !== 1 || !/^\d{4}$/.test(codigo.rows[0].codigo_receita ?? "")) {
     throw new Error(`${competencia}: o legado não informa um único código de receita GPS válido.`);
+  }
+  try {
+    const existente = await carregarPerfilRecolhimentoPorCompetencia(
+      empresaId,
+      competencia,
+    );
+    if (
+      existente.instrumento === "GPS_EXCECAO" &&
+      existente.codigo_receita === codigo.rows[0].codigo_receita
+    ) {
+      return;
+    }
+    throw new Error(
+      `${competencia}: o perfil de recolhimento publicado não corresponde à GPS histórica.`,
+    );
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !/Nenhum perfil de recolhimento publicado/i.test(error.message)
+    ) {
+      throw error;
+    }
   }
   await publicarPerfilRecolhimento({
     empresaId,
@@ -297,6 +324,14 @@ async function executar() {
   // upsert auditável. Em HML isso permite retomar um replay interrompido e
   // substituir apenas a medição do mesmo Vínculo pela evidência GIW exata.
   for (const alvo of alvos) {
+    const existente = await getPool().query<{ id: string; status: string }>(
+      `select id, status from folha
+        where empresa_id = $1 and termo_id = $2 and meta_id = $3
+          and competencia = $4::date and status <> 'CANCELADA'
+        limit 1`,
+      [empresa.id, alvo.termoId, alvo.metaId, `${alvo.competencia}-01`],
+    );
+    if (existente.rows[0]?.status === "FECHADA") continue;
     for (const medicao of agruparMedicoesHistoricas(alvo.itens)) {
       await salvarMedicaoMensal({
         empresaId: empresa.id,
