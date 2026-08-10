@@ -52,6 +52,14 @@ function competencias() {
   return [...new Set(valores)].sort();
 }
 
+function namespaceReplay() {
+  const valor = argumentos("--namespace")[0] ?? "PADRAO";
+  if (!/^[A-Z0-9_-]{1,24}$/i.test(valor)) {
+    throw new Error("--namespace aceita somente letras, números, _ e - (até 24 caracteres).");
+  }
+  return valor.toUpperCase();
+}
+
 async function resolverEmpresa() {
   const empresaId = argumentos("--empresa-id")[0];
   if (!empresaId) return resolverEmpresaAtiva();
@@ -79,7 +87,6 @@ type MedicaoHistoricaAgrupada = {
   vinculoId: string;
   valor: string;
   descontaInss: boolean;
-  descontaIrrf: boolean;
   itens: ItemLegado[];
 };
 
@@ -94,10 +101,6 @@ function agruparMedicoesHistoricas(itens: ItemLegado[]) {
       (total, item) => total + decimalParaInteiro(item.valor_inss, 2),
       0,
     );
-    const irrf = fontes.reduce(
-      (total, item) => total + decimalParaInteiro(item.valor_irrf, 2),
-      0,
-    );
     return {
       vinculoId,
       valor: valorEmReais(
@@ -107,7 +110,6 @@ function agruparMedicoesHistoricas(itens: ItemLegado[]) {
         ),
       ),
       descontaInss: inss > 0,
-      descontaIrrf: irrf > 0,
       itens: fontes,
     };
   });
@@ -236,13 +238,14 @@ type MedicaoIsolada = Omit<MedicaoHistoricaAgrupada, "vinculoId"> & {
 async function prepararInstrumentoIsoladoHml(
   empresaId: string,
   alvo: FolhaAlvo,
+  namespace: string,
 ) {
   const etiqueta = createHash("sha256")
     .update(`${alvo.folhaLegadoId}:${alvo.termoId}:${alvo.metaId}`)
     .digest("hex")
     .slice(0, 14)
     .toUpperCase();
-  const numeroTermo = `HML-GIW-${etiqueta}`;
+  const numeroTermo = `HML-GIW-${namespace}-${etiqueta}`;
   const codigoMeta = `GIW-${etiqueta}`;
   const inicio = `${alvo.competencia}-01`;
   const fim = `${alvo.competencia}-28`;
@@ -287,10 +290,17 @@ async function prepararInstrumentoIsoladoHml(
     const origem = await pool.query<{
       prestador_id: string;
       atividade: string;
+      tipo_pessoa: "FISICA" | "JURIDICA";
     }>(
-      `select prestador_id, atividade
-         from prestador_vinculo
-        where empresa_id = $1 and id = $2`,
+      `select vinculo.prestador_id, vinculo.atividade, pessoa.tipo tipo_pessoa
+         from prestador_vinculo vinculo
+         join prestador
+           on prestador.empresa_id = vinculo.empresa_id
+          and prestador.id = vinculo.prestador_id
+         join pessoa
+           on pessoa.empresa_id = prestador.empresa_id
+          and pessoa.id = prestador.pessoa_id
+        where vinculo.empresa_id = $1 and vinculo.id = $2`,
       [empresaId, medicao.vinculoId],
     );
     if (!origem.rows[0]) {
@@ -323,7 +333,7 @@ async function prepararInstrumentoIsoladoHml(
           fim,
           medicao.valor,
           medicao.descontaInss,
-          medicao.descontaIrrf,
+          origem.rows[0].tipo_pessoa === "FISICA",
         ],
       );
     } else {
@@ -331,7 +341,11 @@ async function prepararInstrumentoIsoladoHml(
         `update prestador_vinculo
             set desconta_inss = $2, desconta_irrf = $3, atualizado_em = now()
           where id = $1`,
-        [vinculo.rows[0].id, medicao.descontaInss, medicao.descontaIrrf],
+        [
+          vinculo.rows[0].id,
+          medicao.descontaInss,
+          origem.rows[0].tipo_pessoa === "FISICA",
+        ],
       );
     }
     medicoes.push({ ...medicao, vinculoId: vinculo.rows[0].id });
@@ -416,11 +430,13 @@ async function executar() {
     throw new Error("Para gravar, use GIW_REPLAY_HOMOLOGACAO=CONFIRMADO e --confirmar-homologacao.");
   }
   const empresa = await resolverEmpresa();
+  const namespace = namespaceReplay();
   const itens = await carregarItens(empresa.id, competencias());
   const alvos = agrupar(itens);
   const precondicoes = await validarPrecondicoes(empresa.id, itens, alvos);
   const resumo = {
     modo: executarDeVerdade ? "EXECUCAO_HML" : "PREVIA_SEM_GRAVACAO",
+    namespace,
     itensLegado: itens.length,
     folhasAlvo: alvos.length,
     semDestino: precondicoes.semDestino.length,
@@ -444,7 +460,11 @@ async function executar() {
   // upsert auditável. Em HML isso permite retomar um replay interrompido e
   // substituir apenas a medição do mesmo Vínculo pela evidência GIW exata.
   for (const alvo of alvos) {
-    const isolada = await prepararInstrumentoIsoladoHml(empresa.id, alvo);
+    const isolada = await prepararInstrumentoIsoladoHml(
+      empresa.id,
+      alvo,
+      namespace,
+    );
     const existente = await getPool().query<{ id: string; status: string }>(
       `select id, status from folha
         where empresa_id = $1 and termo_id = $2 and meta_id = $3

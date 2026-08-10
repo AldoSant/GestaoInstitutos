@@ -24,6 +24,16 @@ function validarCompetencia(competencia: string) {
   }
 }
 
+function validarNamespaceReplay(namespace: string | undefined) {
+  if (
+    namespace !== undefined &&
+    !/^[A-Z0-9_-]{1,24}$/i.test(namespace)
+  ) {
+    throw new Error("--namespace aceita somente letras, números, _ e - (até 24 caracteres).");
+  }
+  return namespace?.toUpperCase() ?? null;
+}
+
 async function resolverEmpresaId(empresaInformada: string | undefined) {
   const pool = getPool();
   if (empresaInformada) return empresaInformada;
@@ -50,7 +60,11 @@ async function competenciasComHistorico(empresaId: string) {
   return resultado.rows.map((item) => item.competencia);
 }
 
-async function compararCompetencia(empresaId: string, competencia: string) {
+async function compararCompetencia(
+  empresaId: string,
+  competencia: string,
+  namespaceReplay: string | null,
+) {
   const data = `${competencia}-01`;
   const pool = getPool();
   const [folhaLegado, folhaNova, gpsLegado, gpsNova] = await Promise.all([
@@ -83,6 +97,8 @@ async function compararCompetencia(empresaId: string, competencia: string) {
            on item.folha_id = folha.id and item.empresa_id = folha.empresa_id
          join prestador_vinculo vinculo
            on vinculo.id = item.vinculo_id and vinculo.empresa_id = item.empresa_id
+         join termo
+           on termo.id = vinculo.termo_id and termo.empresa_id = vinculo.empresa_id
          join prestador prestador
            on prestador.id = vinculo.prestador_id and prestador.empresa_id = vinculo.empresa_id
          join legado_chave chave
@@ -91,8 +107,9 @@ async function compararCompetencia(empresaId: string, competencia: string) {
           and chave.destino_id = prestador.pessoa_id
         where folha.empresa_id = $1 and folha.competencia = $2::date
           and folha.status = 'FECHADA'
+          and ($3::text is null or termo.numero like ('HML-GIW-' || $3 || '-%'))
         group by chave.legacy_id`,
-      [empresaId, data],
+      [empresaId, data, namespaceReplay],
     ),
     pool.query<LinhaGpsParalelaGiw>(
       `select pessoa_legacy_id "pessoaLegacyId", identificador,
@@ -111,6 +128,8 @@ async function compararCompetencia(empresaId: string, competencia: string) {
          join folha_item item on item.id = obrigacao_item.folha_item_id
          join prestador_vinculo vinculo
            on vinculo.id = item.vinculo_id and vinculo.empresa_id = item.empresa_id
+         join termo
+           on termo.id = vinculo.termo_id and termo.empresa_id = vinculo.empresa_id
          join prestador prestador
            on prestador.id = vinculo.prestador_id and prestador.empresa_id = vinculo.empresa_id
          join legado_chave chave
@@ -118,8 +137,9 @@ async function compararCompetencia(empresaId: string, competencia: string) {
           and chave.entidade = 'pessoas' and chave.destino_tabela = 'pessoa'
           and chave.destino_id = prestador.pessoa_id
         where guia.empresa_id = $1 and guia.competencia = $2::date
-          and guia.status <> 'CANCELADA'`,
-      [empresaId, data],
+          and guia.status <> 'CANCELADA'
+          and ($3::text is null or termo.numero like ('HML-GIW-' || $3 || '-%'))`,
+      [empresaId, data, namespaceReplay],
     ),
   ]);
   const folha = compararFolhaParalelaGiw(folhaLegado.rows, folhaNova.rows);
@@ -157,6 +177,7 @@ async function executar() {
   const empresaId = await resolverEmpresaId(argumentos("--empresa-id")[0]);
   const competenciasInformadas = argumentos("--competencia");
   competenciasInformadas.forEach(validarCompetencia);
+  const namespaceReplay = validarNamespaceReplay(argumentos("--namespace")[0]);
   const competencias =
     competenciasInformadas.length > 0
       ? [...new Set(competenciasInformadas)].sort()
@@ -167,13 +188,16 @@ async function executar() {
 
   const comparacoes = [];
   for (const competencia of competencias) {
-    comparacoes.push(await compararCompetencia(empresaId, competencia));
+    comparacoes.push(
+      await compararCompetencia(empresaId, competencia, namespaceReplay),
+    );
   }
   const relatorio = {
     schemaVersion: "1.0",
     tipo: "COMPARACAO_PARALELA_GIW",
     geradoEm: new Date().toISOString(),
     empresaId,
+    namespaceReplay,
     competencias: comparacoes,
     aprovada: comparacoes.every((item) => item.aprovada),
   };
