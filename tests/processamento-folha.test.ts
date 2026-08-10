@@ -98,6 +98,36 @@ test("processa PJ no relatório mensal sem retenção PF ou GPS", () => {
   assert.equal(resultado.memoria.enquadramento.cenario, "PJ_PAGAMENTO_SEM_PREVIDENCIA");
 });
 
+test("mantém a base de IRRF da pessoa física quando a retenção está dispensada", () => {
+  const resultado = processarVinculoFolha(
+    {
+      vinculoId: "00000000-0000-4000-8000-000000000104",
+      tipoPessoa: "FISICA",
+      categoriaContribuinte: "701",
+      valorRetribuicao: "6000.00",
+      descontaInss: true,
+      descontaIrrf: false,
+      isentoInss: false,
+      baseOutrasFontes: "0",
+      outrasFontes: [],
+      enquadramentoPrevidenciario: ENQUADRAMENTO_GERAL,
+      dependentesIrrf: 0,
+      eventos: [],
+    },
+    REGRA_FISCAL_2026,
+  );
+
+  const esperado = calcularIrrf2026({ rendimentos: 6000, inssDedutivel: 660 });
+  assert.equal(resultado.baseIrrfCentavos, Math.round(esperado.base * 100));
+  assert.equal(resultado.irrfBrutoCentavos, Math.round(esperado.impostoBruto * 100));
+  assert.equal(resultado.valorIrrfCentavos, 0);
+  assert.equal(resultado.memoria.irrf.isento, true);
+  assert.equal(
+    resultado.linhas.find((linha) => linha.codigo === "IRRF")?.baseCalculoCentavos,
+    Math.round(esperado.base * 100),
+  );
+});
+
 test("rejeita percentuais fora do contrato do Evento", () => {
   assert.throws(
     () =>

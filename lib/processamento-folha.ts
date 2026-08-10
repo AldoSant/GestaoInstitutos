@@ -143,7 +143,9 @@ export function processarVinculoFolha(
       baseCalculoCentavos: 0,
       valorCentavos: retribuicaoCentavos,
       incideInss: entrada.descontaInss,
-      incideIrrf: entrada.descontaIrrf,
+      // A dispensa de retenção não elimina o rendimento tributável da
+      // memória/espelho. O valor de IRRF continua zerado mais adiante.
+      incideIrrf: !pessoaJuridica,
     },
   ];
 
@@ -229,7 +231,7 @@ export function processarVinculoFolha(
   const valorInssCentavos = paraCentavos(inss.valor);
   const baseInssCentavos = paraCentavos(inss.base);
   const irrf =
-    !pessoaJuridica && entrada.descontaIrrf
+    !pessoaJuridica
       ? calcularIrrf2026({
           rendimentos: deCentavos(
             baseIrrfBrutaCentavos + rendimentosOutrasFontesCentavos,
@@ -251,7 +253,9 @@ export function processarVinculoFolha(
         };
   const valorIrrfCentavos = Math.max(
     0,
-    paraCentavos(irrf.valor) - irrfRetidoOutrasFontesCentavos,
+    entrada.descontaIrrf
+      ? paraCentavos(irrf.valor) - irrfRetidoOutrasFontesCentavos
+      : 0,
   );
 
   if (!pessoaJuridica) linhas.push(
