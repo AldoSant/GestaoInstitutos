@@ -7,6 +7,8 @@ export type LinhaFolhaParalelaGiw = {
   liquido: string;
   baseInss: string;
   inss: string;
+  baseIrrf: string;
+  irrf: string;
 };
 
 export type LinhaGpsParalelaGiw = {
@@ -17,7 +19,7 @@ export type LinhaGpsParalelaGiw = {
 };
 
 type ValoresFolha = Record<
-  "proventos" | "descontos" | "liquido" | "baseInss" | "inss",
+  "proventos" | "descontos" | "liquido" | "baseInss" | "inss" | "baseIrrf" | "irrf",
   number
 >;
 type ValoresGps = Record<"principal" | "total", number>;
@@ -38,6 +40,8 @@ function somarFolhas(linhas: LinhaFolhaParalelaGiw[]) {
       liquido: 0,
       baseInss: 0,
       inss: 0,
+      baseIrrf: 0,
+      irrf: 0,
     };
     for (const campo of Object.keys(atual) as Array<keyof ValoresFolha>) {
       atual[campo] += valorCentavos(linha[campo]);

@@ -14,6 +14,8 @@ test("aprova Folha por Pessoa somente quando todos os centavos conferem", () => 
       liquido: "890.00",
       baseInss: "1000.00",
       inss: "110.00",
+      baseIrrf: "890.00",
+      irrf: "0.00",
     },
   ];
   const conciliado = compararFolhaParalelaGiw(esperado, esperado);
@@ -26,6 +28,12 @@ test("aprova Folha por Pessoa somente quando todos os centavos conferem", () => 
   assert.equal(divergente.aprovado, false);
   assert.equal(divergente.itens[0].situacao, "DIVERGENTE");
   assert.equal(divergente.itens[0].diferencas?.inss, -1);
+
+  const irrfDivergente = compararFolhaParalelaGiw(esperado, [
+    { ...esperado[0], irrf: "0.01", descontos: "110.01", liquido: "889.99" },
+  ]);
+  assert.equal(irrfDivergente.aprovado, false);
+  assert.equal(irrfDivergente.itens[0].diferencas?.irrf, 1);
 });
 
 test("reprova ausência de pessoa tanto no GIW quanto no resultado novo", () => {
@@ -36,6 +44,8 @@ test("reprova ausência de pessoa tanto no GIW quanto no resultado novo", () => 
     liquido: "1000.00",
     baseInss: "0.00",
     inss: "0.00",
+    baseIrrf: "0.00",
+    irrf: "0.00",
   };
   const resultado = compararFolhaParalelaGiw([linha], [
     { ...linha, pessoaLegacyId: "PESSOA:2" },

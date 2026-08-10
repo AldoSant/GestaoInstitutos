@@ -60,7 +60,9 @@ async function compararCompetencia(empresaId: string, competencia: string) {
               sum(i.total_descontos)::text descontos,
               sum(i.total_liquido)::text liquido,
               sum(i.base_inss)::text "baseInss",
-              sum(i.valor_inss)::text inss
+              sum(i.valor_inss)::text inss,
+              sum(i.base_irrf)::text "baseIrrf",
+              sum(i.valor_irrf)::text irrf
          from legado_folha f
          join legado_folha_item i on i.folha_legado_id = f.id
         where f.empresa_id = $1 and f.origem = 'GIW' and f.competencia = $2::date
@@ -73,7 +75,9 @@ async function compararCompetencia(empresaId: string, competencia: string) {
               sum(item.total_descontos)::text descontos,
               sum(item.total_liquido)::text liquido,
               sum(item.base_inss)::text "baseInss",
-              sum(item.valor_inss)::text inss
+              sum(item.valor_inss)::text inss,
+              sum(item.base_irrf)::text "baseIrrf",
+              sum(item.valor_irrf)::text irrf
          from folha folha
          join folha_item item
            on item.folha_id = folha.id and item.empresa_id = folha.empresa_id
