@@ -22,6 +22,8 @@ type ItemLegado = {
   cpf: string | null;
   cnpj: string | null;
   total_proventos: string;
+  valor_inss: string;
+  valor_irrf: string;
   vinculo_id: string | null;
   resolucao: "LEGADO" | "MAPEAMENTO_CONFIRMADO" | "ROTULO_UNICO" | "VINCULO_UNICO" | "SEM_DESTINO";
 };
@@ -76,6 +78,8 @@ function valorEmReais(centavos: number) {
 type MedicaoHistoricaAgrupada = {
   vinculoId: string;
   valor: string;
+  descontaInss: boolean;
+  descontaIrrf: boolean;
   itens: ItemLegado[];
 };
 
@@ -85,16 +89,28 @@ function agruparMedicoesHistoricas(itens: ItemLegado[]) {
     if (!item.vinculo_id) throw new Error("Item histórico sem Vínculo de destino.");
     grupos.set(item.vinculo_id, [...(grupos.get(item.vinculo_id) ?? []), item]);
   }
-  return [...grupos.entries()].map(([vinculoId, fontes]): MedicaoHistoricaAgrupada => ({
-    vinculoId,
-    valor: valorEmReais(
-      fontes.reduce(
-        (total, item) => total + decimalParaInteiro(item.total_proventos, 2),
-        0,
+  return [...grupos.entries()].map(([vinculoId, fontes]): MedicaoHistoricaAgrupada => {
+    const inss = fontes.reduce(
+      (total, item) => total + decimalParaInteiro(item.valor_inss, 2),
+      0,
+    );
+    const irrf = fontes.reduce(
+      (total, item) => total + decimalParaInteiro(item.valor_irrf, 2),
+      0,
+    );
+    return {
+      vinculoId,
+      valor: valorEmReais(
+        fontes.reduce(
+          (total, item) => total + decimalParaInteiro(item.total_proventos, 2),
+          0,
+        ),
       ),
-    ),
-    itens: fontes,
-  }));
+      descontaInss: inss > 0,
+      descontaIrrf: irrf > 0,
+      itens: fontes,
+    };
+  });
 }
 
 function hashEvidenciaAgrupada(item: MedicaoHistoricaAgrupada) {
@@ -121,6 +137,7 @@ async function carregarItens(empresaId: string, filtroCompetencias: string[]) {
             coalesce(meta.destino_id, rotulo.meta_id, vinculo_mapeado.meta_id, candidato.meta_id) meta_id,
             i.legacy_id item_legacy_id, i.pessoa_legacy_id,
             i.vinculo_legacy_id, i.cpf, i.cnpj, i.total_proventos::text,
+            i.valor_inss::text, i.valor_irrf::text,
             coalesce(vinculo.destino_id, item_mapeado.destino_id, candidato.vinculo_id) vinculo_id,
             case when vinculo.destino_id is not null then 'LEGADO'
                  when item_mapeado.destino_id is not null then 'MAPEAMENTO_CONFIRMADO'
@@ -270,10 +287,8 @@ async function prepararInstrumentoIsoladoHml(
     const origem = await pool.query<{
       prestador_id: string;
       atividade: string;
-      desconta_inss: boolean;
-      desconta_irrf: boolean;
     }>(
-      `select prestador_id, atividade, desconta_inss, desconta_irrf
+      `select prestador_id, atividade
          from prestador_vinculo
         where empresa_id = $1 and id = $2`,
       [empresaId, medicao.vinculoId],
@@ -307,9 +322,16 @@ async function prepararInstrumentoIsoladoHml(
           inicio,
           fim,
           medicao.valor,
-          origem.rows[0].desconta_inss,
-          origem.rows[0].desconta_irrf,
+          medicao.descontaInss,
+          medicao.descontaIrrf,
         ],
+      );
+    } else {
+      await pool.query(
+        `update prestador_vinculo
+            set desconta_inss = $2, desconta_irrf = $3, atualizado_em = now()
+          where id = $1`,
+        [vinculo.rows[0].id, medicao.descontaInss, medicao.descontaIrrf],
       );
     }
     medicoes.push({ ...medicao, vinculoId: vinculo.rows[0].id });
