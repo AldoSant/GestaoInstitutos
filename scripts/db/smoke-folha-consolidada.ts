@@ -26,14 +26,19 @@ import {
 import { handlers } from "../worker/handlers";
 
 const ator = "CI:SMOKE_CONSOLIDACAO";
-const competencia = "2026-07";
 const indiceEmpresa = process.argv.indexOf("--empresa-id");
 const empresaId = indiceEmpresa >= 0 ? process.argv[indiceEmpresa + 1] ?? "" : "";
+const indiceCompetencia = process.argv.indexOf("--competencia");
+const competencia =
+  indiceCompetencia >= 0 ? process.argv[indiceCompetencia + 1] ?? "" : "2026-07";
 
 if (!empresaId) {
   throw new Error(
     "Informe --empresa-id para executar o smoke de consolidação em uma organização HML explícita.",
   );
+}
+if (!/^2026-(0[1-9]|1[0-2])$/.test(competencia)) {
+  throw new Error("Informe --competencia no formato AAAA-MM de 2026.");
 }
 
 try {
@@ -73,6 +78,24 @@ try {
   );
   assert.equal(origem.rowCount, 1, "Vínculo principal sintético não encontrado.");
 
+  await getPool().query(
+    `insert into contribuicao_outra_fonte
+       (empresa_id, prestador_id, competencia, fonte_pagadora, documento_fonte,
+        remuneracao, inss_dedutivel_irrf, irrf_retido, base_contribuicao,
+        valor_contribuicao, documento_referencia, comprovante_verificado,
+        observacao)
+     values ($1, $2, $3::date, 'Fonte sintética de IRRF', '12345678000199',
+             1000, 0, 100, 0, 0, 'CI-IRRF-OUTRA-FONTE', true,
+             'Comprovante sintético para validar IRRF consolidado.')
+     on conflict (prestador_id, competencia, documento_fonte, documento_referencia)
+     do update set remuneracao = excluded.remuneracao,
+                   inss_dedutivel_irrf = excluded.inss_dedutivel_irrf,
+                   irrf_retido = excluded.irrf_retido,
+                   comprovante_verificado = true,
+                   atualizado_em = now()`,
+    [empresa.id, origem.rows[0].prestador_id, `${competencia}-01`],
+  );
+
   await salvarMedicaoMensal({
     empresaId: empresa.id,
     vinculoId: origem.rows[0].vinculo_id,
@@ -97,7 +120,7 @@ try {
        insert into termo
          (empresa_id, numero, descricao, modalidade, inicio, fim, valor_global)
        values
-         ($1, 'CI-CONSOLIDADO-2026', 'Termo sintético de consolidação',
+         ($1, $3, 'Termo sintético de consolidação',
           'TESTE', date '2026-01-01', date '2026-12-31', 50000)
        returning id
      ), meta_nova as (
@@ -116,7 +139,11 @@ try {
        returning id, termo_id, meta_id
      )
      select termo_id, meta_id, id vinculo_id from vinculo_novo`,
-    [empresa.id, origem.rows[0].prestador_id],
+    [
+      empresa.id,
+      origem.rows[0].prestador_id,
+      `CI-CONSOLIDADO-${competencia.replace("-", "")}`,
+    ],
   );
   assert.equal(segundo.rowCount, 1, "Segundo Vínculo sintético não foi criado.");
 
@@ -265,6 +292,12 @@ try {
   );
   const simulacao = simulacoes.find((item) => item.id === criada.id);
   assert.ok(simulacao);
+  const memoriaOutrasFontes = simulacao.memoria.outrasFontes as Record<
+    string,
+    unknown
+  >;
+  assert.equal(memoriaOutrasFontes.rendimentosTributaveisCentavos, 100_000);
+  assert.equal(memoriaOutrasFontes.irrfRetidoCentavos, 10_000);
   const somaInssFolhas = fechadas.reduce(
     (total, folha) => total + Number(folha.itens[0].valor_inss),
     0,
