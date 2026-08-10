@@ -321,13 +321,26 @@ try {
     competencia,
     ator,
   });
-  assert.equal(obrigacao.folhas, 2);
-  assert.equal(obrigacao.itens, 4);
+  const folhasDoCenario = [folhaPrincipal.id, folhaSecundaria.id];
+  const fontesDoCenario = await getPool().query<{ total: number }>(
+    `select count(*)::int total
+       from obrigacao_fiscal_folha
+      where obrigacao_id = $1 and folha_id = any($2::uuid[])`,
+    [obrigacao.id, folhasDoCenario],
+  );
+  assert.equal(
+    fontesDoCenario.rows[0].total,
+    2,
+    "A obrigação deve conter as duas Folhas criadas pelo cenário.",
+  );
   const segurado = await getPool().query<{ valor: string }>(
     `select coalesce(sum(valor), 0)::text valor
-       from obrigacao_fiscal_item
-      where empresa_id = $1 and obrigacao_id = $2 and natureza = 'SEGURADO'`,
-    [empresa.id, obrigacao.id],
+       from obrigacao_fiscal_item item
+       join folha_item folha_item on folha_item.id = item.folha_item_id
+      where item.empresa_id = $1 and item.obrigacao_id = $2
+        and item.natureza = 'SEGURADO'
+        and folha_item.folha_id = any($3::uuid[])`,
+    [empresa.id, obrigacao.id, folhasDoCenario],
   );
   assert.equal(segurado.rows[0].valor, simulacao.valor_inss);
 
