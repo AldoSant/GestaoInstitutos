@@ -28,6 +28,7 @@
     "db:smoke:folha-consolidada": "tsx scripts/db/smoke-folha-consolidada.ts",
     "db:smoke:folha-multilote-provisoria": "tsx scripts/db/smoke-folha-multilote-provisoria.ts",
     "db:comparar:giw": "tsx scripts/db/comparar-paralelo-giw.ts",
+    "db:diagnosticar:irrf-legado": "tsx scripts/db/diagnosticar-irrf-legado.ts",
     "db:reproduzir:giw": "tsx scripts/db/reproduzir-giw-homologacao.ts",
     "db:exportar:pendencias-replay-giw": "tsx scripts/db/exportar-pendencias-replay-giw.ts",
     "db:aplicar:mapeamento-replay-giw": "tsx scripts/db/aplicar-mapeamento-replay-giw.ts",
