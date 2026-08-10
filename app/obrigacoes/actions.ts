@@ -64,7 +64,7 @@ export async function registrarDocumento(formData: FormData) {
     [erro ? "erro" : "sucesso"]:
       erro || "Documento registrado e estado da conciliação atualizado.",
   });
-  redirect(`/obrigacoes?${params.toString()}`);
+  redirect(caminhoAplicacao(`/obrigacoes?${params.toString()}`));
 }
 
 export async function cancelarObrigacaoFiscal(formData: FormData) {
@@ -89,7 +89,7 @@ export async function cancelarObrigacaoFiscal(formData: FormData) {
     [erro ? "erro" : "sucesso"]:
       erro || "Obrigação cancelada com invalidação das conferências documentais.",
   });
-  redirect(`/obrigacoes?${params.toString()}`);
+  redirect(caminhoAplicacao(`/obrigacoes?${params.toString()}`));
 }
 
 export async function solicitarRetificacaoFiscal(formData: FormData) {
@@ -116,5 +116,5 @@ export async function solicitarRetificacaoFiscal(formData: FormData) {
   const params = new URLSearchParams({
     [erro ? "erro" : "sucesso"]: erro || sucesso,
   });
-  redirect(`/obrigacoes?${params.toString()}`);
+  redirect(caminhoAplicacao(`/obrigacoes?${params.toString()}`));
 }

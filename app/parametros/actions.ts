@@ -8,6 +8,7 @@ import { publicarPerfilRecolhimento } from "@/db/perfis-recolhimento";
 import { exigirAdministrador } from "@/lib/autorizacao";
 import { validarEnquadramentoPrevidenciario } from "@/lib/enquadramento-previdenciario";
 import { validarPerfilRecolhimento } from "@/lib/perfil-recolhimento";
+import { caminhoAplicacao } from "@/lib/base-path";
 
 export async function salvarEnquadramento(formData: FormData) {
   await exigirAdministrador();
@@ -46,7 +47,7 @@ export async function salvarEnquadramento(formData: FormData) {
     [erro ? "erro" : "sucesso"]:
       erro || "Enquadramento previdenciário publicado e congelado por vigência.",
   });
-  redirect(`/parametros?${params.toString()}`);
+  redirect(caminhoAplicacao(`/parametros?${params.toString()}`));
 }
 
 export async function salvarPerfilRecolhimento(formData: FormData) {
@@ -82,5 +83,5 @@ export async function salvarPerfilRecolhimento(formData: FormData) {
     [erro ? "erro" : "sucesso"]:
       erro || "Perfil de recolhimento publicado e congelado por vigência.",
   });
-  redirect(`/parametros?${params.toString()}`);
+  redirect(caminhoAplicacao(`/parametros?${params.toString()}`));
 }

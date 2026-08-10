@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { registrarGuiaGpsIndividual } from "@/db/obrigacoes";
 import { validarRegistroGuiaGpsIndividual } from "@/lib/guia-gps-individual";
+import { caminhoAplicacao } from "@/lib/base-path";
 
 export async function registrarGuiaGps(formData: FormData) {
   const validacao = validarRegistroGuiaGpsIndividual({
@@ -42,5 +43,5 @@ export async function registrarGuiaGps(formData: FormData) {
     [erro ? "erro" : "sucesso"]:
       erro || "GPS oficial registrada individualmente e preservada para auditoria.",
   });
-  redirect(`/obrigacoes/${id}/gps/registro?${params.toString()}`);
+  redirect(caminhoAplicacao(`/obrigacoes/${id}/gps/registro?${params.toString()}`));
 }
