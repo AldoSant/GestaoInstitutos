@@ -48,7 +48,6 @@ export async function carregarVinculos(busca = "") {
           cargaHoraria: vinculos.cargaHoraria,
           exigeMedicaoMensal: vinculos.exigeMedicaoMensal,
           descontaInss: vinculos.descontaInss,
-          aliquotaInssPercentual: vinculos.aliquotaInssPercentual,
           descontaIrrf: vinculos.descontaIrrf,
           ativo: vinculos.ativo,
           prestadorNome: pessoas.nomeRazaoSocial,

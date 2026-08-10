@@ -48,7 +48,6 @@ export async function salvarVinculo(formData: FormData) {
     cargaHoraria: formData.get("cargaHoraria"),
     exigeMedicaoMensal: formData.get("exigeMedicaoMensal") === "on",
     descontaInss: formData.get("descontaInss") === "on",
-    aliquotaInssPercentual: formData.get("aliquotaInssPercentual"),
     descontaIrrf: formData.get("descontaIrrf") === "on",
   });
   if (!validacao.dados) redirect(destino(validacao.erros.join(" "), true));
@@ -145,7 +144,6 @@ export async function salvarVinculo(formData: FormData) {
       cargaHoraria: dados.cargaHoraria,
       exigeMedicaoMensal: dados.exigeMedicaoMensal,
       descontaInss: dados.descontaInss,
-      aliquotaInssPercentual: dados.aliquotaInssPercentual,
       descontaIrrf: dados.descontaIrrf,
       atualizadoEm: new Date(),
     };

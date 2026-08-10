@@ -97,32 +97,6 @@ test("processa PJ no relatório mensal sem retenção PF ou GPS", () => {
   assert.equal(resultado.memoria.enquadramento.cenario, "PJ_PAGAMENTO_SEM_PREVIDENCIA");
 });
 
-test("respeita alíquota de INSS específica do vínculo", () => {
-  const resultado = processarVinculoFolha(
-    {
-      vinculoId: "00000000-0000-4000-8000-000000000010",
-      tipoPessoa: "FISICA",
-      categoriaContribuinte: "701",
-      valorRetribuicao: "2689.00",
-      descontaInss: true,
-      aliquotaInssPercentual: "10.0000",
-      descontaIrrf: false,
-      isentoInss: false,
-      baseOutrasFontes: "0",
-      outrasFontes: [],
-      enquadramentoPrevidenciario: ENQUADRAMENTO_GERAL,
-      dependentesIrrf: 0,
-      eventos: [],
-    },
-    REGRA_FISCAL_2026,
-  );
-
-  assert.equal(resultado.baseInssCentavos, 268_900);
-  assert.equal(resultado.valorInssCentavos, 26_890);
-  assert.equal(resultado.memoria.inss.aliquotaNumerador, 100_000);
-  assert.equal(resultado.memoria.inss.aliquotaDenominador, 1_000_000);
-});
-
 test("rejeita percentuais fora do contrato do Evento", () => {
   assert.throws(
     () =>

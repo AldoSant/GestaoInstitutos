@@ -495,10 +495,6 @@ export const vinculos = pgTable(
     cargaHoraria: numeric("carga_horaria", { precision: 10, scale: 2 }),
     exigeMedicaoMensal: boolean("exige_medicao_mensal").notNull().default(false),
     descontaInss: boolean("desconta_inss").notNull().default(true),
-    aliquotaInssPercentual: numeric("aliquota_inss_percentual", {
-      precision: 7,
-      scale: 4,
-    }),
     descontaIrrf: boolean("desconta_irrf").notNull().default(true),
     ativo: boolean("ativo").notNull().default(true),
     ...auditoriaBasica,
@@ -536,10 +532,6 @@ export const vinculos = pgTable(
       sql`${table.fim} is null or ${table.fim} >= ${table.inicio}`,
     ),
     check("ck_vinculo_valor_retribuicao", sql`${table.valorRetribuicao} >= 0`),
-    check(
-      "ck_vinculo_aliquota_inss_percentual",
-      sql`${table.aliquotaInssPercentual} is null or (${table.aliquotaInssPercentual} >= 0 and ${table.aliquotaInssPercentual} <= 100)`,
-    ),
     check(
       "ck_vinculo_carga_horaria",
       sql`${table.cargaHoraria} is null or ${table.cargaHoraria} >= 0`,

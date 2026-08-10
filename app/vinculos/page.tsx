@@ -153,7 +153,6 @@ export default async function VinculosPage({
             <label><span>Carga horária</span><input name="cargaHoraria" inputMode="decimal" placeholder="Ex.: 200" defaultValue={editado?.cargaHoraria ?? ""} /></label>
             <label className="checkbox-field"><input name="exigeMedicaoMensal" type="checkbox" defaultChecked={editado?.exigeMedicaoMensal ?? false} /><span>Exige medição mensal</span></label>
             <label className="checkbox-field"><input name="descontaInss" type="checkbox" defaultChecked={editado?.descontaInss ?? true} /><span>Desconta INSS</span></label>
-            <label><span>Alíquota de INSS específica</span><input name="aliquotaInssPercentual" inputMode="decimal" placeholder="Padrão da empresa" defaultValue={editado?.aliquotaInssPercentual ?? ""} /><small>Use apenas quando o vínculo tiver regra própria; em branco usa o enquadramento da empresa.</small></label>
             <label className="checkbox-field"><input name="descontaIrrf" type="checkbox" defaultChecked={editado?.descontaIrrf ?? true} /><span>Desconta IRRF</span></label>
             <button className="button primary" type="submit" disabled={!podeCadastrar}>{editado ? "Salvar vínculo" : "Cadastrar vínculo"}</button>
             <Link className="button secondary" href="/vinculos">Cancelar</Link>
@@ -214,7 +213,7 @@ export default async function VinculosPage({
                   <td>{item.atividadeDescricao ?? "Atividade não localizada"}<small>{item.lotacaoDescricao ?? "Lotação não localizada"}</small></td>
                   <td>{data(item.inicio)}<small>até {data(item.fim)}</small></td>
                   <td><strong>{moeda(item.valorRetribuicao)}</strong><small>{item.exigeMedicaoMensal ? "medição mensal obrigatória" : item.cargaHoraria ? `${item.cargaHoraria} h` : "carga não informada"}</small></td>
-                  <td><StatusBadge tone={item.descontaInss ? "info" : "neutral"}>{item.descontaInss ? `INSS${item.aliquotaInssPercentual ? ` ${item.aliquotaInssPercentual}%` : ""}` : "Sem INSS"}</StatusBadge><small>{item.descontaIrrf ? "Com IRRF" : "Sem IRRF"}</small></td>
+                  <td><StatusBadge tone={item.descontaInss ? "info" : "neutral"}>{item.descontaInss ? "INSS" : "Sem INSS"}</StatusBadge><small>{item.descontaIrrf ? "Com IRRF" : "Sem IRRF"}</small></td>
                   <td><StatusBadge tone={item.ativo ? "success" : "neutral"}>{item.ativo ? "Ativo" : "Inativo"}</StatusBadge></td>
                   <td><div className="row-actions"><Link className="row-text-action" href={`/vinculos?editar=${item.id}`}><Pencil size={13} /> Editar</Link><AcaoSituacao id={item.id} ativo={item.ativo} /></div></td>
                 </tr>

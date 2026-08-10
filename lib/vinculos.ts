@@ -15,7 +15,6 @@ export type VinculoCadastro = {
   cargaHoraria: string | null;
   exigeMedicaoMensal: boolean;
   descontaInss: boolean;
-  aliquotaInssPercentual: string | null;
   descontaIrrf: boolean;
 };
 
@@ -37,7 +36,6 @@ export function validarVinculoCadastro(input: {
   cargaHoraria?: unknown;
   exigeMedicaoMensal?: unknown;
   descontaInss?: unknown;
-  aliquotaInssPercentual?: unknown;
   descontaIrrf?: unknown;
 }): { dados: VinculoCadastro | null; erros: string[] } {
   const erros: string[] = [];
@@ -56,10 +54,6 @@ export function validarVinculoCadastro(input: {
   const cargaInformada = texto(input.cargaHoraria);
   const cargaHoraria = cargaInformada
     ? numeroDecimalBrasileiro(input.cargaHoraria)
-    : null;
-  const aliquotaInssInformada = texto(input.aliquotaInssPercentual);
-  const aliquotaInssPercentual = aliquotaInssInformada
-    ? numeroDecimalBrasileiro(input.aliquotaInssPercentual)
     : null;
 
   if (id && !idCadastroValido(id)) erros.push("Identificador do vínculo inválido.");
@@ -82,14 +76,6 @@ export function validarVinculoCadastro(input: {
   if (cargaInformada && (cargaHoraria === null || Number(cargaHoraria) < 0)) {
     erros.push("Informe uma carga horária não negativa.");
   }
-  if (
-    aliquotaInssInformada &&
-    (aliquotaInssPercentual === null ||
-      Number(aliquotaInssPercentual) < 0 ||
-      Number(aliquotaInssPercentual) > 100)
-  ) {
-    erros.push("Informe uma alíquota de INSS entre 0% e 100%, ou deixe em branco.");
-  }
 
   if (erros.length > 0 || !inicio || valorRetribuicao === null) {
     return { dados: null, erros };
@@ -109,7 +95,6 @@ export function validarVinculoCadastro(input: {
       cargaHoraria,
       exigeMedicaoMensal: input.exigeMedicaoMensal === true,
       descontaInss: input.descontaInss === true,
-      aliquotaInssPercentual,
       descontaIrrf: input.descontaIrrf === true,
     },
     erros,

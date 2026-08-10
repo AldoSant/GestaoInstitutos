@@ -295,13 +295,6 @@
       "when": 1786768800000,
       "tag": "0041_classifica_inss_legado_como_guia",
       "breakpoints": true
-    },
-    {
-      "idx": 42,
-      "version": "7",
-      "when": 1786855200000,
-      "tag": "0042_vinculo_inss_override",
-      "breakpoints": true
     }
   ]
 }
