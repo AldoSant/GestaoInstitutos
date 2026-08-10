@@ -218,34 +218,13 @@ async function prevalidarCriacaoFolha(
 ) {
   const candidatos = await client.query<{
     vinculo_id: string;
-    matricula: string;
-    nome: string;
-    tipo_pessoa: "FISICA" | "JURIDICA";
-    cpf: string | null;
-    cnpj: string | null;
-    exige_medicao_mensal: boolean;
-    medicao_id: string | null;
-    pendencias_outras_fontes: number;
   }>(
-    `select v.id vinculo_id, pr.matricula, p.nome_razao_social nome,
-             p.tipo tipo_pessoa, p.cpf, p.cnpj,
-             v.exige_medicao_mensal, mm.id medicao_id,
-            (
-              select count(*)::int
-                from contribuicao_outra_fonte cof
-               where cof.empresa_id = v.empresa_id
-                 and cof.prestador_id = pr.id
-                 and cof.competencia = $4::date
-                 and not cof.comprovante_verificado
-            ) pendencias_outras_fontes
+    `select v.id vinculo_id
        from prestador_vinculo v
        join prestador pr
          on pr.id = v.prestador_id and pr.empresa_id = v.empresa_id and pr.ativo
        join pessoa p
          on p.id = pr.pessoa_id and p.empresa_id = v.empresa_id and p.ativo
-       left join medicao_mensal mm
-         on mm.empresa_id = v.empresa_id and mm.vinculo_id = v.id
-        and mm.competencia = $4::date
       where v.empresa_id = $1 and v.termo_id = $2 and v.meta_id = $3
         and v.ativo and v.inicio <= $4::date
         and (v.fim is null or v.fim >= $4::date)
@@ -271,36 +250,10 @@ async function prevalidarCriacaoFolha(
   if (candidatos.rowCount === 0) {
     throw new Error("Nenhum Vínculo ativo atende ao Termo, Meta e competência.");
   }
-
-  const problemas: string[] = [];
-  for (const candidato of candidatos.rows) {
-    const identificacao = `${candidato.nome} (${candidato.matricula})`;
-    if (candidato.tipo_pessoa === "FISICA") {
-      if (!candidato.cpf) {
-        problemas.push(`${identificacao}: documento fiscal não informado.`);
-      }
-    } else if (!candidato.cnpj) {
-      problemas.push(`${identificacao}: documento fiscal não informado.`);
-    }
-    // A medição é um complemento de conferência, não uma condição para pagar.
-    // O GIW sempre permitiu apurar a retribuição contratada quando não havia
-    // medição destacada no mês. Se existir, ela continua prevalecendo no cálculo.
-    if (
-      candidato.tipo_pessoa === "FISICA" &&
-      candidato.pendencias_outras_fontes > 0
-    ) {
-      problemas.push(
-        `${identificacao}: ${candidato.pendencias_outras_fontes} comprovante(s) de outra fonte aguardam conferência.`,
-      );
-    }
-  }
-  if (problemas.length) {
-    const exibidos = problemas.slice(0, 8);
-    const restante = problemas.length - exibidos.length;
-    throw new Error(
-      `Pré-validação fiscal encontrou ${problemas.length} pendência(s): ${exibidos.join(" | ")}${restante > 0 ? ` | e mais ${restante}.` : ""}`,
-    );
-  }
+  // CPF/CNPJ, NIT e comprovantes de outras fontes são requisitos de
+  // identificação, retenção ou emissão da GPS conforme o caso; não podem
+  // impedir a apuração de uma retribuição que o GIW já processava. O cadastro
+  // pendente é tratado na etapa específica que efetivamente precisa dele.
 }
 
 async function validarPessoaEmFolhaUnicaNaCompetencia(
