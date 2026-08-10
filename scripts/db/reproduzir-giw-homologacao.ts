@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { decimalParaInteiro } from "../../lib/dinheiro";
 import { resolverEmpresaAtiva } from "../../db/cadastros";
 import { criarFolha, fecharFolha, processarFolha, registrarConferenciaFolha } from "../../db/folhas";
 import { salvarMedicaoMensal } from "../../db/medicoes";
@@ -61,15 +62,50 @@ async function resolverEmpresa() {
   return { id: resultado.rows[0].id };
 }
 
-function hashEvidencia(item: ItemLegado) {
+function valorEmReais(centavos: number) {
+  if (!Number.isSafeInteger(centavos) || centavos < 0) {
+    throw new Error("Valor histórico agregado inválido.");
+  }
+  return `${Math.floor(centavos / 100)}.${String(centavos % 100).padStart(2, "0")}`;
+}
+
+type MedicaoHistoricaAgrupada = {
+  vinculoId: string;
+  valor: string;
+  itens: ItemLegado[];
+};
+
+function agruparMedicoesHistoricas(itens: ItemLegado[]) {
+  const grupos = new Map<string, ItemLegado[]>();
+  for (const item of itens) {
+    if (!item.vinculo_id) throw new Error("Item histórico sem Vínculo de destino.");
+    grupos.set(item.vinculo_id, [...(grupos.get(item.vinculo_id) ?? []), item]);
+  }
+  return [...grupos.entries()].map(([vinculoId, fontes]): MedicaoHistoricaAgrupada => ({
+    vinculoId,
+    valor: valorEmReais(
+      fontes.reduce(
+        (total, item) => total + decimalParaInteiro(item.total_proventos, 2),
+        0,
+      ),
+    ),
+    itens: fontes,
+  }));
+}
+
+function hashEvidenciaAgrupada(item: MedicaoHistoricaAgrupada) {
   return createHash("sha256")
-    .update(JSON.stringify({
-      origem: "GIW",
-      folha: item.folha_legacy_id,
-      item: item.item_legacy_id,
-      pessoa: item.pessoa_legacy_id,
-      proventos: item.total_proventos,
-    }))
+    .update(
+      JSON.stringify({
+        origem: "GIW",
+        vinculoId: item.vinculoId,
+        fontes: item.itens.map((fonte) => ({
+          folha: fonte.folha_legacy_id,
+          item: fonte.item_legacy_id,
+          proventos: fonte.total_proventos,
+        })),
+      }),
+    )
     .digest("hex");
 }
 
@@ -252,26 +288,29 @@ async function executar() {
     ),
   };
   console.log(JSON.stringify(resumo, null, 2));
-  if (precondicoes.semDestino.length || precondicoes.conflitosItens.length || precondicoes.conflitos.length || precondicoes.medicoesExistentes.length) {
-    throw new Error("Replay não iniciado: há mapeamentos ausentes, vínculo repetido ou Folha atual em conflito. Consulte o resumo acima.");
+  if (precondicoes.semDestino.length || precondicoes.conflitos.length || precondicoes.medicoesExistentes.length) {
+    throw new Error("Replay não iniciado: há mapeamentos ausentes, Folha atual em conflito ou medição já registrada. Consulte o resumo acima.");
   }
   if (!executarDeVerdade) return;
 
   for (const alvo of alvos) {
-    for (const item of alvo.itens) {
+    for (const medicao of agruparMedicoesHistoricas(alvo.itens)) {
       await salvarMedicaoMensal({
         empresaId: empresa.id,
-        vinculoId: item.vinculo_id!,
+        vinculoId: medicao.vinculoId,
         competencia: alvo.competencia,
         tipo: "VALOR",
         percentual: "",
         quantidade: "",
         valorUnitario: "",
-        valor: item.total_proventos,
-        evidenciaReferencia: `Espelho GIW ${item.folha_legacy_id}/${item.item_legacy_id}`,
-        evidenciaHash: hashEvidencia(item),
+        valor: medicao.valor,
+        evidenciaReferencia: `Espelho GIW ${medicao.itens.map((item) => `${item.folha_legacy_id}/${item.item_legacy_id}`).join(", ")}`,
+        evidenciaHash: hashEvidenciaAgrupada(medicao),
         conferente: ATOR,
-        observacao: "Valor histórico reproduzido exclusivamente para comparação em homologação.",
+        observacao:
+          medicao.itens.length > 1
+            ? "Ocorrências históricas do mesmo Vínculo agregadas exclusivamente para comparação em homologação."
+            : "Valor histórico reproduzido exclusivamente para comparação em homologação.",
       });
     }
     const folha = await criarFolha({ empresaId: empresa.id, termoId: alvo.termoId, metaId: alvo.metaId, competencia: alvo.competencia, ator: ATOR });
