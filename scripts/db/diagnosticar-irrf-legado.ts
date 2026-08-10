@@ -64,7 +64,8 @@ try {
                   on d.empresa_id = chave.empresa_id and d.pessoa_id = chave.destino_id
                where chave.empresa_id = $1 and chave.origem = 'GIW'
                  and chave.entidade = 'pessoas' and chave.legacy_id = totais.pessoa_legacy_id
-                 and d.ativo and d.deduz_irrf
+                 and d.ativo
+                 and (d.baixa_irrf is null or d.baixa_irrf >= (totais.competencia || '-01')::date)
             ), 0) dependentes
        from totais
       order by competencia, pessoa_legacy_id`,
