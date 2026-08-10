@@ -27,8 +27,19 @@ import { handlers } from "../worker/handlers";
 
 const ator = "CI:SMOKE_CONSOLIDACAO";
 const competencia = "2026-07";
+const indiceEmpresa = process.argv.indexOf("--empresa-id");
+const empresaId = indiceEmpresa >= 0 ? process.argv[indiceEmpresa + 1] ?? "" : "";
+
+if (!empresaId) {
+  throw new Error(
+    "Informe --empresa-id para executar o smoke de consolidação em uma organização HML explícita.",
+  );
+}
 
 try {
+  // A HML pode preservar empresas de cenários paralelos. O teste nunca deve
+  // escolher uma delas por ordem de criação.
+  process.env.EMPRESA_ATIVA_ID = empresaId;
   const empresa = await resolverEmpresaAtiva();
   process.env.FOLHA_CONSOLIDADA_PRODUTIVA = "true";
   process.env.FOLHA_CONSOLIDADA_EMPRESA_ID = empresa.id;
