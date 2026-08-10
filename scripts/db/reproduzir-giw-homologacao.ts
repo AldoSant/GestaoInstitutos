@@ -22,6 +22,7 @@ type ItemLegado = {
   cpf: string | null;
   cnpj: string | null;
   total_proventos: string;
+  base_inss: string;
   valor_inss: string;
   valor_irrf: string;
   vinculo_id: string | null;
@@ -79,6 +80,7 @@ type MedicaoHistoricaAgrupada = {
   vinculoId: string;
   valor: string;
   descontaInss: boolean;
+  aliquotaInssPercentual: string | null;
   descontaIrrf: boolean;
   itens: ItemLegado[];
 };
@@ -90,6 +92,10 @@ function agruparMedicoesHistoricas(itens: ItemLegado[]) {
     grupos.set(item.vinculo_id, [...(grupos.get(item.vinculo_id) ?? []), item]);
   }
   return [...grupos.entries()].map(([vinculoId, fontes]): MedicaoHistoricaAgrupada => {
+    const baseInss = fontes.reduce(
+      (total, item) => total + decimalParaInteiro(item.base_inss, 2),
+      0,
+    );
     const inss = fontes.reduce(
       (total, item) => total + decimalParaInteiro(item.valor_inss, 2),
       0,
@@ -107,6 +113,10 @@ function agruparMedicoesHistoricas(itens: ItemLegado[]) {
         ),
       ),
       descontaInss: inss > 0,
+      // O espelho confirma uma exceção de 10% quando o valor retido é
+      // exatamente 10% da base. Casos com teto permanecem no perfil da empresa.
+      aliquotaInssPercentual:
+        baseInss > 0 && inss === Math.round(baseInss / 10) ? "10.0000" : null,
       descontaIrrf: irrf > 0,
       itens: fontes,
     };
@@ -137,6 +147,7 @@ async function carregarItens(empresaId: string, filtroCompetencias: string[]) {
             coalesce(meta.destino_id, rotulo.meta_id, vinculo_mapeado.meta_id, candidato.meta_id) meta_id,
             i.legacy_id item_legacy_id, i.pessoa_legacy_id,
             i.vinculo_legacy_id, i.cpf, i.cnpj, i.total_proventos::text,
+            i.base_inss::text,
             i.valor_inss::text, i.valor_irrf::text,
             coalesce(vinculo.destino_id, item_mapeado.destino_id, candidato.vinculo_id) vinculo_id,
             case when vinculo.destino_id is not null then 'LEGADO'
@@ -309,8 +320,8 @@ async function prepararInstrumentoIsoladoHml(
         `insert into prestador_vinculo
            (empresa_id, prestador_id, termo_id, meta_id, numero_contrato,
             atividade, inicio, fim, valor_retribuicao, exige_medicao_mensal,
-            desconta_inss, desconta_irrf)
-         values ($1, $2, $3, $4, $5, $6, $7::date, $8::date, $9, false, $10, $11)
+            desconta_inss, aliquota_inss_percentual, desconta_irrf)
+         values ($1, $2, $3, $4, $5, $6, $7::date, $8::date, $9, false, $10, $11, $12)
          returning id`,
         [
           empresaId,
@@ -323,15 +334,22 @@ async function prepararInstrumentoIsoladoHml(
           fim,
           medicao.valor,
           medicao.descontaInss,
+          medicao.aliquotaInssPercentual,
           medicao.descontaIrrf,
         ],
       );
     } else {
       await pool.query(
         `update prestador_vinculo
-            set desconta_inss = $2, desconta_irrf = $3, atualizado_em = now()
+            set desconta_inss = $2, aliquota_inss_percentual = $3,
+                desconta_irrf = $4, atualizado_em = now()
           where id = $1`,
-        [vinculo.rows[0].id, medicao.descontaInss, medicao.descontaIrrf],
+        [
+          vinculo.rows[0].id,
+          medicao.descontaInss,
+          medicao.aliquotaInssPercentual,
+          medicao.descontaIrrf,
+        ],
       );
     }
     medicoes.push({ ...medicao, vinculoId: vinculo.rows[0].id });

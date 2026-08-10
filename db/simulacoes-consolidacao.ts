@@ -59,6 +59,7 @@ type LinhaFonte = {
   medicao_conferente: string | null;
   medicao_conferida_em: string | null;
   desconta_inss: boolean;
+  aliquota_inss_percentual: string | null;
   desconta_irrf: boolean;
   isento_inss: boolean;
   base_outras_fontes: string;
@@ -246,7 +247,8 @@ async function carregarLinhasFontes(
             medicao.evidencia_hash medicao_evidencia_hash,
             medicao.conferente medicao_conferente,
             medicao.conferida_em::text medicao_conferida_em,
-            vinculo.desconta_inss, vinculo.desconta_irrf,
+            vinculo.desconta_inss, vinculo.aliquota_inss_percentual::text,
+            vinculo.desconta_irrf,
             prestador.isento_inss,
             coalesce((
               select sum(outra.base_contribuicao)
@@ -422,6 +424,7 @@ function montarEntradas(
           }
         : null,
       descontaInss: base.desconta_inss,
+      aliquotaInssPercentual: base.aliquota_inss_percentual,
       descontaIrrf: base.desconta_irrf,
       isentoInss: base.isento_inss,
       baseOutrasFontes: base.base_outras_fontes,

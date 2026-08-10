@@ -20,6 +20,7 @@ test("normaliza vínculo completo e valores brasileiros", () => {
     cargaHoraria: "200",
     exigeMedicaoMensal: true,
     descontaInss: true,
+    aliquotaInssPercentual: null,
     descontaIrrf: false,
   });
 
@@ -34,8 +35,29 @@ test("normaliza vínculo completo e valores brasileiros", () => {
     cargaHoraria: "200",
     exigeMedicaoMensal: true,
     descontaInss: true,
+    aliquotaInssPercentual: null,
     descontaIrrf: false,
   });
+});
+
+test("aceita alíquota de INSS específica e rejeita percentual fora da faixa", () => {
+  const valido = validarVinculoCadastro({
+    ...ids,
+    inicio: "2026-04-01",
+    valorRetribuicao: "2.689,00",
+    aliquotaInssPercentual: "10,0000",
+  });
+  assert.equal(valido.erros.length, 0);
+  assert.equal(valido.dados?.aliquotaInssPercentual, "10.0000");
+
+  const invalido = validarVinculoCadastro({
+    ...ids,
+    inicio: "2026-04-01",
+    valorRetribuicao: "2.689,00",
+    aliquotaInssPercentual: "100,0001",
+  });
+  assert.equal(invalido.dados, null);
+  assert.ok(invalido.erros.some((erro) => erro.includes("alíquota de INSS")));
 });
 
 test("rejeita relação, vigência e valores inválidos", () => {

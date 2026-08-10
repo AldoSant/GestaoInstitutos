@@ -42,6 +42,8 @@ export type EntradaVinculoFolha = {
     conferidaEm: string;
   } | null;
   descontaInss: boolean;
+  /** Percentual específico do vínculo; nulo usa o enquadramento da empresa. */
+  aliquotaInssPercentual?: string | null;
   descontaIrrf: boolean;
   isentoInss: boolean;
   baseOutrasFontes: string;
@@ -187,6 +189,22 @@ export function processarVinculoFolha(
   if (baseOutrasFontesCentavos < 0) {
     throw new Error("A base contribuída em outras fontes não pode ser negativa.");
   }
+  const percentualInssInformado = entrada.aliquotaInssPercentual?.trim() ?? "";
+  const aliquotaSegurado = percentualInssInformado
+    ? {
+        numerador: decimalParaInteiro(percentualInssInformado, 4),
+        denominador: 1_000_000,
+      }
+    : {
+        numerador: entrada.enquadramentoPrevidenciario.aliquotaSeguradoNumerador,
+        denominador: entrada.enquadramentoPrevidenciario.aliquotaSeguradoDenominador,
+      };
+  if (
+    aliquotaSegurado.numerador < 0 ||
+    aliquotaSegurado.numerador > aliquotaSegurado.denominador
+  ) {
+    throw new Error("A alíquota de INSS específica do vínculo é inválida.");
+  }
 
   const inss =
     !pessoaJuridica && entrada.descontaInss && !entrada.isentoInss
@@ -194,19 +212,13 @@ export function processarVinculoFolha(
           deCentavos(baseInssBrutaCentavos),
           deCentavos(baseOutrasFontesCentavos),
           regra,
-          {
-            numerador:
-              entrada.enquadramentoPrevidenciario.aliquotaSeguradoNumerador,
-            denominador:
-              entrada.enquadramentoPrevidenciario.aliquotaSeguradoDenominador,
-          },
+          aliquotaSegurado,
         )
       : {
           base: 0,
           aliquota: pessoaJuridica
             ? 0
-            : entrada.enquadramentoPrevidenciario.aliquotaSeguradoNumerador /
-              entrada.enquadramentoPrevidenciario.aliquotaSeguradoDenominador,
+            : aliquotaSegurado.numerador / aliquotaSegurado.denominador,
           valor: 0,
           tetoAtingido: false,
         };
@@ -298,16 +310,20 @@ export function processarVinculoFolha(
             aliquotaPatronalNumerador: 0,
             aliquotaPatronalDenominador: 1,
           }
-        : entrada.enquadramentoPrevidenciario,
+        : {
+            ...entrada.enquadramentoPrevidenciario,
+            aliquotaSeguradoNumerador: aliquotaSegurado.numerador,
+            aliquotaSeguradoDenominador: aliquotaSegurado.denominador,
+          },
       inss: {
         aliquotaNumerador:
           pessoaJuridica
             ? 0
-            : entrada.enquadramentoPrevidenciario.aliquotaSeguradoNumerador,
+            : aliquotaSegurado.numerador,
         aliquotaDenominador:
           pessoaJuridica
             ? 1
-            : entrada.enquadramentoPrevidenciario.aliquotaSeguradoDenominador,
+            : aliquotaSegurado.denominador,
         valorCentavos: valorInssCentavos,
         tetoAtingido: inss.tetoAtingido,
         isento: pessoaJuridica || entrada.isentoInss || !entrada.descontaInss,

@@ -68,6 +68,7 @@ type LinhaVinculo = {
   medicao_conferente: string | null;
   medicao_conferida_em: string | null;
   desconta_inss: boolean;
+  aliquota_inss_percentual: string | null;
   desconta_irrf: boolean;
   isento_inss: boolean;
   categoria_contribuinte: string | null;
@@ -606,7 +607,8 @@ export async function processarFolha(
               mm.evidencia_hash medicao_evidencia_hash,
               mm.conferente medicao_conferente,
               mm.conferida_em::text medicao_conferida_em,
-               v.desconta_inss, v.desconta_irrf, pr.isento_inss,
+               v.desconta_inss, v.aliquota_inss_percentual::text,
+               v.desconta_irrf, pr.isento_inss,
               case when p.tipo = 'FISICA' then '701' else null end categoria_contribuinte,
               p.inscricao_inss nit_pis_pasep, p.tipo tipo_pessoa,
               coalesce(
@@ -845,6 +847,7 @@ export async function processarFolha(
               }
             : null,
           descontaInss: base.desconta_inss,
+          aliquotaInssPercentual: base.aliquota_inss_percentual,
           descontaIrrf: base.desconta_irrf,
           isentoInss: base.isento_inss,
           baseOutrasFontes: base.base_outras_fontes,
