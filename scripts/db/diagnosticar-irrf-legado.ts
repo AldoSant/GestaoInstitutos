@@ -35,6 +35,21 @@ const regraSemSimplificadoSemReducao = {
   },
 };
 
+const regraSemReducao = {
+  ...REGRA_FISCAL_2026,
+  irrf: {
+    ...REGRA_FISCAL_2026.irrf,
+    reducao: {
+      integralAteCentavos: 0,
+      integralLimiteCentavos: 0,
+      decrescenteAteCentavos: 0,
+      constanteCentavos: 0,
+      coeficienteNumerador: 0,
+      coeficienteDenominador: 1,
+    },
+  },
+};
+
 try {
   const resultado = await getPool().query<{
     competencia: string;
@@ -78,6 +93,7 @@ try {
     pessoas: number;
     irrfLegadoPositivo: number;
     coincideVigente: number;
+    coincideSemReducao: number;
     coincideHistorica: number;
     coincideAmbas: number;
     naoExplicada: number;
@@ -89,6 +105,7 @@ try {
       pessoas: 0,
       irrfLegadoPositivo: 0,
       coincideVigente: 0,
+      coincideSemReducao: 0,
       coincideHistorica: 0,
       coincideAmbas: 0,
       naoExplicada: 0,
@@ -107,6 +124,9 @@ try {
     const historica = Math.round(
       calcularIrrf2026({ ...entrada, regra: regraSemSimplificadoSemReducao }).valor * 100,
     );
+    const semReducao = Math.round(
+      calcularIrrf2026({ ...entrada, regra: regraSemReducao }).valor * 100,
+    );
     const sobreBaseHistorica = Math.round(
       calcularIrrf2026({
         rendimentos: Number(linha.base_irrf),
@@ -118,6 +138,7 @@ try {
     const correspondeVigente = vigente === esperadoCentavos;
     const correspondeHistorica = historica === esperadoCentavos;
     if (correspondeVigente) atual.coincideVigente += 1;
+    if (semReducao === esperadoCentavos) atual.coincideSemReducao += 1;
     if (correspondeHistorica) atual.coincideHistorica += 1;
     if (correspondeVigente && correspondeHistorica) atual.coincideAmbas += 1;
     if (!correspondeVigente && !correspondeHistorica) atual.naoExplicada += 1;
