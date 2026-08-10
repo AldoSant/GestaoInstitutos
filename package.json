@@ -30,6 +30,7 @@
     "db:reproduzir:giw": "tsx scripts/db/reproduzir-giw-homologacao.ts",
     "db:exportar:pendencias-replay-giw": "tsx scripts/db/exportar-pendencias-replay-giw.ts",
     "db:aplicar:mapeamento-replay-giw": "tsx scripts/db/aplicar-mapeamento-replay-giw.ts",
+    "db:reconstruir:vinculos-giw": "tsx scripts/db/reconstruir-vinculos-historicos-giw.ts",
     "worker:start": "tsx scripts/worker/executar.ts",
     "worker:validar-regra": "tsx scripts/worker/enfileirar-validacao.ts",
     "giw:coletar:pessoas": "node scripts/giw/coletar-pessoas.mjs",
