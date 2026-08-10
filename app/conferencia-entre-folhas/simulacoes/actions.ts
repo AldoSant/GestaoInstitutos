@@ -7,12 +7,13 @@ import {
   atualizarStatusSimulacaoFiscal,
   criarSimulacaoConsolidacaoFiscal,
 } from "@/db/simulacoes-consolidacao";
+import { caminhoAplicacao } from "@/lib/base-path";
 
 function destino(competencia: string, texto: string, erro = false) {
-  return `/conferencia-entre-folhas/simulacoes?${new URLSearchParams({
+  return caminhoAplicacao(`/conferencia-entre-folhas/simulacoes?${new URLSearchParams({
     competencia,
     [erro ? "erro" : "sucesso"]: texto,
-  }).toString()}`;
+  }).toString()}`);
 }
 
 function mensagem(error: unknown) {

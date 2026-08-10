@@ -222,6 +222,9 @@ export default async function FolhaDetalhePage({
               <Link className="button secondary" href={`/folhas/${folha.id}/pagamentos`}>
                 <CreditCard size={16} /> Relação de pagamentos
               </Link>
+              <Link className="button secondary" href={`/conferencia-entre-folhas?competencia=${folha.competencia.slice(0, 7)}`}>
+                Consolidar impostos por CPF
+              </Link>
             </div>
           ) : undefined
         }

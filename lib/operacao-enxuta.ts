@@ -7,7 +7,6 @@
  */
 const PREFIXOS_MODULOS_ADORMECIDOS = [
   "/administracao",
-  "/conferencia-entre-folhas",
   "/demonstrativos",
   "/fechamento-mensal",
   "/fgts",

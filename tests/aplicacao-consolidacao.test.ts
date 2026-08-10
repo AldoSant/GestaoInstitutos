@@ -101,7 +101,15 @@ test("recusa rateio obsoleto ou sem fechamento monetário", () => {
   );
 });
 
-test("ativação produtiva exige empresa e competência explicitamente delimitadas", () => {
+test("ativação produtiva permite o padrão do instituto e valida delimitação opcional", () => {
+  assert.equal(
+    avaliarAtivacaoConsolidacaoProdutiva({
+      empresaId: EMPRESA,
+      competencia: "2026-07-01",
+      ambiente: {},
+    }).ativa,
+    true,
+  );
   const ambiente = {
     FOLHA_CONSOLIDADA_PRODUTIVA: "true",
     FOLHA_CONSOLIDADA_EMPRESA_ID: EMPRESA,

@@ -56,6 +56,22 @@ export function orientarBloqueio({
     };
   }
 
+  if (
+    /todas as folhas da pessoa.*simulação homologada|múltiplos vínculos.*simulação fiscal homologada/i.test(
+      erro,
+    )
+  ) {
+    return {
+      titulo: "Consolide os impostos desta pessoa",
+      causa: "A pessoa participa de mais de uma Folha nesta competência e o rateio mensal ainda não foi homologado.",
+      impacto: "As Folhas podem ser processadas normalmente, mas não podem ser fechadas ou gerar GPS até que INSS e IRRF sejam calculados sobre o total mensal.",
+      acao: {
+        rotulo: "Consolidar impostos por CPF",
+        href: `/conferencia-entre-folhas?${params.toString()}`,
+      },
+    };
+  }
+
   if (/folha.*(fechada|fechar)|folhas.*pendente/i.test(erro)) {
     return {
       titulo: "Feche as folhas antes de apurar",

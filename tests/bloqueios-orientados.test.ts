@@ -27,6 +27,18 @@ test("orienta enquadramento ausente para a configuração da empresa", () => {
   assert.match(bloqueio.acao.href, /configuracao-inicial/);
 });
 
+test("orienta fechamento multi-folha para a consolidação por CPF", () => {
+  const bloqueio = orientarBloqueio({
+    erro: "Todas as Folhas da Pessoa devem estar processadas com a mesma simulação homologada antes do fechamento.",
+    competencia: "2026-06",
+    retorno: "/folhas/fake",
+  });
+
+  assert.equal(bloqueio.acao.rotulo, "Consolidar impostos por CPF");
+  assert.match(bloqueio.acao.href, /^\/conferencia-entre-folhas\?/);
+  assert.match(bloqueio.impacto, /GPS/);
+});
+
 test("aceita apenas retornos internos", () => {
   assert.equal(destinoInternoSeguro("/obrigacoes?competencia=2026-06", "/folhas"), "/obrigacoes?competencia=2026-06");
   assert.equal(destinoInternoSeguro("https://exemplo.test", "/folhas"), "/folhas");

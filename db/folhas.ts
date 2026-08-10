@@ -491,6 +491,39 @@ async function validarConsolidacaoProdutivaFechamento(
   }
 }
 
+async function carregarRateioHomologadoSeDisponivel({
+  empresaId,
+  pessoaId,
+  competencia,
+  executor,
+}: {
+  empresaId: string;
+  pessoaId: string;
+  competencia: string;
+  executor: PoolClient;
+}) {
+  try {
+    return await carregarRateioProdutivoHomologado({
+      empresaId,
+      pessoaId,
+      competencia,
+      executor,
+    });
+  } catch (error) {
+    // A primeira apuração das Folhas produz as fontes que serão consolidadas.
+    // Sem uma simulação ainda homologada, o valor individual é provisório, não
+    // um erro de processamento. Alterações ou uma simulação obsoleta continuam
+    // sendo bloqueios reais e não são engolidas aqui.
+    if (
+      error instanceof Error &&
+      /não há simulação fiscal homologada/i.test(error.message)
+    ) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 export async function criarFolha({
   empresaId,
   termoId,
@@ -535,12 +568,6 @@ export async function criarFolha({
       metaId,
       data,
     );
-    await validarPessoaEmFolhaUnicaNaCompetencia(client, {
-      empresaId,
-      termoId,
-      metaId,
-      competencia: data,
-    });
     const enquadramento = await carregarEnquadramentoPorCompetencia(
       empresaId,
       data,
@@ -666,13 +693,6 @@ export async function processarFolha(
     if (!["RASCUNHO", "ABERTA"].includes(folha.status)) {
       throw new Error(`Folha em estado ${folha.status} não pode ser processada.`);
     }
-    await validarPessoaEmFolhaUnicaNaCompetencia(client, {
-      empresaId: folha.empresa_id,
-      termoId: folha.termo_id,
-      metaId: folha.meta_id,
-      competencia: folha.competencia,
-      folhaAtualId: folha.id,
-    });
 
     const regra = await carregarRegraFiscalPorCompetencia(
       folha.competencia.slice(0, 7),
@@ -995,24 +1015,28 @@ export async function processarFolha(
       if (ativacaoConsolidada.ativa && base.quantidade_vinculos_pessoa > 1) {
         let rateios = rateiosPorPessoa.get(base.pessoa_id);
         if (!rateios) {
-          const homologado = await carregarRateioProdutivoHomologado({
+          const homologado = await carregarRateioHomologadoSeDisponivel({
             empresaId: folha.empresa_id,
             pessoaId: base.pessoa_id,
             competencia: folha.competencia,
             executor: client,
           });
-          rateios = new Map(
-            homologado.fontes.map((fonte) => [fonte.vinculoId, fonte]),
-          );
-          rateiosPorPessoa.set(base.pessoa_id, rateios);
+          if (homologado) {
+            rateios = new Map(
+              homologado.fontes.map((fonte) => [fonte.vinculoId, fonte]),
+            );
+            rateiosPorPessoa.set(base.pessoa_id, rateios);
+          }
         }
-        const rateio = rateios.get(vinculoId);
-        if (!rateio) {
+        const rateio = rateios?.get(vinculoId);
+        if (rateios && !rateio) {
           throw new Error(
             `A simulação homologada não contém o Vínculo ${vinculoId}.`,
           );
         }
-        resultado = aplicarRateioConsolidadoNaFolha(resultado, rateio);
+        if (rateio) {
+          resultado = aplicarRateioConsolidadoNaFolha(resultado, rateio);
+        }
       }
       const itemId = randomUUID();
       itens.push({

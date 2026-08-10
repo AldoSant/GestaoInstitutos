@@ -7,13 +7,14 @@ import {
   atualizarCasoConsolidacao,
   materializarCasosConsolidacao,
 } from "@/db/consolidacoes";
+import { caminhoAplicacao } from "@/lib/base-path";
 
 function destino(competencia: string, texto: string, erro = false) {
   const params = new URLSearchParams({
     competencia,
     [erro ? "erro" : "sucesso"]: texto,
   });
-  return `/conferencia-entre-folhas?${params.toString()}`;
+  return caminhoAplicacao(`/conferencia-entre-folhas?${params.toString()}`);
 }
 
 function mensagem(error: unknown) {

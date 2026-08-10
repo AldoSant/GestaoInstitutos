@@ -57,11 +57,17 @@ export function avaliarAtivacaoConsolidacaoProdutiva({
   competencia: string;
   ambiente?: AmbienteConsolidacao;
 }) {
-  if (ambiente.FOLHA_CONSOLIDADA_PRODUTIVA !== "true") {
+  if (ambiente.FOLHA_CONSOLIDADA_PRODUTIVA === "false") {
     return { ativa: false as const, motivo: "recurso desativado" };
   }
   const empresaConfigurada = ambiente.FOLHA_CONSOLIDADA_EMPRESA_ID?.trim() ?? "";
   const inicio = ambiente.FOLHA_CONSOLIDADA_INICIO?.trim() ?? "";
+  // Esta aplicação opera um único instituto por padrão. A implantação pode
+  // delimitar empresa e início explicitamente; se optar por isso, ambos os
+  // valores precisam existir para não habilitar uma configuração parcial.
+  if (!empresaConfigurada && !inicio) {
+    return { ativa: true as const, empresaId, inicio: "0000-01" };
+  }
   if (!uuidValido(empresaConfigurada)) {
     throw new Error(
       "FOLHA_CONSOLIDADA_EMPRESA_ID deve identificar explicitamente a empresa habilitada.",

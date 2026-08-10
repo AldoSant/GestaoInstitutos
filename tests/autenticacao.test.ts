@@ -92,7 +92,6 @@ test("proxy mantém módulos adormecidos fora do operacional autenticado", () =>
   const token = criarTokenSessao({ login: "admin", perfil: "ADMINISTRADOR" });
   for (const rota of [
     "/administracao",
-    "/conferencia-entre-folhas",
     "/demonstrativos",
     "/fechamento-mensal",
     "/fgts",
@@ -109,6 +108,15 @@ test("proxy mantém módulos adormecidos fora do operacional autenticado", () =>
       rota,
     );
   }
+});
+
+test("proxy mantém a consolidação fiscal acessível ao operacional autenticado", () => {
+  process.env.AUTH_SECRET = "segredo-de-teste-com-mais-de-trinta-e-dois-bytes";
+  const token = criarTokenSessao({ login: "admin", perfil: "ADMINISTRADOR" });
+  const resposta = proxy(new NextRequest("http://localhost/conferencia-entre-folhas", {
+    headers: { cookie: `${COOKIE_SESSAO}=${token}` },
+  }));
+  assert.equal(resposta.status, 200);
 });
 
 test("proxy preserva o base path no redirecionamento", () => {
