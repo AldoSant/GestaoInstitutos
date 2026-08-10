@@ -27,6 +27,7 @@ type ItemLegado = {
 };
 
 type FolhaAlvo = {
+  folhaLegadoId: string;
   competencia: string;
   termoId: string;
   metaId: string;
@@ -199,6 +200,7 @@ function agrupar(itens: ItemLegado[]) {
     if (!item.termo_id || !item.meta_id || !item.vinculo_id) continue;
     const chave = `${item.folha_legado_id}:${item.termo_id}:${item.meta_id}`;
     const existente = grupos.get(chave) ?? {
+      folhaLegadoId: item.folha_legado_id,
       competencia: item.competencia,
       termoId: item.termo_id,
       metaId: item.meta_id,
@@ -208,6 +210,111 @@ function agrupar(itens: ItemLegado[]) {
     grupos.set(chave, existente);
   }
   return [...grupos.values()];
+}
+
+type MedicaoIsolada = Omit<MedicaoHistoricaAgrupada, "vinculoId"> & {
+  vinculoId: string;
+};
+
+async function prepararInstrumentoIsoladoHml(
+  empresaId: string,
+  alvo: FolhaAlvo,
+) {
+  const etiqueta = createHash("sha256")
+    .update(`${alvo.folhaLegadoId}:${alvo.termoId}:${alvo.metaId}`)
+    .digest("hex")
+    .slice(0, 14)
+    .toUpperCase();
+  const numeroTermo = `HML-GIW-${etiqueta}`;
+  const codigoMeta = `GIW-${etiqueta}`;
+  const inicio = `${alvo.competencia}-01`;
+  const fim = `${alvo.competencia}-28`;
+  const pool = getPool();
+  let termo = await pool.query<{ id: string }>(
+    `select id from termo where empresa_id = $1 and numero = $2 limit 1`,
+    [empresaId, numeroTermo],
+  );
+  if (!termo.rows[0]) {
+    termo = await pool.query<{ id: string }>(
+      `insert into termo
+         (empresa_id, numero, descricao, modalidade, inicio, fim, valor_global)
+       values ($1, $2, $3, 'TESTE', $4::date, $5::date, 0)
+       returning id`,
+      [
+        empresaId,
+        numeroTermo,
+        `Isolamento HML do espelho GIW ${alvo.folhaLegadoId}`,
+        inicio,
+        fim,
+      ],
+    );
+  }
+  let meta = await pool.query<{ id: string }>(
+    `select id from termo_meta where termo_id = $1 and codigo = $2 limit 1`,
+    [termo.rows[0].id, codigoMeta],
+  );
+  if (!meta.rows[0]) {
+    meta = await pool.query<{ id: string }>(
+      `insert into termo_meta (termo_id, codigo, descricao)
+       values ($1, $2, $3) returning id`,
+      [
+        termo.rows[0].id,
+        codigoMeta,
+        `Itens isolados do espelho GIW ${alvo.folhaLegadoId}`,
+      ],
+    );
+  }
+
+  const medicoes: MedicaoIsolada[] = [];
+  for (const [ordem, medicao] of agruparMedicoesHistoricas(alvo.itens).entries()) {
+    const origem = await pool.query<{
+      prestador_id: string;
+      atividade: string;
+      desconta_inss: boolean;
+      desconta_irrf: boolean;
+    }>(
+      `select prestador_id, atividade, desconta_inss, desconta_irrf
+         from prestador_vinculo
+        where empresa_id = $1 and id = $2`,
+      [empresaId, medicao.vinculoId],
+    );
+    if (!origem.rows[0]) {
+      throw new Error("Vínculo de origem não encontrado para o isolamento HML.");
+    }
+    const numeroContrato = `HML-GIW-${etiqueta}-${ordem + 1}`;
+    let vinculo = await pool.query<{ id: string }>(
+      `select id from prestador_vinculo
+        where empresa_id = $1 and termo_id = $2 and meta_id = $3
+          and numero_contrato = $4
+        limit 1`,
+      [empresaId, termo.rows[0].id, meta.rows[0].id, numeroContrato],
+    );
+    if (!vinculo.rows[0]) {
+      vinculo = await pool.query<{ id: string }>(
+        `insert into prestador_vinculo
+           (empresa_id, prestador_id, termo_id, meta_id, numero_contrato,
+            atividade, inicio, fim, valor_retribuicao, exige_medicao_mensal,
+            desconta_inss, desconta_irrf)
+         values ($1, $2, $3, $4, $5, $6, $7::date, $8::date, $9, false, $10, $11)
+         returning id`,
+        [
+          empresaId,
+          origem.rows[0].prestador_id,
+          termo.rows[0].id,
+          meta.rows[0].id,
+          numeroContrato,
+          origem.rows[0].atividade,
+          inicio,
+          fim,
+          medicao.valor,
+          origem.rows[0].desconta_inss,
+          origem.rows[0].desconta_irrf,
+        ],
+      );
+    }
+    medicoes.push({ ...medicao, vinculoId: vinculo.rows[0].id });
+  }
+  return { termoId: termo.rows[0].id, metaId: meta.rows[0].id, medicoes };
 }
 
 async function validarPrecondicoes(empresaId: string, itens: ItemLegado[], alvos: FolhaAlvo[]) {
@@ -220,17 +327,8 @@ async function validarPrecondicoes(empresaId: string, itens: ItemLegado[], alvos
   const conflitosItens = [...repetidos.entries()].filter(([, quantidade]) => quantidade > 1);
   const conflitos = [] as string[];
   const medicoesExistentes = [] as string[];
-  for (const alvo of alvos) {
-    const existente = await getPool().query<{ status: string }>(
-      `select status from folha
-        where empresa_id = $1 and termo_id = $2 and meta_id = $3 and competencia = $4::date
-          and status <> 'CANCELADA'`,
-      [empresaId, alvo.termoId, alvo.metaId, `${alvo.competencia}-01`],
-    );
-    if (existente.rowCount && existente.rows[0].status !== "FECHADA") {
-      conflitos.push(`${alvo.competencia} (${existente.rows[0].status})`);
-    }
-  }
+  // O replay usa Termos e Metas isolados, portanto Folhas operacionais com a
+  // mesma competência nunca conflitam com a evidência histórica.
   for (const item of itens.filter((item) => item.vinculo_id)) {
     const medicao = await getPool().query<{ id: string }>(
       `select id from medicao_mensal
@@ -324,15 +422,16 @@ async function executar() {
   // upsert auditável. Em HML isso permite retomar um replay interrompido e
   // substituir apenas a medição do mesmo Vínculo pela evidência GIW exata.
   for (const alvo of alvos) {
+    const isolada = await prepararInstrumentoIsoladoHml(empresa.id, alvo);
     const existente = await getPool().query<{ id: string; status: string }>(
       `select id, status from folha
         where empresa_id = $1 and termo_id = $2 and meta_id = $3
           and competencia = $4::date and status <> 'CANCELADA'
         limit 1`,
-      [empresa.id, alvo.termoId, alvo.metaId, `${alvo.competencia}-01`],
+      [empresa.id, isolada.termoId, isolada.metaId, `${alvo.competencia}-01`],
     );
     if (existente.rows[0]?.status === "FECHADA") continue;
-    for (const medicao of agruparMedicoesHistoricas(alvo.itens)) {
+    for (const medicao of isolada.medicoes) {
       await salvarMedicaoMensal({
         empresaId: empresa.id,
         vinculoId: medicao.vinculoId,
@@ -351,7 +450,7 @@ async function executar() {
             : "Valor histórico reproduzido exclusivamente para comparação em homologação.",
       });
     }
-    const folha = await criarFolha({ empresaId: empresa.id, termoId: alvo.termoId, metaId: alvo.metaId, competencia: alvo.competencia, ator: ATOR });
+    const folha = await criarFolha({ empresaId: empresa.id, termoId: isolada.termoId, metaId: isolada.metaId, competencia: alvo.competencia, ator: ATOR });
     await processarFolha(folha.id, ATOR, empresa.id, folha.revisao);
     await registrarConferenciaFolha({
       empresaId: empresa.id,
