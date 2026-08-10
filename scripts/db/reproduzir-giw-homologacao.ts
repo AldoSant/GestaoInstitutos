@@ -288,11 +288,14 @@ async function executar() {
     ),
   };
   console.log(JSON.stringify(resumo, null, 2));
-  if (precondicoes.semDestino.length || precondicoes.conflitos.length || precondicoes.medicoesExistentes.length) {
-    throw new Error("Replay não iniciado: há mapeamentos ausentes, Folha atual em conflito ou medição já registrada. Consulte o resumo acima.");
+  if (precondicoes.semDestino.length || precondicoes.conflitos.length) {
+    throw new Error("Replay não iniciado: há mapeamentos ausentes ou Folha atual em conflito. Consulte o resumo acima.");
   }
   if (!executarDeVerdade) return;
 
+  // A medição possui chave (vínculo, competência) e salvarMedicaoMensal faz
+  // upsert auditável. Em HML isso permite retomar um replay interrompido e
+  // substituir apenas a medição do mesmo Vínculo pela evidência GIW exata.
   for (const alvo of alvos) {
     for (const medicao of agruparMedicoesHistoricas(alvo.itens)) {
       await salvarMedicaoMensal({
