@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { resolverEmpresaAtiva } from "../../db/cadastros";
 import {
   atualizarCasoConsolidacao,
@@ -12,7 +13,6 @@ import {
   registrarConferenciaFolha,
 } from "../../db/folhas";
 import { getPool } from "../../db";
-import { salvarMedicaoMensal } from "../../db/medicoes";
 import { apurarRetencoesSegurados } from "../../db/obrigacoes";
 import {
   atualizarStatusSimulacaoFiscal,
@@ -50,33 +50,92 @@ try {
   process.env.FOLHA_CONSOLIDADA_EMPRESA_ID = empresa.id;
   process.env.FOLHA_CONSOLIDADA_INICIO = competencia;
 
+  // Cada execução cria uma Pessoa própria. Assim, pendências deixadas por
+  // cenários anteriores na HML nunca se misturam ao fechamento deste teste.
+  const sufixo = randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase();
+  const cpfSintetico = `9${Date.now().toString().slice(-10)}`;
   const origem = await getPool().query<{
     pessoa_id: string;
     prestador_id: string;
     vinculo_id: string;
     termo_id: string;
     meta_id: string;
+    segundo_termo_id: string;
+    segundo_meta_id: string;
+    segundo_vinculo_id: string;
   }>(
-    `select pessoa.id pessoa_id, prestador.id prestador_id,
-            vinculo.id vinculo_id, vinculo.termo_id, vinculo.meta_id
-       from prestador
-       join pessoa
-         on pessoa.empresa_id = prestador.empresa_id
-        and pessoa.id = prestador.pessoa_id
-       join prestador_vinculo vinculo
-         on vinculo.empresa_id = prestador.empresa_id
-        and vinculo.prestador_id = prestador.id
-       join termo
-         on termo.empresa_id = vinculo.empresa_id
-        and termo.id = vinculo.termo_id
-       join termo_meta meta
-         on meta.termo_id = termo.id and meta.id = vinculo.meta_id
-      where prestador.empresa_id = $1 and prestador.matricula = 'CI-0001'
-        and termo.numero = 'CI-2026' and meta.codigo = 'META-CI'
-      limit 1`,
-    [empresa.id],
+    `with pessoa_nova as (
+       insert into pessoa
+         (empresa_id, tipo, nome_razao_social, cpf, papel_prestador, ativo)
+       values ($1, 'FISICA', $2, $3, true, true)
+       returning id
+     ), prestador_novo as (
+       insert into prestador
+         (empresa_id, pessoa_id, matricula, categoria_contribuinte, ativo)
+       select $1, pessoa_nova.id, $4, 'CONTRIBUINTE_INDIVIDUAL', true
+         from pessoa_nova
+       returning id, pessoa_id
+     ), termo_principal as (
+       insert into termo
+         (empresa_id, numero, descricao, modalidade, inicio, fim, valor_global)
+       values ($1, $5, 'Termo principal sintético de consolidação',
+               'TESTE', date '2026-01-01', date '2026-12-31', 50000)
+       returning id
+     ), meta_principal as (
+       insert into termo_meta (termo_id, codigo, descricao)
+       select id, 'META-PRINCIPAL', 'Meta principal sintética'
+         from termo_principal
+       returning id, termo_id
+     ), vinculo_principal as (
+       insert into prestador_vinculo
+         (empresa_id, prestador_id, termo_id, meta_id, atividade,
+          inicio, fim, valor_retribuicao, exige_medicao_mensal)
+       select $1, prestador_novo.id, meta_principal.termo_id, meta_principal.id,
+              'Atividade sintética no lote principal',
+              date '2026-01-01', date '2026-12-31', 1920, false
+         from prestador_novo cross join meta_principal
+       returning id, termo_id, meta_id
+     ), termo_secundario as (
+       insert into termo
+         (empresa_id, numero, descricao, modalidade, inicio, fim, valor_global)
+       values ($1, $6, 'Termo secundário sintético de consolidação',
+               'TESTE', date '2026-01-01', date '2026-12-31', 50000)
+       returning id
+     ), meta_secundaria as (
+       insert into termo_meta (termo_id, codigo, descricao)
+       select id, 'META-SECUNDARIA', 'Meta secundária sintética'
+         from termo_secundario
+       returning id, termo_id
+     ), vinculo_secundario as (
+       insert into prestador_vinculo
+         (empresa_id, prestador_id, termo_id, meta_id, atividade,
+          inicio, fim, valor_retribuicao, exige_medicao_mensal)
+       select $1, prestador_novo.id, meta_secundaria.termo_id, meta_secundaria.id,
+              'Atividade sintética no lote secundário',
+              date '2026-01-01', date '2026-12-31', 1920, false
+         from prestador_novo cross join meta_secundaria
+       returning id, termo_id, meta_id
+     )
+     select pessoa_nova.id pessoa_id, prestador_novo.id prestador_id,
+            vinculo_principal.id vinculo_id, vinculo_principal.termo_id,
+            vinculo_principal.meta_id,
+            vinculo_secundario.termo_id segundo_termo_id,
+            vinculo_secundario.meta_id segundo_meta_id,
+            vinculo_secundario.id segundo_vinculo_id
+       from pessoa_nova
+       cross join prestador_novo
+       cross join vinculo_principal
+       cross join vinculo_secundario`,
+    [
+      empresa.id,
+      `Prestador sintético ${sufixo}`,
+      cpfSintetico,
+      `CI-${sufixo}`,
+      `CI-CONSOLIDADO-${competencia.replace("-", "")}-${sufixo}-A`,
+      `CI-CONSOLIDADO-${competencia.replace("-", "")}-${sufixo}-B`,
+    ],
   );
-  assert.equal(origem.rowCount, 1, "Vínculo principal sintético não encontrado.");
+  assert.equal(origem.rowCount, 1, "Cenário sintético não foi criado.");
 
   await getPool().query(
     `insert into contribuicao_outra_fonte
@@ -95,57 +154,6 @@ try {
                    atualizado_em = now()`,
     [empresa.id, origem.rows[0].prestador_id, `${competencia}-01`],
   );
-
-  await salvarMedicaoMensal({
-    empresaId: empresa.id,
-    vinculoId: origem.rows[0].vinculo_id,
-    competencia,
-    tipo: "PERCENTUAL",
-    percentual: "100",
-    quantidade: "",
-    valorUnitario: "",
-    valor: "",
-    evidenciaReferencia: "Relatório consolidado sintético CI 2026-07",
-    evidenciaHash: "d".repeat(64),
-    conferente: ator,
-    observacao: "Medição integral para o teste produtivo multi-vínculo.",
-  });
-
-  const segundo = await getPool().query<{
-    termo_id: string;
-    meta_id: string;
-    vinculo_id: string;
-  }>(
-    `with termo_novo as (
-       insert into termo
-         (empresa_id, numero, descricao, modalidade, inicio, fim, valor_global)
-       values
-         ($1, $3, 'Termo sintético de consolidação',
-          'TESTE', date '2026-01-01', date '2026-12-31', 50000)
-       returning id
-     ), meta_nova as (
-       insert into termo_meta (termo_id, codigo, descricao)
-       select id, 'META-CONSOLIDADA', 'Meta sintética de consolidação'
-         from termo_novo
-       returning id, termo_id
-     ), vinculo_novo as (
-       insert into prestador_vinculo
-         (empresa_id, prestador_id, termo_id, meta_id, atividade,
-          inicio, fim, valor_retribuicao, exige_medicao_mensal)
-       select $1, $2, meta_nova.termo_id, meta_nova.id,
-              'Atividade sintética em segundo lote',
-              date '2026-01-01', date '2026-12-31', 1920, false
-         from meta_nova
-       returning id, termo_id, meta_id
-     )
-     select termo_id, meta_id, id vinculo_id from vinculo_novo`,
-    [
-      empresa.id,
-      origem.rows[0].prestador_id,
-      `CI-CONSOLIDADO-${competencia.replace("-", "")}`,
-    ],
-  );
-  assert.equal(segundo.rowCount, 1, "Segundo Vínculo sintético não foi criado.");
 
   const materializacao = await materializarCasosConsolidacao({
     empresaId: empresa.id,
@@ -199,8 +207,8 @@ try {
   });
   const folhaSecundaria = await criarFolha({
     empresaId: empresa.id,
-    termoId: segundo.rows[0].termo_id,
-    metaId: segundo.rows[0].meta_id,
+    termoId: origem.rows[0].segundo_termo_id,
+    metaId: origem.rows[0].segundo_meta_id,
     competencia,
     ator,
   });
