@@ -16,6 +16,7 @@ import { listarSimulacoesConsolidacaoFiscal } from "@/db/simulacoes-consolidacao
 import {
   avaliarAtivacaoConsolidacaoProdutiva,
 } from "@/lib/aplicacao-consolidacao";
+import { destinoInternoSeguro } from "@/lib/bloqueios-orientados";
 import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 import {
   rotuloStatusSimulacao,
@@ -27,6 +28,7 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{
   competencia?: string | string[];
+  retorno?: string | string[];
   erro?: string | string[];
   sucesso?: string | string[];
 }>;
@@ -74,6 +76,10 @@ export default async function SimulacoesConsolidacaoPage({
 }) {
   const params = await searchParams;
   const competencia = await lerCompetenciaContexto(params.competencia);
+  const retorno = destinoInternoSeguro(
+    primeiro(params.retorno),
+    `/folhas?competencia=${encodeURIComponent(competencia)}`,
+  );
   const sucesso = primeiro(params.sucesso);
   let erro = primeiro(params.erro);
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
@@ -154,9 +160,12 @@ export default async function SimulacoesConsolidacaoPage({
         <div className="button-row">
           <Link
             className="button secondary"
-            href={`/conferencia-entre-folhas?competencia=${encodeURIComponent(competencia)}`}
+            href={`/conferencia-entre-folhas?competencia=${encodeURIComponent(competencia)}&retorno=${encodeURIComponent(retorno)}`}
           >
             <ArrowLeft size={16} /> Casos mensais
+          </Link>
+          <Link className="button secondary" href={retorno}>
+            Voltar à folha
           </Link>
           {simulacoes.length > 0 && (
             <Link
@@ -239,6 +248,7 @@ export default async function SimulacoesConsolidacaoPage({
         {elegiveis.map((caso) => (
           <form action={simularCaso} className="crud-form" key={caso.id}>
             <input type="hidden" name="competencia" value={competencia} />
+            <input type="hidden" name="retorno" value={retorno} />
             <input type="hidden" name="casoId" value={caso.id} />
             <label>
               <span>Pessoa e decisão</span>
@@ -381,6 +391,7 @@ export default async function SimulacoesConsolidacaoPage({
           {simulacao.status === "SIMULADA" && (
             <form action={alterarStatusSimulacao} className="crud-form">
               <input type="hidden" name="competencia" value={competencia} />
+              <input type="hidden" name="retorno" value={retorno} />
               <input type="hidden" name="simulacaoId" value={simulacao.id} />
               <input type="hidden" name="status" value="EM_HOMOLOGACAO" />
               <label>
@@ -404,6 +415,7 @@ export default async function SimulacoesConsolidacaoPage({
           {simulacao.status === "EM_HOMOLOGACAO" && (
             <form action={alterarStatusSimulacao} className="crud-form">
               <input type="hidden" name="competencia" value={competencia} />
+              <input type="hidden" name="retorno" value={retorno} />
               <input type="hidden" name="simulacaoId" value={simulacao.id} />
               <label>
                 <span>Decisão do RH</span>

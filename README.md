@@ -68,14 +68,14 @@ Este primeiro incremento contém:
   com evidência, conferência e bloqueio quando obrigatórias;
 - homologação paralela por CSV contra GIW ou planilha do RH, com comparação por
   matrícula e cinco totais em centavos, hashes, idempotência e histórico imutável;
-- bloqueio transacional da mesma pessoa em Folhas separadas da competência enquanto
-  o rateio fiscal multi-lote não estiver homologado;
+- processamento permitido para a mesma pessoa em Folhas separadas na competência,
+  com consolidação e rateio fiscal multi-lote obrigatórios somente antes do fechamento;
 - diagnóstico mensal de pessoas multi-lote, com casos versionados por hash, fontes
   congeladas, decisão auditada do RH, invalidação automática e exportação CSV;
 - simulação fiscal consolidada por Pessoa e competência, com INSS/IRRF agregados,
   rateio determinístico por maior resto, fontes imutáveis, quatro hashes, estados de
-  homologação e espelho CSV; o consumo produtivo exige três configurações explícitas,
-  uma simulação homologada ainda atual e a cobertura de todas as Folhas da Pessoa;
+  homologação e espelho CSV; o consumo produtivo exige uma simulação atual e a
+  cobertura de todas as Folhas da Pessoa antes do fechamento;
 - painel inicial totalmente conectado ao PostgreSQL, sem números demonstrativos;
 - homologação mensal com oito controles integrados, incluindo prontidão bancária, aprovação
   auditada, dossiê CSV e campanha de três competências para execução paralela;

@@ -20,6 +20,7 @@ import { BloqueioOrientado } from "@/components/bloqueio-orientado";
 import { ProcessingAutoRefresh } from "@/components/processing-auto-refresh";
 import { StatusBadge } from "@/components/ui";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
+import { diagnosticarConsolidacaoMensal } from "@/db/consolidacoes";
 import { carregarFolha } from "@/db/folhas";
 import { carregarHomologacoesFolha } from "@/db/homologacoes";
 import { nomeRegimePrevidenciario } from "@/lib/enquadramento-previdenciario";
@@ -98,12 +99,19 @@ export default async function FolhaDetalhePage({
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
   let dados: Awaited<ReturnType<typeof carregarFolha>>;
   let homologacoes: Awaited<ReturnType<typeof carregarHomologacoesFolha>>;
+  let diagnosticoConsolidacao: Awaited<
+    ReturnType<typeof diagnosticarConsolidacaoMensal>
+  > | null = null;
   try {
     empresa = await resolverEmpresaAtiva();
     [dados, homologacoes] = await Promise.all([
       carregarFolha(empresa.id, folhaId),
       carregarHomologacoesFolha(empresa.id, folhaId),
     ]);
+    diagnosticoConsolidacao = await diagnosticarConsolidacaoMensal(
+      empresa.id,
+      dados.folha.competencia.slice(0, 7),
+    );
   } catch {
     notFound();
   }
@@ -141,6 +149,11 @@ export default async function FolhaDetalhePage({
   const simulacoesAplicadas = [
     ...new Set(rateiosHomologados.map((item) => item.simulacaoId)),
   ];
+  const vinculosDaFolha = new Set(dados.itens.map((item) => item.vinculo_id));
+  const conflitosDestaFolha =
+    diagnosticoConsolidacao?.conflitos.filter((conflito) =>
+      conflito.fontes.some((fonte) => vinculosDaFolha.has(fonte.vinculoId)),
+    ) ?? [];
   const totais = dados.itens.reduce(
     (total, item) => ({
       proventos: total.proventos + Number(item.total_proventos),
@@ -380,6 +393,28 @@ export default async function FolhaDetalhePage({
                 . O ID e o hash completos estão congelados na memória JSON.
               </p>
             </div>
+          </section>
+        )}
+
+        {calculada && conflitosDestaFolha.length > 0 && rateiosHomologados.length === 0 && (
+          <section className="alert-box warning" id="consolidacao">
+            <AlertTriangle size={22} />
+            <div>
+              <strong>Antes de fechar, consolide os impostos por CPF</strong>
+              <p>
+                {conflitosDestaFolha.length === 1
+                  ? "Uma pessoa desta Folha também possui pagamento em outro lote desta competência."
+                  : `${conflitosDestaFolha.length} pessoas desta Folha também possuem pagamento em outros lotes desta competência.`}
+                {" "}
+                O sistema soma os rendimentos mensais e rateia INSS e IRRF entre as Folhas, sem juntar os pagamentos.
+              </p>
+            </div>
+            <Link
+              className="button primary"
+              href={`/conferencia-entre-folhas?competencia=${folha.competencia.slice(0, 7)}&retorno=${encodeURIComponent(`/folhas/${folha.id}`)}`}
+            >
+              Consolidar impostos desta competência
+            </Link>
           </section>
         )}
 

@@ -8,12 +8,19 @@ import {
   materializarCasosConsolidacao,
 } from "@/db/consolidacoes";
 import { caminhoAplicacao } from "@/lib/base-path";
+import { destinoInternoSeguro } from "@/lib/bloqueios-orientados";
 
-function destino(competencia: string, texto: string, erro = false) {
+function destino(
+  competencia: string,
+  texto: string,
+  erro = false,
+  retorno = "",
+) {
   const params = new URLSearchParams({
     competencia,
     [erro ? "erro" : "sucesso"]: texto,
   });
+  if (retorno) params.set("retorno", retorno);
   return caminhoAplicacao(`/conferencia-entre-folhas?${params.toString()}`);
 }
 
@@ -33,6 +40,7 @@ function mensagem(error: unknown) {
 
 export async function congelarDiagnostico(formData: FormData) {
   const competencia = String(formData.get("competencia") ?? "");
+  const retorno = destinoInternoSeguro(String(formData.get("retorno") ?? ""), "");
   let erro = "";
   let resultado = "";
   try {
@@ -51,11 +59,12 @@ export async function congelarDiagnostico(formData: FormData) {
     erro = mensagem(error);
   }
   revalidatePath("/conferencia-entre-folhas");
-  redirect(destino(competencia, erro || resultado, Boolean(erro)));
+  redirect(destino(competencia, erro || resultado, Boolean(erro), retorno));
 }
 
 export async function revisarCaso(formData: FormData) {
   const competencia = String(formData.get("competencia") ?? "");
+  const retorno = destinoInternoSeguro(String(formData.get("retorno") ?? ""), "");
   let erro = "";
   let resultado = "";
   try {
@@ -78,5 +87,5 @@ export async function revisarCaso(formData: FormData) {
     erro = mensagem(error);
   }
   revalidatePath("/conferencia-entre-folhas");
-  redirect(destino(competencia, erro || resultado, Boolean(erro)));
+  redirect(destino(competencia, erro || resultado, Boolean(erro), retorno));
 }

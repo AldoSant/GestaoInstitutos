@@ -15,6 +15,7 @@ import {
   listarCasosConsolidacao,
 } from "@/db/consolidacoes";
 import { rotuloDecisao } from "@/lib/caso-consolidacao";
+import { destinoInternoSeguro } from "@/lib/bloqueios-orientados";
 import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 import { congelarDiagnostico, revisarCaso } from "./actions";
 
@@ -22,6 +23,7 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{
   competencia?: string | string[];
+  retorno?: string | string[];
   erro?: string | string[];
   sucesso?: string | string[];
 }>;
@@ -60,6 +62,10 @@ export default async function ConsolidacoesPage({
 }) {
   const params = await searchParams;
   const competencia = await lerCompetenciaContexto(params.competencia);
+  const retorno = destinoInternoSeguro(
+    primeiro(params.retorno),
+    `/folhas?competencia=${encodeURIComponent(competencia)}`,
+  );
   const sucesso = primeiro(params.sucesso);
   let erro = primeiro(params.erro);
   let empresa: Awaited<ReturnType<typeof resolverEmpresaAtiva>>;
@@ -130,9 +136,12 @@ export default async function ConsolidacoesPage({
       }}
       actions={
         <div className="button-row">
+          <Link className="button secondary" href={retorno}>
+            Voltar à folha
+          </Link>
           <Link
             className="button secondary"
-            href={`/conferencia-entre-folhas/simulacoes?competencia=${encodeURIComponent(competencia)}`}
+            href={`/conferencia-entre-folhas/simulacoes?competencia=${encodeURIComponent(competencia)}&retorno=${encodeURIComponent(retorno)}`}
           >
             <GitMerge size={16} /> Simulações fiscais
           </Link>
@@ -198,6 +207,7 @@ export default async function ConsolidacoesPage({
         {diagnostico && diagnostico.pessoasMultilote > 0 && (
           <form action={congelarDiagnostico} className="crud-form">
             <input type="hidden" name="competencia" value={competencia} />
+            <input type="hidden" name="retorno" value={retorno} />
             <label>
               <span>Responsável pelo congelamento</span>
               <input
@@ -378,6 +388,7 @@ export default async function ConsolidacoesPage({
             hashesAtuais.has(caso.hash_fontes) ? (
               <form action={revisarCaso} className="crud-form">
                 <input type="hidden" name="competencia" value={competencia} />
+                <input type="hidden" name="retorno" value={retorno} />
                 <input type="hidden" name="casoId" value={caso.id} />
                 <label>
                   <span>Andamento</span>

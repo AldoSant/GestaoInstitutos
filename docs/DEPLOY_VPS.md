@@ -29,8 +29,10 @@ Defina no `.env`:
   tiver mais de uma organização ativa;
 - demais variáveis conforme o ambiente.
 
-Mantenha `FOLHA_CONSOLIDADA_PRODUTIVA=false` até a homologação real do rateio
-multi-vínculo. A configuração é compartilhada pelos serviços web e worker.
+Para a operação do Instituto, mantenha `FOLHA_CONSOLIDADA_PRODUTIVA=true`.
+O processamento de duas Folhas da mesma pessoa é permitido; a consolidação e o
+rateio de INSS/IRRF são exigidos apenas antes do fechamento. A configuração é
+compartilhada pelos serviços web e worker.
 
 O `.env` nunca deve ser versionado.
 
@@ -60,12 +62,15 @@ A tarefa deve terminar como `CONCLUIDA`. O worker também registra
 `PROCESSAR_FOLHA`; esse handler valida empresa e revisão antes de materializar a memória
 em uma única transação.
 
-### Ativação controlada do rateio multi-vínculo
+### Consolidação multi-vínculo
 
-Depois da aprovação formal da competência e somente para a organização homologada:
+O Compose já ativa a consolidação por padrão. Em instalações que possuíam uma
+variável antiga com valor `false`, atualize o `.env` para:
 
 ```dotenv
 FOLHA_CONSOLIDADA_PRODUTIVA=true
+# Opcional: restringe a ativação a uma empresa e competência específicas.
+# Se informar um, informe os dois.
 FOLHA_CONSOLIDADA_EMPRESA_ID=UUID-REAL-DA-EMPRESA
 FOLHA_CONSOLIDADA_INICIO=AAAA-MM
 ```
@@ -77,19 +82,16 @@ docker compose exec database psql -U instituto -d instituto_folha \
   -c "select id, cnpj, razao_social from empresa where ativa order by razao_social;"
 ```
 
-Antes de reiniciar, confirme na aplicação que todos os casos multi-vínculo da
-competência estão resolvidos e que as simulações correspondentes estão homologadas.
-Depois:
+Antes do fechamento, confirme na aplicação a memória de consolidação da pessoa.
+Depois de alterar o `.env`:
 
 ```bash
 docker compose up -d --force-recreate web worker
 docker compose logs --since 5m web worker
 ```
 
-Faça a primeira Folha em uma competência de homologação. O servidor recusará fontes
-obsoletas, Vínculos diferentes da simulação, proventos alterados e fechamento sem todas
-as Folhas da Pessoa. Para interromper novas operações multi-vínculo, restaure
-`FOLHA_CONSOLIDADA_PRODUTIVA=false` e recrie web e worker. Folhas fechadas não são
+O servidor recusará fontes obsoletas, Vínculos diferentes da simulação, proventos
+alterados e fechamento sem todas as Folhas da Pessoa. Folhas fechadas não são
 reescritas.
 
 ## Migrações

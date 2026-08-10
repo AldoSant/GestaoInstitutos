@@ -8,11 +8,18 @@ import {
   criarSimulacaoConsolidacaoFiscal,
 } from "@/db/simulacoes-consolidacao";
 import { caminhoAplicacao } from "@/lib/base-path";
+import { destinoInternoSeguro } from "@/lib/bloqueios-orientados";
 
-function destino(competencia: string, texto: string, erro = false) {
+function destino(
+  competencia: string,
+  texto: string,
+  erro = false,
+  retorno = "",
+) {
   return caminhoAplicacao(`/conferencia-entre-folhas/simulacoes?${new URLSearchParams({
     competencia,
     [erro ? "erro" : "sucesso"]: texto,
+    ...(retorno ? { retorno } : {}),
   }).toString()}`);
 }
 
@@ -38,6 +45,7 @@ function mensagem(error: unknown) {
 
 export async function simularCaso(formData: FormData) {
   const competencia = String(formData.get("competencia") ?? "");
+  const retorno = destinoInternoSeguro(String(formData.get("retorno") ?? ""), "");
   let texto = "";
   let erro = false;
   try {
@@ -55,11 +63,12 @@ export async function simularCaso(formData: FormData) {
     erro = true;
   }
   revalidatePath("/conferencia-entre-folhas/simulacoes");
-  redirect(destino(competencia, texto, erro));
+  redirect(destino(competencia, texto, erro, retorno));
 }
 
 export async function alterarStatusSimulacao(formData: FormData) {
   const competencia = String(formData.get("competencia") ?? "");
+  const retorno = destinoInternoSeguro(String(formData.get("retorno") ?? ""), "");
   let texto = "";
   let erro = false;
   try {
@@ -77,5 +86,5 @@ export async function alterarStatusSimulacao(formData: FormData) {
     erro = true;
   }
   revalidatePath("/conferencia-entre-folhas/simulacoes");
-  redirect(destino(competencia, texto, erro));
+  redirect(destino(competencia, texto, erro, retorno));
 }
