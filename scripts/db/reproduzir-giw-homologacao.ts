@@ -471,10 +471,15 @@ async function executar() {
       alvo,
       namespace,
     );
-    const existente = await getPool().query<{ id: string; status: string }>(
-      `select id, status from folha
+    const existente = await getPool().query<{
+      id: string;
+      status: string;
+      revisao: number;
+    }>(
+      `select id, status, revisao from folha
         where empresa_id = $1 and termo_id = $2 and meta_id = $3
           and competencia = $4::date and status <> 'CANCELADA'
+        order by revisao desc, numero desc
         limit 1`,
       [empresa.id, isolada.termoId, isolada.metaId, `${alvo.competencia}-01`],
     );
@@ -498,7 +503,18 @@ async function executar() {
             : "Valor histórico reproduzido exclusivamente para comparação em homologação.",
       });
     }
-    const folha = await criarFolha({ empresaId: empresa.id, termoId: isolada.termoId, metaId: isolada.metaId, competencia: alvo.competencia, ator: ATOR });
+    const folha = existente.rows[0] ?? await criarFolha({
+      empresaId: empresa.id,
+      termoId: isolada.termoId,
+      metaId: isolada.metaId,
+      competencia: alvo.competencia,
+      ator: ATOR,
+    });
+    if (!["RASCUNHO", "ABERTA"].includes(folha.status)) {
+      throw new Error(
+        `Replay HML não pode retomar Folha em estado ${folha.status}.`,
+      );
+    }
     await processarFolha(folha.id, ATOR, empresa.id, folha.revisao);
     await registrarConferenciaFolha({
       empresaId: empresa.id,
