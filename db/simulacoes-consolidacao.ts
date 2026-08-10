@@ -878,12 +878,14 @@ export async function carregarRateioProdutivoHomologado({
     irrf_bruto: string;
     irrf_reducao: string;
     valor_irrf: string;
+    memoria: Record<string, unknown>;
   }>(
     `select id, caso_id, hash_fontes, hash_regra, hash_enquadramento,
             hash_resultado, total_proventos::text, total_descontos::text,
             total_liquido::text, base_inss_bruta::text, base_inss::text,
             valor_inss::text, rendimentos_irrf::text, base_irrf::text,
-            irrf_bruto::text, irrf_reducao::text, valor_irrf::text
+            irrf_bruto::text, irrf_reducao::text, valor_irrf::text,
+            memoria
        from consolidacao_fiscal_simulacao
       where empresa_id = $1 and pessoa_id = $2 and competencia = $3::date
         and status = 'HOMOLOGADA'
@@ -1044,6 +1046,24 @@ export async function carregarRateioProdutivoHomologado({
     >,
   ) => rateios.reduce((total, rateio) => total + rateio[campo], 0);
   const totaisEsperados = simulacao.rows[0];
+  const outrasFontesMemoria =
+    totaisEsperados.memoria && typeof totaisEsperados.memoria === "object"
+      ? (totaisEsperados.memoria.outrasFontes as Record<string, unknown> | undefined)
+      : undefined;
+  const rendimentosOutrasFontes =
+    outrasFontesMemoria?.rendimentosTributaveisCentavos ?? 0;
+  if (
+    typeof rendimentosOutrasFontes !== "number" ||
+    !Number.isSafeInteger(rendimentosOutrasFontes) ||
+    rendimentosOutrasFontes < 0
+  ) {
+    throw new Error("A memória de rendimentos de outra fonte é inválida.");
+  }
+  const rendimentosIrrfInstituto =
+    paraCentavos(totaisEsperados.rendimentos_irrf) - rendimentosOutrasFontes;
+  if (rendimentosIrrfInstituto < 0) {
+    throw new Error("Os rendimentos de outra fonte excedem o total consolidado.");
+  }
   const divergencias = [
     soma("totalProventosCentavos") ===
     paraCentavos(totaisEsperados.total_proventos)
@@ -1068,7 +1088,7 @@ export async function carregarRateioProdutivoHomologado({
       ? null
       : "INSS",
     soma("baseIrrfBrutaCentavos") ===
-    paraCentavos(totaisEsperados.rendimentos_irrf)
+    rendimentosIrrfInstituto
       ? null
       : "RENDIMENTOS IRRF",
     soma("baseIrrfCentavos") === paraCentavos(totaisEsperados.base_irrf)
