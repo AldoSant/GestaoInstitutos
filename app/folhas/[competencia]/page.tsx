@@ -108,12 +108,18 @@ export default async function FolhaDetalhePage({
       carregarFolha(empresa.id, folhaId),
       carregarHomologacoesFolha(empresa.id, folhaId),
     ]);
+  } catch {
+    notFound();
+  }
+  try {
     diagnosticoConsolidacao = await diagnosticarConsolidacaoMensal(
       empresa.id,
       dados.folha.competencia.slice(0, 7),
     );
   } catch {
-    notFound();
+    // A consolidação é um diagnóstico complementar. Uma indisponibilidade
+    // nela não pode esconder uma Folha que foi criada com sucesso.
+    diagnosticoConsolidacao = null;
   }
   const folha = dados.folha;
   const homologacaoAtual = homologacoes.lotes[0];
