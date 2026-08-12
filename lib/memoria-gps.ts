@@ -10,6 +10,7 @@ type ItemGps = {
 
 export type MemoriaGpsIndividual = {
   itemId: string;
+  fonteItemIds: string[];
   nome: string;
   identificador: string;
   codigoReceita: string;
@@ -53,9 +54,18 @@ export function montarMemoriasGpsIndividuais({
   }
 
   const ids = new Set<string>();
-  const memorias = itens
+  const porBeneficiario = new Map<
+    string,
+    {
+      itemIds: string[];
+      nome: string;
+      identificador: string;
+      valorCentavos: number;
+    }
+  >();
+  for (const item of itens
     .filter((item) => item.natureza === "SEGURADO")
-    .map((item) => {
+  ) {
       if (!item.id || ids.has(item.id)) {
         throw new Error("Há item previdenciário duplicado na memória GPS.");
       }
@@ -80,22 +90,41 @@ export function montarMemoriasGpsIndividuais({
       if (valorCentavos <= 0) {
         throw new Error(`A memória GPS de ${nome} exige retenção positiva.`);
       }
-      return {
-        itemId: item.id,
-        nome,
-        identificador,
-        codigoReceita: codigoReceita!,
-        competencia,
-        valorCentavos,
-        vencimento: vencimentoNominalGps(competencia.slice(0, 7)),
-        linhaDigitavel: gerarLinhaDigitavelGps({
-          codigoReceita: codigoReceita!,
-          competencia: competencia.slice(0, 7),
+      const pessoaId = texto(pessoa.id);
+      const chave = pessoaId ? `pessoa:${pessoaId}` : `identificador:${identificador}`;
+      const existente = porBeneficiario.get(chave);
+      if (existente) {
+        if (existente.nome !== nome || existente.identificador !== identificador) {
+          throw new Error("A memória GPS possui dados conflitantes para o mesmo beneficiário.");
+        }
+        existente.itemIds.push(item.id);
+        existente.valorCentavos += valorCentavos;
+      } else {
+        porBeneficiario.set(chave, {
+          itemIds: [item.id],
+          nome,
           identificador,
-          totalCentavos: valorCentavos,
-        }),
-      };
-    })
+          valorCentavos,
+        });
+      }
+  }
+  const memorias = [...porBeneficiario.values()]
+    .map((beneficiario) => ({
+      itemId: beneficiario.itemIds[0],
+      fonteItemIds: beneficiario.itemIds,
+      nome: beneficiario.nome,
+      identificador: beneficiario.identificador,
+      codigoReceita: codigoReceita!,
+      competencia,
+      valorCentavos: beneficiario.valorCentavos,
+      vencimento: vencimentoNominalGps(competencia.slice(0, 7)),
+      linhaDigitavel: gerarLinhaDigitavelGps({
+        codigoReceita: codigoReceita!,
+        competencia: competencia.slice(0, 7),
+        identificador: beneficiario.identificador,
+        totalCentavos: beneficiario.valorCentavos,
+      }),
+    }))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR") || a.itemId.localeCompare(b.itemId));
 
   if (memorias.length === 0) {

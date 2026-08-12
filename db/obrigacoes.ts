@@ -269,14 +269,14 @@ export async function apurarRetencoesSegurados({
             perfil_recolhimento_id, competencia, beneficiario_nome,
             identificador, codigo_receita, principal, juros, multa, total,
             status, snapshot)
-           select item.empresa_id, item.obrigacao_id, item.id, $2::uuid, $3::date,
-                 item.snapshot #>> '{pessoa,nome}',
+           select item.empresa_id, item.obrigacao_id, min(item.id::text)::uuid, $2::uuid, $3::date,
+                 min(item.snapshot #>> '{pessoa,nome}'),
                  identificacao.nit,
-                 $4, item.valor, 0, 0, item.valor, 'PREPARADA',
+                 $4, sum(item.valor), 0, 0, sum(item.valor), 'PREPARADA',
                 jsonb_build_object(
-                  'obrigacaoItemId', item.id,
-                  'folhaItemId', item.folha_item_id,
-                  'fonte', item.snapshot,
+                  'obrigacaoItemIds', jsonb_agg(item.id::text order by item.id),
+                  'folhaItemIds', jsonb_agg(item.folha_item_id::text order by item.id),
+                  'fontes', jsonb_agg(item.snapshot order by item.id),
                   'perfilRecolhimentoId', ($2::uuid)::text
                 )
             from obrigacao_fiscal_item item
@@ -293,7 +293,9 @@ export async function apurarRetencoesSegurados({
              and item.natureza = 'SEGURADO'
              and item.valor > 0
              and identificacao.nit ~ '^[0-9]{8,14}$'
-           order by item.id`,
+           group by item.empresa_id, item.obrigacao_id,
+                    item.snapshot #>> '{pessoa,id}', identificacao.nit
+           order by min(item.snapshot #>> '{pessoa,nome}'), min(item.id::text)`,
         [
           obrigacaoId,
           perfilRecolhimento.id,

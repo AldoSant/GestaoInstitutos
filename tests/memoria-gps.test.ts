@@ -24,6 +24,7 @@ test("prepara uma memória individual de GPS a partir de item fechado", () => {
   assert.deepEqual(resultado, [
     {
       itemId: "item-1",
+      fonteItemIds: ["item-1"],
       nome: "Prestador de teste",
       identificador: "12345678901",
       codigoReceita: "1007",
@@ -33,6 +34,23 @@ test("prepara uma memória individual de GPS a partir de item fechado", () => {
       linhaDigitavel: "85820000001-5 10000270100-2 70001234567-3 89012026073-1",
     },
   ]);
+});
+
+test("consolida itens da mesma pessoa em uma única GPS da competência", () => {
+  const resultado = montarMemoriasGpsIndividuais({
+    ...base,
+    itens: [
+      ...base.itens,
+      {
+        ...base.itens[0],
+        id: "item-2",
+        valor: "35.00",
+      },
+    ],
+  });
+  assert.equal(resultado.length, 1);
+  assert.equal(resultado[0].valorCentavos, 14500);
+  assert.deepEqual(resultado[0].fonteItemIds, ["item-1", "item-2"]);
 });
 
 test("recusa GPS fora do perfil ou sem identificador congelado", () => {

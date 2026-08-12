@@ -30,8 +30,10 @@ export function gerarCsvMemoriasGps(memorias: MemoriaGpsIndividual[]) {
   }
   const ids = new Set<string>();
   const linhas = memorias.map((item, indice) => {
-    if (ids.has(item.itemId)) throw new Error("Há item GPS duplicado no CSV.");
-    ids.add(item.itemId);
+    for (const itemId of item.fonteItemIds) {
+      if (ids.has(itemId)) throw new Error("Há item GPS duplicado no CSV.");
+      ids.add(itemId);
+    }
     return [
       String(indice + 1),
       celula(item.competencia.slice(0, 7)),
@@ -43,7 +45,7 @@ export function gerarCsvMemoriasGps(memorias: MemoriaGpsIndividual[]) {
       "0,00",
       moedaCsv(item.valorCentavos),
       celula(item.linhaDigitavel),
-      celula(item.itemId),
+      celula(item.fonteItemIds.join(",")),
     ].join(";");
   });
   return `\uFEFF${CABECALHO.join(";")}\r\n${linhas.join("\r\n")}\r\n`;
