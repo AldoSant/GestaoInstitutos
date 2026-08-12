@@ -218,10 +218,12 @@ sem alterar o código. Os snapshots continuam fora do Git e são montados soment
 leitura dentro do container de migração.
 
 Valide `/api/health`, logs, login e uma consulta de leitura após a atualização. O
-endpoint de saúde agora devolve HTTP 503 quando não consegue consultar o PostgreSQL;
-uma resposta HTTP 200 confirma aplicação e banco acessíveis. Compare também o campo
-`revision` da resposta com `git rev-parse --short=12 HEAD`; `unknown` significa que o
-procedimento de publicação não registrou a revisão e deve ser corrigido.
+endpoint de saúde devolve HTTP 503 quando não consegue consultar o PostgreSQL ou
+quando o schema não contém as colunas exigidas pela revisão em execução; uma resposta
+HTTP 200 com `database: "ok"` e `schema: "ok"` confirma aplicação, banco e schema
+compatíveis. Compare também o campo `revision` da resposta com
+`git rev-parse --short=12 HEAD`; `unknown` significa que o procedimento de publicação
+não registrou a revisão e deve ser corrigido.
 
 ## Antes de ampliar o acesso além da equipe interna
 
