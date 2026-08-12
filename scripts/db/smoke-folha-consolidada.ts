@@ -66,19 +66,20 @@ try {
   }>(
     `with pessoa_nova as (
        insert into pessoa
-         (empresa_id, tipo, nome_razao_social, cpf, papel_prestador, ativo)
-       values ($1, 'FISICA', $2, $3, true, true)
+         (empresa_id, tipo, nome_razao_social, cpf, inscricao_inss,
+          papel_prestador, ativo)
+       values ($1, 'FISICA', $2, $3, $4, true, true)
        returning id
      ), prestador_novo as (
        insert into prestador
          (empresa_id, pessoa_id, matricula, categoria_contribuinte, ativo)
-       select $1, pessoa_nova.id, $4, 'CONTRIBUINTE_INDIVIDUAL', true
+       select $1, pessoa_nova.id, $5, 'CONTRIBUINTE_INDIVIDUAL', true
          from pessoa_nova
        returning id, pessoa_id
      ), termo_principal as (
        insert into termo
          (empresa_id, numero, descricao, modalidade, inicio, fim, valor_global)
-       values ($1, $5, 'Termo principal sintético de consolidação',
+       values ($1, $6, 'Termo principal sintético de consolidação',
                'TESTE', date '2026-01-01', date '2026-12-31', 50000)
        returning id
      ), meta_principal as (
@@ -98,7 +99,7 @@ try {
      ), termo_secundario as (
        insert into termo
          (empresa_id, numero, descricao, modalidade, inicio, fim, valor_global)
-       values ($1, $6, 'Termo secundário sintético de consolidação',
+       values ($1, $7, 'Termo secundário sintético de consolidação',
                'TESTE', date '2026-01-01', date '2026-12-31', 50000)
        returning id
      ), meta_secundaria as (
@@ -130,6 +131,7 @@ try {
       empresa.id,
       `Prestador sintético ${sufixo}`,
       cpfSintetico,
+      `9${Date.now().toString().slice(-10)}`,
       `CI-${sufixo}`,
       `CI-CONSOLIDADO-${competencia.replace("-", "")}-${sufixo}-A`,
       `CI-CONSOLIDADO-${competencia.replace("-", "")}-${sufixo}-B`,
@@ -343,6 +345,21 @@ try {
     [empresa.id, obrigacao.id, folhasDoCenario],
   );
   assert.equal(segurado.rows[0].valor, simulacao.valor_inss);
+  const gpsConsolidada = await getPool().query<{ total: number }>(
+    `select count(*)::int total
+       from guia_gps_individual guia
+       join obrigacao_fiscal_item item on item.id = guia.obrigacao_item_id
+       join folha_item folha_item on folha_item.id = item.folha_item_id
+       join prestador_vinculo vinculo on vinculo.id = folha_item.vinculo_id
+      where guia.empresa_id = $1 and guia.obrigacao_id = $2
+        and vinculo.prestador_id = $3`,
+    [empresa.id, obrigacao.id, origem.rows[0].prestador_id],
+  );
+  assert.equal(
+    gpsConsolidada.rows[0].total,
+    1,
+    "A mesma pessoa em duas Folhas deve receber uma única GPS consolidada.",
+  );
 
   console.log(
     `Folhas ${folhaPrincipal.id} e ${folhaSecundaria.id} fechadas com ` +
