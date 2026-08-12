@@ -57,9 +57,15 @@ export default async function RelatorioObrigacaoPage({
   try {
     empresa = await resolverEmpresaAtiva();
     dados = await carregarEspelhoObrigacao(empresa.id, id);
-    guiasGps = await listarGuiasGpsIndividuais(empresa.id, id);
   } catch {
     notFound();
+  }
+  try {
+    guiasGps = await listarGuiasGpsIndividuais(empresa.id, id);
+  } catch {
+    // As guias complementam o dossiê GPS, mas uma indisponibilidade nessa
+    // consulta não pode esconder a Obrigação que já foi carregada.
+    guiasGps = [];
   }
   const obrigacao = dados.obrigacao;
   const resumo = montarResumoDossieObrigacao({
