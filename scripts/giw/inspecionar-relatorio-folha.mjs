@@ -56,15 +56,21 @@ try {
     const labels = new Map(
       Array.from(body.querySelectorAll("label"), (label) => [label.htmlFor, normalizar(label.textContent)]),
     );
+    const visivel = (element) => {
+      const estilo = window.getComputedStyle(element);
+      const caixa = element.getBoundingClientRect();
+      return estilo.display !== "none" && estilo.visibility !== "hidden" && caixa.width > 0;
+    };
     return {
-      campos: Array.from(body.querySelectorAll("input:visible, select:visible, textarea:visible"))
+      campos: Array.from(body.querySelectorAll("input, select, textarea"))
+        .filter(visivel)
         .map((campo) => ({
           id: campo.id || null,
           label: labels.get(campo.id) ?? null,
           possuiValor: "value" in campo && String(campo.value ?? "").trim().length > 0,
           disabled: "disabled" in campo && Boolean(campo.disabled),
         })),
-      botoes: Array.from(body.querySelectorAll("button:visible")).map((botao) => ({
+      botoes: Array.from(body.querySelectorAll("button")).filter(visivel).map((botao) => ({
         texto: normalizar(botao.textContent),
         disabled: Boolean(botao.disabled),
         dica: botao.getAttribute("data-original-title") ?? botao.getAttribute("title"),
