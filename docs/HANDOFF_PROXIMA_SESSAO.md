@@ -80,8 +80,10 @@ cd /home/ubuntu/.openclaw/workspace/projects/gestao-institutos
 git fetch origin
 git checkout main
 git pull --ff-only origin main
-docker compose -f compose.vps.yaml up -d --build
-curl -fsS http://localhost:3000/gestao-institutos/api/health
+# Executar com uma conta que consiga ler o .env de produção.
+docker compose -f compose.yaml -f compose.vps.yaml --profile tools run --rm migrate
+sudo /usr/local/sbin/gestao-institutos-deploy deploy
+curl -fsS http://127.0.0.1:3001/gestao-institutos/api/health
 ```
 
 O comando deve ser executado pelo responsável com acesso à produção. O agente Codex

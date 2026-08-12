@@ -90,7 +90,7 @@ Este primeiro incremento contém:
   terminais e invalidação automática das evidências afetadas;
 - cadastro persistente de Eventos/Rubricas e lançamentos recorrentes por Vínculo e
   competência, com validação de natureza, incidências, vigência e sobreposição;
-- migrações Drizzle versionadas até `0029_fgts-digital-foundation`;
+- migrações Drizzle versionadas até `0043_outra_fonte_irrf`;
 - autenticação de administrador único com credenciais exclusivas do ambiente,
   sessão assinada e proteção centralizada das rotas;
 - Dockerfile e Compose para implantação própria;
