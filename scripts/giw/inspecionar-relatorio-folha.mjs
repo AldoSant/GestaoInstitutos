@@ -55,8 +55,11 @@ try {
   if ((await botaoFolha.count()) !== 1) {
     throw new Error("O botão de relatório da Folha não foi encontrado.");
   }
-  await botaoFolha.click();
-  await page.waitForTimeout(3_000);
+  const folhaHabilitada = await botaoFolha.isEnabled();
+  if (folhaHabilitada) {
+    await botaoFolha.click();
+    await page.waitForTimeout(3_000);
+  }
 
   await mkdir(dirname(output), { recursive: true });
   await writeFile(
@@ -67,6 +70,7 @@ try {
       source: { system: "GIW", formId, baseUrl: giwBaseUrl, extractedAt: new Date().toISOString() },
       camposAntes,
       botoes: botoes.map((texto) => texto.replace(/\s+/g, " ").trim()).filter(Boolean),
+      folhaHabilitada,
       respostas,
     }, null, 2)}\n`,
     { encoding: "utf8", mode: 0o600 },
