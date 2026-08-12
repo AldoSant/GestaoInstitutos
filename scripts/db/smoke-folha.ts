@@ -30,7 +30,17 @@ import { handlers } from "../worker/handlers";
 
 const trabalhador = "CI:SMOKE_FOLHA";
 
+function argumento(nome: string) {
+  const indice = process.argv.indexOf(nome);
+  return indice >= 0 ? process.argv[indice + 1] ?? "" : "";
+}
+
+const empresaId = argumento("--empresa-id");
+
 try {
+  // A HML pode conter cenários paralelos; quando informado, o alvo precisa
+  // ser explícito para que o smoke nunca escolha uma organização por ordem.
+  if (empresaId) process.env.EMPRESA_ATIVA_ID = empresaId;
   const empresa = await resolverEmpresaAtiva();
   const instrumento = await getPool().query<{
     termo_id: string;
