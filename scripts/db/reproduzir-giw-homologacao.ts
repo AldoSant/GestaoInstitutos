@@ -353,7 +353,7 @@ async function prepararInstrumentoIsoladoHml(
   return { termoId: termo.rows[0].id, metaId: meta.rows[0].id, medicoes };
 }
 
-async function validarPrecondicoes(empresaId: string, itens: ItemLegado[], alvos: FolhaAlvo[]) {
+async function validarPrecondicoes(empresaId: string, itens: ItemLegado[]) {
   const semDestino = itens.filter((item) => !item.termo_id || !item.meta_id || !item.vinculo_id);
   const repetidos = new Map<string, number>();
   for (const item of itens.filter((item) => item.vinculo_id)) {
@@ -433,7 +433,7 @@ async function executar() {
   const namespace = namespaceReplay();
   const itens = await carregarItens(empresa.id, competencias());
   const alvos = agrupar(itens);
-  const precondicoes = await validarPrecondicoes(empresa.id, itens, alvos);
+  const precondicoes = await validarPrecondicoes(empresa.id, itens);
   const resumo = {
     modo: executarDeVerdade ? "EXECUCAO_HML" : "PREVIA_SEM_GRAVACAO",
     namespace,
