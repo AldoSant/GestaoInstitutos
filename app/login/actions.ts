@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { verificarCredenciais } from "@/lib/autenticacao";
-import { basePathAplicacao, caminhoAplicacao } from "@/lib/base-path";
+import { basePathAplicacao, rotaAplicacao } from "@/lib/base-path";
 import {
   COOKIE_SESSAO,
   criarTokenSessao,
@@ -11,7 +11,7 @@ import {
 } from "@/lib/sessao";
 
 function voltarComErro(mensagem: string) {
-  redirect(caminhoAplicacao(`/login?erro=${encodeURIComponent(mensagem)}`));
+  redirect(rotaAplicacao(`/login?erro=${encodeURIComponent(mensagem)}`));
 }
 
 export async function entrar(formData: FormData) {
@@ -33,7 +33,7 @@ export async function entrar(formData: FormData) {
     path: basePathAplicacao() || "/",
     maxAge: DURACAO_SESSAO_SEGUNDOS,
   });
-  redirect(caminhoAplicacao("/"));
+  redirect(rotaAplicacao("/"));
 }
 
 export async function sair() {
@@ -45,5 +45,5 @@ export async function sair() {
     path: basePathAplicacao() || "/",
     maxAge: 0,
   });
-  redirect(caminhoAplicacao("/login"));
+  redirect(rotaAplicacao("/login"));
 }

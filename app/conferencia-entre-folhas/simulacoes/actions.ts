@@ -7,7 +7,7 @@ import {
   atualizarStatusSimulacaoFiscal,
   criarSimulacaoConsolidacaoFiscal,
 } from "@/db/simulacoes-consolidacao";
-import { caminhoAplicacao } from "@/lib/base-path";
+import { rotaAplicacao } from "@/lib/base-path";
 import { destinoInternoSeguro } from "@/lib/bloqueios-orientados";
 
 function destino(
@@ -16,7 +16,7 @@ function destino(
   erro = false,
   retorno = "",
 ) {
-  return caminhoAplicacao(`/conferencia-entre-folhas/simulacoes?${new URLSearchParams({
+  return rotaAplicacao(`/conferencia-entre-folhas/simulacoes?${new URLSearchParams({
     competencia,
     [erro ? "erro" : "sucesso"]: texto,
     ...(retorno ? { retorno } : {}),

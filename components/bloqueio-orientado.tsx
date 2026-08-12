@@ -1,6 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import { caminhoAplicacao } from "@/lib/base-path";
+import { rotaAplicacao } from "@/lib/base-path";
 import type { BloqueioOrientado as DadosBloqueioOrientado } from "@/lib/bloqueios-orientados";
 
 export function BloqueioOrientado({ bloqueio }: { bloqueio: DadosBloqueioOrientado }) {
@@ -11,7 +11,7 @@ export function BloqueioOrientado({ bloqueio }: { bloqueio: DadosBloqueioOrienta
         <strong>{bloqueio.titulo}</strong>
         <p><b>O que falta:</b> {bloqueio.causa}</p>
         <p><b>Impacto:</b> {bloqueio.impacto}</p>
-        <Link className="button secondary" href={caminhoAplicacao(bloqueio.acao.href)}>
+        <Link className="button secondary" href={rotaAplicacao(bloqueio.acao.href)}>
           {bloqueio.acao.rotulo}
         </Link>
       </div>

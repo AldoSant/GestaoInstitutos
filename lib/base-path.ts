@@ -12,5 +12,26 @@ export function basePathAplicacao() {
 
 export function caminhoAplicacao(caminho: string, basePath = basePathAplicacao()) {
   const normalizado = caminho.startsWith("/") ? caminho : `/${caminho}`;
+  if (
+    basePath &&
+    (normalizado === basePath || normalizado.startsWith(`${basePath}/`))
+  ) {
+    return normalizado;
+  }
   return `${basePath}${normalizado}`;
+}
+
+/**
+ * Rota para Link e redirect do App Router. O Next aplica `basePath`
+ * automaticamente nesses dois mecanismos; prefixá-la aqui produz
+ * `/gestao-institutos/gestao-institutos/...`.
+ */
+export function rotaAplicacao(caminho: string, basePath = basePathAplicacao()) {
+  const normalizado = caminho.startsWith("/") ? caminho : `/${caminho}`;
+  if (!basePath) return normalizado;
+  if (normalizado === basePath) return "/";
+  if (normalizado.startsWith(`${basePath}/`)) {
+    return normalizado.slice(basePath.length) || "/";
+  }
+  return normalizado;
 }

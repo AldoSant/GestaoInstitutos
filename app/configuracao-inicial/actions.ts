@@ -6,7 +6,7 @@ import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { publicarEnquadramento } from "@/db/enquadramentos";
 import { publicarPerfilRecolhimento } from "@/db/perfis-recolhimento";
 import { exigirAdministrador } from "@/lib/autorizacao";
-import { caminhoAplicacao } from "@/lib/base-path";
+import { rotaAplicacao } from "@/lib/base-path";
 import { validarEnquadramentoPrevidenciario } from "@/lib/enquadramento-previdenciario";
 import { destinoInternoSeguro } from "@/lib/bloqueios-orientados";
 import { validarPerfilRecolhimento } from "@/lib/perfil-recolhimento";
@@ -19,8 +19,8 @@ export async function concluirConfiguracaoInicial(formData: FormData) {
   await exigirAdministrador();
   const competencia = String(formData.get("competencia") ?? "");
   const destino = competenciaValida(competencia)
-    ? caminhoAplicacao(`/folhas/nova?competencia=${competencia}`)
-    : caminhoAplicacao("/folhas/nova");
+    ? rotaAplicacao(`/folhas/nova?competencia=${competencia}`)
+    : rotaAplicacao("/folhas/nova");
   const validacao = validarEnquadramentoPrevidenciario({
     regime: formData.get("regime"),
     inicioVigencia: formData.get("inicioVigencia"),
@@ -32,7 +32,7 @@ export async function concluirConfiguracaoInicial(formData: FormData) {
   });
   if (!validacao.dados) {
     redirect(
-      `${caminhoAplicacao("/configuracao-inicial")}?erro=${encodeURIComponent(validacao.erros.join(" "))}&competencia=${encodeURIComponent(competencia)}`,
+      `${rotaAplicacao("/configuracao-inicial")}?erro=${encodeURIComponent(validacao.erros.join(" "))}&competencia=${encodeURIComponent(competencia)}`,
     );
   }
 
@@ -58,7 +58,7 @@ export async function concluirConfiguracaoInicial(formData: FormData) {
   }
   if (erro) {
     redirect(
-      `${caminhoAplicacao("/configuracao-inicial")}?erro=${encodeURIComponent(erro)}&competencia=${encodeURIComponent(competencia)}`,
+      `${rotaAplicacao("/configuracao-inicial")}?erro=${encodeURIComponent(erro)}&competencia=${encodeURIComponent(competencia)}`,
     );
   }
 
@@ -87,7 +87,7 @@ export async function concluirPerfilRecolhimento(formData: FormData) {
   });
   if (!validacao.dados) {
     redirect(
-      `${caminhoAplicacao("/configuracao-inicial")}?etapa=recolhimento&competencia=${encodeURIComponent(competencia)}&retorno=${encodeURIComponent(retorno)}&erro=${encodeURIComponent(validacao.erros.join(" "))}`,
+      `${rotaAplicacao("/configuracao-inicial")}?etapa=recolhimento&competencia=${encodeURIComponent(competencia)}&retorno=${encodeURIComponent(retorno)}&erro=${encodeURIComponent(validacao.erros.join(" "))}`,
     );
   }
 
@@ -113,7 +113,7 @@ export async function concluirPerfilRecolhimento(formData: FormData) {
   }
   if (erro) {
     redirect(
-      `${caminhoAplicacao("/configuracao-inicial")}?etapa=recolhimento&competencia=${encodeURIComponent(competencia)}&retorno=${encodeURIComponent(retorno)}&erro=${encodeURIComponent(erro)}`,
+      `${rotaAplicacao("/configuracao-inicial")}?etapa=recolhimento&competencia=${encodeURIComponent(competencia)}&retorno=${encodeURIComponent(retorno)}&erro=${encodeURIComponent(erro)}`,
     );
   }
 
@@ -121,6 +121,6 @@ export async function concluirPerfilRecolhimento(formData: FormData) {
   revalidatePath("/folhas/nova");
   revalidatePath("/obrigacoes");
   redirect(
-    `${caminhoAplicacao(retorno)}${retorno.includes("?") ? "&" : "?"}sucesso=${encodeURIComponent("Regra de recolhimento da empresa salva para esta vigência.")}`,
+    `${rotaAplicacao(retorno)}${retorno.includes("?") ? "&" : "?"}sucesso=${encodeURIComponent("Regra de recolhimento da empresa salva para esta vigência.")}`,
   );
 }

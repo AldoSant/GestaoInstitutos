@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { NextRequest } from "next/server";
 import { verificarCredenciais } from "../lib/autenticacao";
-import { basePathAplicacao, caminhoAplicacao } from "../lib/base-path";
+import { basePathAplicacao, caminhoAplicacao, rotaAplicacao } from "../lib/base-path";
 import {
   COOKIE_SESSAO,
   criarTokenSessao,
@@ -34,6 +34,9 @@ test("normaliza caminhos com e sem base path", () => {
   process.env.APP_BASE_PATH = "/gestao-institutos/";
   assert.equal(basePathAplicacao(), "/gestao-institutos");
   assert.equal(caminhoAplicacao("/login"), "/gestao-institutos/login");
+  assert.equal(caminhoAplicacao("/gestao-institutos/login"), "/gestao-institutos/login");
+  assert.equal(rotaAplicacao("/login"), "/login");
+  assert.equal(rotaAplicacao("/gestao-institutos/login"), "/login");
   delete process.env.APP_BASE_PATH;
 });
 

@@ -7,7 +7,7 @@ import {
   atualizarCasoConsolidacao,
   materializarCasosConsolidacao,
 } from "@/db/consolidacoes";
-import { caminhoAplicacao } from "@/lib/base-path";
+import { rotaAplicacao } from "@/lib/base-path";
 import { destinoInternoSeguro } from "@/lib/bloqueios-orientados";
 
 function destino(
@@ -21,7 +21,7 @@ function destino(
     [erro ? "erro" : "sucesso"]: texto,
   });
   if (retorno) params.set("retorno", retorno);
-  return caminhoAplicacao(`/conferencia-entre-folhas?${params.toString()}`);
+  return rotaAplicacao(`/conferencia-entre-folhas?${params.toString()}`);
 }
 
 function mensagem(error: unknown) {

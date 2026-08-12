@@ -5,7 +5,7 @@ import { BloqueioOrientado } from "@/components/bloqueio-orientado";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { listarEnquadramentos } from "@/db/enquadramentos";
 import { listarOpcoesNovaFolha } from "@/db/folhas";
-import { caminhoAplicacao } from "@/lib/base-path";
+import { rotaAplicacao } from "@/lib/base-path";
 import { orientarBloqueio } from "@/lib/bloqueios-orientados";
 import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 import { NovoProcessamentoAssistente, type OpcaoProcessamento } from "./novo-processamento-assistente";
@@ -43,7 +43,7 @@ export default async function NovaFolhaPage({
   } catch {
     return (
       <AppShell title="Novo processamento" eyebrow="Folha mensal" organization="Não configurada">
-        <Link href={caminhoAplicacao("/folhas")} className="back-link"><ArrowLeft size={16} /> Voltar</Link>
+        <Link href={rotaAplicacao("/folhas")} className="back-link"><ArrowLeft size={16} /> Voltar</Link>
         <BloqueioOrientado bloqueio={{
           titulo: "Não foi possível carregar os cadastros",
           causa: "Os Termos e Metas desta competência não ficaram disponíveis agora.",
@@ -83,7 +83,7 @@ export default async function NovaFolhaPage({
       eyebrow="Folha mensal"
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
     >
-      <Link href={caminhoAplicacao("/folhas")} className="back-link"><ArrowLeft size={16} /> Voltar para folhas</Link>
+      <Link href={rotaAplicacao("/folhas")} className="back-link"><ArrowLeft size={16} /> Voltar para folhas</Link>
       {erro && (
         <BloqueioOrientado bloqueio={orientarBloqueio({
           erro,

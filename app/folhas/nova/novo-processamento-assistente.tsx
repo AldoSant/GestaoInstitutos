@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronRight, FileCheck2, PlayCircle, UsersRound } from "lucide-react";
 import Link from "next/link";
-import { caminhoAplicacao } from "@/lib/base-path";
+import { caminhoAplicacao, rotaAplicacao } from "@/lib/base-path";
 import { criarNovaFolha } from "../actions";
 
 export type OpcaoProcessamento = {
@@ -83,7 +83,7 @@ export function NovoProcessamentoAssistente({
             <button className="button secondary" type="submit">Atualizar mês</button>
           </form>
           <div className="assistente-acoes">
-            <Link className="button secondary" href={caminhoAplicacao("/folhas")}><ArrowLeft size={16} /> Cancelar</Link>
+            <Link className="button secondary" href={rotaAplicacao("/folhas")}><ArrowLeft size={16} /> Cancelar</Link>
             <button className="button primary" type="button" onClick={avancarDaCompetencia}>Continuar <ChevronRight size={16} /></button>
           </div>
         </article>
@@ -103,7 +103,7 @@ export function NovoProcessamentoAssistente({
           </section>
           <div className="assistente-acoes">
             <button className="button secondary" type="button" onClick={retornarParaCompetencia}><ArrowLeft size={16} /> Voltar</button>
-            <Link className="button primary" href={caminhoAplicacao(destinoConfiguracao)}>Configurar empresa <ChevronRight size={16} /></Link>
+            <Link className="button primary" href={rotaAplicacao(destinoConfiguracao)}>Configurar empresa <ChevronRight size={16} /></Link>
           </div>
         </article>
       )}
@@ -137,7 +137,7 @@ export function NovoProcessamentoAssistente({
             <section className="assistente-alerta" role="alert">
               <AlertTriangle size={20} />
               <div><strong>Nenhum Termo e Meta está disponível</strong><p>Revise vínculos, medições e instrumentos ativos da competência antes de continuar.</p></div>
-              <Link className="button secondary" href={caminhoAplicacao(`/termos-e-metas?competencia=${competencia}`)}>Revisar instrumentos</Link>
+              <Link className="button secondary" href={rotaAplicacao(`/termos-e-metas?competencia=${competencia}`)}>Revisar instrumentos</Link>
             </section>
           )}
           <div className="assistente-acoes">

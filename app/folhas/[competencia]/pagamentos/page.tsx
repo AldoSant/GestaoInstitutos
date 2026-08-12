@@ -4,7 +4,7 @@ import { ArrowLeft, Download } from "lucide-react";
 import { PrintButton } from "@/components/print-button";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { carregarFolha } from "@/db/folhas";
-import { caminhoAplicacao } from "@/lib/base-path";
+import { caminhoAplicacao, rotaAplicacao } from "@/lib/base-path";
 import {
   extrairItemRelacaoPagamento,
   montarRelacaoPagamentos,
@@ -80,7 +80,7 @@ export default async function RelacaoPagamentosPage({
   return (
     <main className="print-document">
       <nav className="print-toolbar" aria-label="Ações da relação">
-        <Link className="button secondary" href={caminhoAplicacao(`/folhas/${folha.id}`)}>
+        <Link className="button secondary" href={rotaAplicacao(`/folhas/${folha.id}`)}>
           <ArrowLeft size={16} /> Voltar à Folha
         </Link>
         <div className="row-actions">

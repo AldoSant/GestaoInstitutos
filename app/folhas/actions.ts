@@ -14,7 +14,7 @@ import {
   tentarNovamenteProcessamentoFolha,
 } from "@/db/folhas";
 import { registrarHomologacaoFolha } from "@/db/homologacoes";
-import { caminhoAplicacao } from "@/lib/base-path";
+import { rotaAplicacao } from "@/lib/base-path";
 
 function mensagem(error: unknown) {
   if (typeof error === "object" && error !== null && "code" in error) {
@@ -27,7 +27,7 @@ function mensagem(error: unknown) {
 
 function destino(id: string, texto: string, erro = false) {
   const params = new URLSearchParams({ [erro ? "erro" : "sucesso"]: texto });
-  return caminhoAplicacao(id ? `/folhas/${id}?${params}` : `/folhas?${params}`);
+  return rotaAplicacao(id ? `/folhas/${id}?${params}` : `/folhas?${params}`);
 }
 
 export async function criarNovaFolha(formData: FormData) {
@@ -50,7 +50,7 @@ export async function criarNovaFolha(formData: FormData) {
   if (erro) {
     const params = new URLSearchParams({ erro });
     if (/^\d{4}-\d{2}$/.test(competencia)) params.set("competencia", competencia);
-    redirect(caminhoAplicacao(`/folhas/nova?${params}`));
+    redirect(rotaAplicacao(`/folhas/nova?${params}`));
   }
   revalidatePath("/folhas");
   redirect(destino(folhaId, "Processamento mensal criado e enviado para cálculo."));

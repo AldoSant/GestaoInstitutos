@@ -5,7 +5,7 @@ import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { listarEnquadramentos } from "@/db/enquadramentos";
 import { listarPerfisRecolhimento } from "@/db/perfis-recolhimento";
 import { exigirAdministrador } from "@/lib/autorizacao";
-import { caminhoAplicacao } from "@/lib/base-path";
+import { rotaAplicacao } from "@/lib/base-path";
 import { destinoInternoSeguro } from "@/lib/bloqueios-orientados";
 import { lerCompetenciaContexto } from "@/lib/competencia-contexto";
 import { nomeRegimePrevidenciario } from "@/lib/enquadramento-previdenciario";
@@ -46,7 +46,7 @@ export default async function ConfiguracaoInicialPage({ searchParams }: { search
 
   return (
     <AppShell title="Configuração inicial" eyebrow="Empresa · uma vez" organization={empresa.nomeFantasia ?? empresa.razaoSocial}>
-      <Link href={caminhoAplicacao(retorno)} className="back-link"><ArrowLeft size={16} /> Voltar ao fluxo anterior</Link>
+      <Link href={rotaAplicacao(retorno)} className="back-link"><ArrowLeft size={16} /> Voltar ao fluxo anterior</Link>
       {erro && <section className="feedback-banner error" role="alert"><strong>Configuração não concluída</strong><span>{erro}</span></section>}
       {etapaRecolhimento ? (
         !vigente ? (
@@ -55,7 +55,7 @@ export default async function ConfiguracaoInicialPage({ searchParams }: { search
             <div>
               <strong>Confirme primeiro o enquadramento da empresa</strong>
               <p>Ele define as contribuições aplicáveis. Em seguida, você poderá informar como a empresa recolhe nesta competência.</p>
-              <Link className="button primary" href={caminhoAplicacao(`/configuracao-inicial?competencia=${competencia}&retorno=${encodeURIComponent(retorno)}`)}>Configurar enquadramento</Link>
+              <Link className="button primary" href={rotaAplicacao(`/configuracao-inicial?competencia=${competencia}&retorno=${encodeURIComponent(retorno)}`)}>Configurar enquadramento</Link>
             </div>
           </section>
         ) : perfilVigente ? (
@@ -66,7 +66,7 @@ export default async function ConfiguracaoInicialPage({ searchParams }: { search
               <h2>{nomeInstrumentoRecolhimento(perfilVigente.instrumento)}</h2>
               <p>Esta regra já cobre {competencia}. Volte ao fluxo anterior para continuar.</p>
             </div>
-            <Link className="button primary" href={caminhoAplicacao(retorno)}>Continuar</Link>
+            <Link className="button primary" href={rotaAplicacao(retorno)}>Continuar</Link>
           </section>
         ) : (
           <>
@@ -93,8 +93,8 @@ export default async function ConfiguracaoInicialPage({ searchParams }: { search
             <p>Já existe uma vigência publicada para {competencia}. Alterações legais futuras exigem uma nova vigência auditável.</p>
           </div>
           <div className="row-actions">
-            {!perfilVigente && <Link className="button secondary" href={caminhoAplicacao(`/configuracao-inicial?competencia=${competencia}&etapa=recolhimento&retorno=${encodeURIComponent(retorno)}`)}>Configurar recolhimento</Link>}
-            <Link className="button primary" href={caminhoAplicacao(retorno)}>Continuar</Link>
+            {!perfilVigente && <Link className="button secondary" href={rotaAplicacao(`/configuracao-inicial?competencia=${competencia}&etapa=recolhimento&retorno=${encodeURIComponent(retorno)}`)}>Configurar recolhimento</Link>}
+            <Link className="button primary" href={rotaAplicacao(retorno)}>Continuar</Link>
           </div>
         </section>
       ) : (

@@ -10,7 +10,7 @@ import {
   solicitarRetificacaoObrigacao,
 } from "@/db/obrigacoes";
 import { validarDocumentoObrigacao } from "@/lib/documentos-obrigacao";
-import { caminhoAplicacao } from "@/lib/base-path";
+import { rotaAplicacao } from "@/lib/base-path";
 
 export async function apurarObrigacao(formData: FormData) {
   const competencia = String(formData.get("competencia") ?? "");
@@ -33,7 +33,7 @@ export async function apurarObrigacao(formData: FormData) {
   if (/^\d{4}-(0[1-9]|1[0-2])$/.test(competencia)) {
     params.set("competencia", competencia);
   }
-  redirect(caminhoAplicacao(`/obrigacoes?${params.toString()}`));
+  redirect(rotaAplicacao(`/obrigacoes?${params.toString()}`));
 }
 
 export async function registrarDocumento(formData: FormData) {
@@ -64,7 +64,7 @@ export async function registrarDocumento(formData: FormData) {
     [erro ? "erro" : "sucesso"]:
       erro || "Documento registrado e estado da conciliação atualizado.",
   });
-  redirect(caminhoAplicacao(`/obrigacoes?${params.toString()}`));
+  redirect(rotaAplicacao(`/obrigacoes?${params.toString()}`));
 }
 
 export async function cancelarObrigacaoFiscal(formData: FormData) {
@@ -89,7 +89,7 @@ export async function cancelarObrigacaoFiscal(formData: FormData) {
     [erro ? "erro" : "sucesso"]:
       erro || "Obrigação cancelada com invalidação das conferências documentais.",
   });
-  redirect(caminhoAplicacao(`/obrigacoes?${params.toString()}`));
+  redirect(rotaAplicacao(`/obrigacoes?${params.toString()}`));
 }
 
 export async function solicitarRetificacaoFiscal(formData: FormData) {
@@ -116,5 +116,5 @@ export async function solicitarRetificacaoFiscal(formData: FormData) {
   const params = new URLSearchParams({
     [erro ? "erro" : "sucesso"]: erro || sucesso,
   });
-  redirect(caminhoAplicacao(`/obrigacoes?${params.toString()}`));
+  redirect(rotaAplicacao(`/obrigacoes?${params.toString()}`));
 }
