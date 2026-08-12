@@ -11,9 +11,20 @@ function competenciaValida(competencia: string) {
 
 export function destinoInternoSeguro(valor: string | undefined, fallback: string) {
   const destino = valor?.trim();
-  return destino && destino.startsWith("/") && !destino.startsWith("//") && !destino.includes("\\")
-    ? destino
-    : fallback;
+  if (!destino || !destino.startsWith("/") || destino.startsWith("//")) {
+    return fallback;
+  }
+  const caminho = destino.split(/[?#]/, 1)[0];
+  try {
+    const decodificado = decodeURIComponent(caminho);
+    return decodificado.startsWith("/") &&
+      !decodificado.startsWith("//") &&
+      !decodificado.includes("\\")
+      ? destino
+      : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 export function orientarBloqueio({

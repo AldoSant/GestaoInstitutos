@@ -43,4 +43,6 @@ test("aceita apenas retornos internos", () => {
   assert.equal(destinoInternoSeguro("/obrigacoes?competencia=2026-06", "/folhas"), "/obrigacoes?competencia=2026-06");
   assert.equal(destinoInternoSeguro("https://exemplo.test", "/folhas"), "/folhas");
   assert.equal(destinoInternoSeguro("//exemplo.test", "/folhas"), "/folhas");
+  assert.equal(destinoInternoSeguro("/%2f%2fexemplo.test", "/folhas"), "/folhas");
+  assert.equal(destinoInternoSeguro("/%5cexemplo.test", "/folhas"), "/folhas");
 });
