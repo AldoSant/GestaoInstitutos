@@ -15,6 +15,7 @@ import {
 } from "@/db/folhas";
 import { registrarHomologacaoFolha } from "@/db/homologacoes";
 import { rotaAplicacao } from "@/lib/base-path";
+import { mensagemOperacional } from "@/lib/mensagem-operacional";
 
 function mensagem(error: unknown) {
   if (typeof error === "object" && error !== null && "code" in error) {
@@ -22,7 +23,7 @@ function mensagem(error: unknown) {
     if (error.code === "23503") return "Um cadastro relacionado não foi encontrado.";
     if (error.code === "23514") return "O banco rejeitou o estado ou os valores da Folha.";
   }
-  return error instanceof Error ? error.message : "Não foi possível concluir a operação.";
+  return mensagemOperacional(error, "Não foi possível concluir a operação.");
 }
 
 function destino(id: string, texto: string, erro = false) {

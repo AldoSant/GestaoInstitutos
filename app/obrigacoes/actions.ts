@@ -11,6 +11,7 @@ import {
 } from "@/db/obrigacoes";
 import { validarDocumentoObrigacao } from "@/lib/documentos-obrigacao";
 import { rotaAplicacao } from "@/lib/base-path";
+import { mensagemOperacional } from "@/lib/mensagem-operacional";
 
 export async function apurarObrigacao(formData: FormData) {
   const competencia = String(formData.get("competencia") ?? "");
@@ -24,7 +25,7 @@ export async function apurarObrigacao(formData: FormData) {
     });
     sucesso = `Apuração atualizada com ${resultado.itens} item(ns) de ${resultado.folhas} Folha(s) fechada(s).`;
   } catch (error) {
-    erro = error instanceof Error ? error.message : "Não foi possível apurar a obrigação.";
+    erro = mensagemOperacional(error, "Não foi possível apurar a obrigação.");
   }
   revalidatePath("/obrigacoes");
   const params = new URLSearchParams({
@@ -56,7 +57,7 @@ export async function registrarDocumento(formData: FormData) {
         ...validacao.dados,
       });
     } catch (error) {
-      erro = error instanceof Error ? error.message : "Não foi possível registrar o documento.";
+      erro = mensagemOperacional(error, "Não foi possível registrar o documento.");
     }
   }
   revalidatePath("/obrigacoes");
@@ -80,9 +81,7 @@ export async function cancelarObrigacaoFiscal(formData: FormData) {
     });
   } catch (error) {
     erro =
-      error instanceof Error
-        ? error.message
-        : "Não foi possível cancelar a obrigação.";
+      mensagemOperacional(error, "Não foi possível cancelar a obrigação.");
   }
   revalidatePath("/obrigacoes");
   const params = new URLSearchParams({
@@ -107,9 +106,7 @@ export async function solicitarRetificacaoFiscal(formData: FormData) {
     sucesso = `Retificação v${retificacao.versao} aberta. O original foi congelado no hash ${retificacao.hashSnapshot.slice(0, 12)}.`;
   } catch (error) {
     erro =
-      error instanceof Error
-        ? error.message
-        : "Não foi possível iniciar a retificação.";
+      mensagemOperacional(error, "Não foi possível iniciar a retificação.");
   }
   revalidatePath("/obrigacoes");
   revalidatePath("/fechamento-mensal");
