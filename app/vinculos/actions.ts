@@ -15,6 +15,7 @@ import {
 } from "@/db/schema";
 import { idCadastroValido } from "@/lib/cadastros";
 import { validarVinculoCadastro } from "@/lib/vinculos";
+import { mensagemOperacional } from "@/lib/mensagem-operacional";
 
 function destino(mensagem: string, erro = false) {
   const params = new URLSearchParams({ [erro ? "erro" : "sucesso"]: mensagem });
@@ -29,7 +30,7 @@ function mensagemBanco(error: unknown) {
     if (error.code === "23503") return "Um cadastro relacionado não foi encontrado.";
     if (error.code === "23514") return "O banco rejeitou a vigência ou os valores informados.";
   }
-  return error instanceof Error ? error.message : "Não foi possível concluir a operação.";
+  return mensagemOperacional(error, "Não foi possível concluir a operação.");
 }
 
 export async function salvarVinculo(formData: FormData) {

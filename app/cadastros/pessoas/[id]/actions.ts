@@ -19,6 +19,7 @@ import {
   validarEnderecoPessoaCadastro,
   validarFichaPessoaCadastro,
 } from "@/lib/cadastros";
+import { mensagemOperacional } from "@/lib/mensagem-operacional";
 
 function destino(
   pessoaId: string,
@@ -37,9 +38,7 @@ function mensagemBanco(error: unknown) {
     if (error.code === "23505") return "Já existe um registro com esses dados.";
     if (error.code === "23514") return "Um dos valores informados é inconsistente.";
   }
-  return error instanceof Error
-    ? error.message
-    : "Não foi possível concluir a operação.";
+  return mensagemOperacional(error, "Não foi possível concluir a operação.");
 }
 
 async function executar(

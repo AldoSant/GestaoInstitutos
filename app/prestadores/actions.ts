@@ -9,6 +9,7 @@ import { pessoas, prestadores } from "@/db/schema";
 import { idCadastroValido } from "@/lib/cadastros";
 import { validarOutraFonte } from "@/lib/outras-fontes";
 import { validarPrestadorCadastro } from "@/lib/prestadores";
+import { mensagemOperacional } from "@/lib/mensagem-operacional";
 
 function destino(mensagem: string, erro = false) {
   const params = new URLSearchParams({ [erro ? "erro" : "sucesso"]: mensagem });
@@ -28,7 +29,7 @@ function mensagemBanco(error: unknown) {
     }
     if (error.code === "23503") return "Um cadastro relacionado não foi encontrado.";
   }
-  return error instanceof Error ? error.message : "Não foi possível concluir a operação.";
+  return mensagemOperacional(error, "Não foi possível concluir a operação.");
 }
 
 export async function salvarPrestador(formData: FormData) {

@@ -8,6 +8,7 @@ import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { metas, termos } from "@/db/schema";
 import { idCadastroValido } from "@/lib/cadastros";
 import { validarMetaCadastro, validarTermoCadastro } from "@/lib/instrumentos";
+import { mensagemOperacional } from "@/lib/mensagem-operacional";
 
 function destino(mensagem: string, erro = false) {
   const params = new URLSearchParams({ [erro ? "erro" : "sucesso"]: mensagem });
@@ -20,7 +21,7 @@ function mensagemBanco(error: unknown) {
     if (error.code === "23503") return "Um cadastro relacionado não foi encontrado.";
     if (error.code === "23514") return "O banco rejeitou a vigência ou o valor informado.";
   }
-  return error instanceof Error ? error.message : "Não foi possível concluir a operação.";
+  return mensagemOperacional(error, "Não foi possível concluir a operação.");
 }
 
 export async function salvarTermo(formData: FormData) {

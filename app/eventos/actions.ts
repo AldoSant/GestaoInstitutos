@@ -8,6 +8,7 @@ import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { eventos, eventosRecorrentes, vinculos } from "@/db/schema";
 import { idCadastroValido } from "@/lib/cadastros";
 import { validarEventoCadastro, validarEventoRecorrente } from "@/lib/eventos";
+import { mensagemOperacional } from "@/lib/mensagem-operacional";
 
 function destino(mensagem: string, erro = false, ancora = "") {
   const params = new URLSearchParams({ [erro ? "erro" : "sucesso"]: mensagem });
@@ -23,7 +24,7 @@ function mensagemBanco(error: unknown) {
     if (error.code === "23503") return "Um cadastro relacionado não foi encontrado.";
     if (error.code === "23514") return "O banco rejeitou o tipo, a vigência ou o valor.";
   }
-  return error instanceof Error ? error.message : "Não foi possível concluir a operação.";
+  return mensagemOperacional(error, "Não foi possível concluir a operação.");
 }
 
 export async function salvarEvento(formData: FormData) {

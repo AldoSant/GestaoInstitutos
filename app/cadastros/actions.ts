@@ -12,13 +12,14 @@ import {
   validarLotacaoCadastro,
   validarPessoaCadastro,
 } from "@/lib/cadastros";
+import { mensagemOperacional } from "@/lib/mensagem-operacional";
 
 function mensagemBanco(error: unknown) {
   if (typeof error === "object" && error !== null && "code" in error) {
     if (error.code === "23505") return "Já existe um cadastro com os mesmos dados únicos.";
     if (error.code === "23514") return "O banco rejeitou um valor inconsistente.";
   }
-  return error instanceof Error ? error.message : "Não foi possível concluir a operação.";
+  return mensagemOperacional(error, "Não foi possível concluir a operação.");
 }
 
 function destino(mensagem: string, erro = false) {
