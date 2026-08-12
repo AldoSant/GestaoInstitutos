@@ -1,5 +1,10 @@
 # Andamento do MVP
 
+> **Retomada de conversa/desenvolvimento:** consultar primeiro o
+> [Handoff da próxima sessão](HANDOFF_PROXIMA_SESSAO.md). Este documento preserva o
+> histórico amplo e pode conter estimativas já superadas; o handoff registra o estado
+> verificável, o commit e o primeiro trabalho obrigatório.
+
 > **Escopo P0 corrigido em 01/08/2026:** a substituição do GIW está concentrada na
 > operação comprovada de prestadores PF/PJ, folha/relatório mensal, relações de
 > pagamento, retenções, documento previdenciário aplicável e prestação de contas.
