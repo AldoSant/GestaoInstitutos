@@ -102,11 +102,24 @@ for (const caso of casos) {
   if (caso.baseCompativelComAgregadoAntesDeDeducoes) resumo.compativeis += 1;
   resumoPorCompetencia.set(caso.competencia, resumo);
 }
+const distribuicao = casos.reduce(
+  (acumulado, caso) => {
+    const chave = caso.excedenteSobreMaiorFolhaCentavos > 0
+      ? caso.baseCompativelComAgregadoAntesDeDeducoes
+        ? "BASE_MAIOR_COMPATIVEL_COM_OUTRAS_FOLHAS"
+        : "BASE_MAIOR_NAO_EXPLICADA_PELAS_OUTRAS_FOLHAS"
+      : "BASE_NAO_MAIOR_QUE_A_FOLHA";
+    acumulado[chave] = (acumulado[chave] ?? 0) + 1;
+    return acumulado;
+  },
+  {} as Record<string, number>,
+);
 const relatorio = {
   schemaVersion: "1.0",
   mode: "PRIVATE_HISTORICAL_CROSSCHECK",
   fonte: { diretorio, arquivos: arquivos.length, folhas: folhas.length },
   resumo: [...resumoPorCompetencia.entries()].map(([competencia, dados]) => ({ competencia, ...dados })),
+  distribuicao,
   casos,
 };
 await mkdir(dirname(destino), { recursive: true });
@@ -116,5 +129,6 @@ console.log(JSON.stringify({
   folhas: folhas.length,
   pessoasEmMaisDeUmaFolhaOuComBaseMaior: casos.length,
   resumo: relatorio.resumo,
+  distribuicao,
   relatorioPrivado: destino,
 }, null, 2));
