@@ -13,10 +13,26 @@ export async function GET() {
 
   try {
     await getDb().execute(sql`select 1`);
-    return NextResponse.json({ status: "ok", database: "ok", ...base });
+    const schema = await getDb().execute(sql`
+      select count(*)::int as total
+        from information_schema.columns
+       where table_schema = 'public'
+         and table_name = 'contribuicao_outra_fonte'
+         and column_name in ('inss_dedutivel_irrf', 'irrf_retido')
+    `);
+    const total = Number(schema.rows[0]?.total ?? 0);
+    if (total !== 2) {
+      throw new Error("Schema incompatível com a revisão em execução.");
+    }
+    return NextResponse.json({
+      status: "ok",
+      database: "ok",
+      schema: "ok",
+      ...base,
+    });
   } catch {
     return NextResponse.json(
-      { status: "indisponivel", database: "erro", ...base },
+      { status: "indisponivel", database: "erro", schema: "incompativel", ...base },
       { status: 503 },
     );
   }
