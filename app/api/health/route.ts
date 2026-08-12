@@ -13,6 +13,14 @@ export async function GET() {
 
   try {
     await getDb().execute(sql`select 1`);
+  } catch {
+    return NextResponse.json(
+      { status: "indisponivel", database: "erro", schema: "desconhecido", ...base },
+      { status: 503 },
+    );
+  }
+
+  try {
     const schema = await getDb().execute(sql`
       select count(*)::int as total
         from information_schema.columns
@@ -22,7 +30,15 @@ export async function GET() {
     `);
     const total = Number(schema.rows[0]?.total ?? 0);
     if (total !== 2) {
-      throw new Error("Schema incompatível com a revisão em execução.");
+      return NextResponse.json(
+        {
+          status: "indisponivel",
+          database: "ok",
+          schema: "incompativel",
+          ...base,
+        },
+        { status: 503 },
+      );
     }
     return NextResponse.json({
       status: "ok",
@@ -32,7 +48,7 @@ export async function GET() {
     });
   } catch {
     return NextResponse.json(
-      { status: "indisponivel", database: "erro", schema: "incompativel", ...base },
+      { status: "indisponivel", database: "erro", schema: "desconhecido", ...base },
       { status: 503 },
     );
   }
