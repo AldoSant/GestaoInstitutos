@@ -46,6 +46,7 @@
     "giw:inspecionar:seletor-folha": "node scripts/giw/inspecionar-seletor-folha.mjs",
     "giw:resumir:seletor-folha": "node scripts/giw/resumir-seletor-folha.mjs",
     "giw:inspecionar:relatorio-folha": "node scripts/giw/inspecionar-relatorio-folha.mjs",
+    "giw:resumir:relatorio-folha": "node scripts/giw/resumir-relatorio-folha.mjs",
     "giw:inspecionar:seletor-meta": "node scripts/giw/inspecionar-seletor-meta.mjs",
     "giw:inventariar:insumos": "tsx scripts/importacao/inventariar-insumos.ts",
     "giw:auditar:migracao": "tsx scripts/importacao/auditar-migracao.ts",
