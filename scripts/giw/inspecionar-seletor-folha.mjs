@@ -25,10 +25,21 @@ try {
   page.on("response", async (response) => {
     const url = response.url();
     if (!/lookup|search|query/i.test(url)) return;
-    respostas.push({
-      status: response.status(),
-      url: url.replace(/([?&](?:senha|password)=[^&]*)/gi, "$1=REDACTED"),
-    });
+    try {
+      respostas.push({
+        status: response.status(),
+        url: url.replace(/([?&](?:senha|password)=[^&]*)/gi, "$1=REDACTED"),
+        // O conteúdo pode conter dados cadastrais e fica apenas no relatório
+        // privado (0600), nunca é escrito no console nem versionado.
+        corpo: (await response.text()).slice(0, 100_000),
+      });
+    } catch {
+      respostas.push({
+        status: response.status(),
+        url: url.replace(/([?&](?:senha|password)=[^&]*)/gi, "$1=REDACTED"),
+        corpo: null,
+      });
+    }
   });
   await abrirMenuMovimentacao(menu);
   const links = menu.locator("a").filter({ hasText: /^folha(?:s| de pagamento)?$/i });
