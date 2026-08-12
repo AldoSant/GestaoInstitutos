@@ -363,6 +363,19 @@ async function validarPrecondicoes(empresaId: string, itens: ItemLegado[]) {
   const conflitosItens = [...repetidos.entries()].filter(([, quantidade]) => quantidade > 1);
   const conflitos = [] as string[];
   const medicoesExistentes = [] as string[];
+  const competenciasAlvo = [...new Set(itens.map((item) => item.competencia))];
+  const folhasPendentes = await getPool().query<{
+    competencia: string;
+    total: number;
+  }>(
+    `select to_char(competencia, 'YYYY-MM') competencia, count(*)::int total
+       from folha
+      where empresa_id = $1 and competencia = any($2::date[])
+        and status not in ('FECHADA', 'CANCELADA')
+      group by competencia
+      order by competencia`,
+    [empresaId, competenciasAlvo.map((competencia) => `${competencia}-01`)],
+  );
   // O replay usa Termos e Metas isolados, portanto Folhas operacionais com a
   // mesma competência nunca conflitam com a evidência histórica.
   for (const item of itens.filter((item) => item.vinculo_id)) {
@@ -373,7 +386,13 @@ async function validarPrecondicoes(empresaId: string, itens: ItemLegado[]) {
     );
     if (medicao.rowCount) medicoesExistentes.push(`${item.vinculo_id}:${item.competencia}`);
   }
-  return { semDestino, conflitosItens, conflitos, medicoesExistentes };
+  return {
+    semDestino,
+    conflitosItens,
+    conflitos,
+    medicoesExistentes,
+    folhasPendentes: folhasPendentes.rows,
+  };
 }
 
 async function publicarGpsHistorica(empresaId: string, competencia: string) {
@@ -442,6 +461,7 @@ async function executar() {
     semDestino: precondicoes.semDestino.length,
     vinculosRepetidosNaCompetencia: precondicoes.conflitosItens.length,
     folhasAtuaisEmConflito: precondicoes.conflitos.length,
+    folhasPendentes: precondicoes.folhasPendentes,
     medicoesAtuaisEmConflito: precondicoes.medicoesExistentes.length,
     resolucao: Object.fromEntries(
       ["LEGADO", "MAPEAMENTO_CONFIRMADO", "ROTULO_UNICO", "VINCULO_UNICO", "SEM_DESTINO"].map((tipo) => [
@@ -451,8 +471,14 @@ async function executar() {
     ),
   };
   console.log(JSON.stringify(resumo, null, 2));
-  if (precondicoes.semDestino.length || precondicoes.conflitos.length) {
-    throw new Error("Replay não iniciado: há mapeamentos ausentes ou Folha atual em conflito. Consulte o resumo acima.");
+  if (
+    precondicoes.semDestino.length ||
+    precondicoes.conflitos.length ||
+    (executarDeVerdade && precondicoes.folhasPendentes.length)
+  ) {
+    throw new Error(
+      "Replay não iniciado: há mapeamentos ausentes, conflito ou Folha pendente na competência. Consulte o resumo acima.",
+    );
   }
   if (!executarDeVerdade) return;
 
