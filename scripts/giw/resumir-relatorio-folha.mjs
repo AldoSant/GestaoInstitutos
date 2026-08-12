@@ -13,6 +13,7 @@ console.log(JSON.stringify({
     type: campo.type,
     possuiValor: campo.possuiValor === true,
   })),
+  estadoDepois: relatorio.estadoDepois ?? null,
   respostasRelatorio: (relatorio.respostas ?? []).map((resposta) => ({
     status: resposta.status,
     contentType: resposta.contentType,

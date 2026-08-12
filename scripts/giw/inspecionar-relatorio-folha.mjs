@@ -51,6 +51,26 @@ try {
   await formulario.getByRole("button", { name: "Filtrar", exact: true }).click();
   await page.waitForTimeout(1_500);
   const botoes = await formulario.locator("button:visible").allTextContents();
+  const estadoDepois = await formulario.locator("body").evaluate((body) => {
+    const normalizar = (texto) => (texto ?? "").replace(/\s+/g, " ").trim();
+    const labels = new Map(
+      Array.from(body.querySelectorAll("label"), (label) => [label.htmlFor, normalizar(label.textContent)]),
+    );
+    return {
+      campos: Array.from(body.querySelectorAll("input:visible, select:visible, textarea:visible"))
+        .map((campo) => ({
+          id: campo.id || null,
+          label: labels.get(campo.id) ?? null,
+          possuiValor: "value" in campo && String(campo.value ?? "").trim().length > 0,
+          disabled: "disabled" in campo && Boolean(campo.disabled),
+        })),
+      botoes: Array.from(body.querySelectorAll("button:visible")).map((botao) => ({
+        texto: normalizar(botao.textContent),
+        disabled: Boolean(botao.disabled),
+        dica: botao.getAttribute("data-original-title") ?? botao.getAttribute("title"),
+      })),
+    };
+  });
   const botaoFolha = formulario.getByRole("button", { name: "Folha", exact: true });
   if ((await botaoFolha.count()) !== 1) {
     throw new Error("O botão de relatório da Folha não foi encontrado.");
@@ -69,6 +89,7 @@ try {
       mode: "READ_ONLY_REPORT_DISCOVERY",
       source: { system: "GIW", formId, baseUrl: giwBaseUrl, extractedAt: new Date().toISOString() },
       camposAntes,
+      estadoDepois,
       botoes: botoes.map((texto) => texto.replace(/\s+/g, " ").trim()).filter(Boolean),
       folhaHabilitada,
       respostas,
