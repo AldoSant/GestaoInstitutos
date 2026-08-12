@@ -14,6 +14,22 @@ const output = resolve(
 
 const { browser, page, sistema, menu } = await abrirSessaoGiw();
 try {
+  const requisicoes = [];
+  const respostas = [];
+  page.on("request", (request) => {
+    const url = request.url();
+    if (/lookup|search|query|form\.jsp/i.test(url)) {
+      requisicoes.push({ metodo: request.method(), url: url.replace(/([?&](?:senha|password)=[^&]*)/gi, "$1=REDACTED") });
+    }
+  });
+  page.on("response", async (response) => {
+    const url = response.url();
+    if (!/lookup|search|query/i.test(url)) return;
+    respostas.push({
+      status: response.status(),
+      url: url.replace(/([?&](?:senha|password)=[^&]*)/gi, "$1=REDACTED"),
+    });
+  });
   await abrirMenuMovimentacao(menu);
   const links = menu.locator("a").filter({ hasText: /^folha(?:s| de pagamento)?$/i });
   if ((await links.count()) !== 1) {
@@ -52,7 +68,7 @@ try {
     items.map((item) => item.id),
   );
   await botaoParceiro.click();
-  await page.waitForTimeout(1_000);
+  await page.waitForTimeout(2_000);
   const janelasDepois = await sistema.locator('[id^="WFRIframeForm"]').evaluateAll((items) =>
     items.map((item) => ({
       id: item.id,
@@ -70,6 +86,21 @@ try {
       texto: normalizar(element.textContent).slice(0, 500),
     }));
   });
+  const componentes = await formulario.locator("body").evaluate((body) => {
+    const normalizar = (texto) => (texto ?? "").replace(/\s+/g, " ").trim();
+    return Array.from(body.querySelectorAll(".lookup, [class*='lookup'], [class*='autocomplete']"))
+      .map((element) => ({
+        tag: element.tagName.toLowerCase(),
+        className: element.className || null,
+        ariaExpanded: element.getAttribute("aria-expanded"),
+        texto: normalizar(element.textContent).slice(0, 500),
+        html: element.outerHTML.replace(/value="[^"]*"/gi, 'value=""').slice(0, 4_000),
+      }));
+  });
+  const framesPagina = page.frames().map((frame) => ({
+    nome: frame.name() || null,
+    url: frame.url().replace(/([?&](?:senha|password)=[^&]*)/gi, "$1=REDACTED"),
+  }));
 
   await mkdir(dirname(output), { recursive: true });
   await writeFile(
@@ -88,6 +119,10 @@ try {
       janelasAntes,
       janelasDepois,
       popup,
+      componentes,
+      framesPagina,
+      requisicoes: requisicoes.slice(-50),
+      respostas: respostas.slice(-50),
     }, null, 2)}\n`,
     { encoding: "utf8", mode: 0o600 },
   );
