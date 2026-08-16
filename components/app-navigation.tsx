@@ -28,10 +28,13 @@ type ItemNavegacao = {
   icon: LucideIcon;
 };
 
-const pessoas: ItemNavegacao[] = [
+const pessoasEVinculos: ItemNavegacao[] = [
   { href: ROTAS.pessoas, label: "Cadastros", icon: Database },
   { href: ROTAS.prestadores, label: "Prestadores", icon: UsersRound },
   { href: ROTAS.vinculos, label: "Vínculos", icon: Link2 },
+];
+
+const instrumentosELancamentos: ItemNavegacao[] = [
   { href: ROTAS.instrumentos, label: "Termos e metas", icon: FileText },
   { href: ROTAS.medicoes, label: "Medições", icon: ListChecks },
   { href: ROTAS.eventos, label: "Eventos e lançamentos", icon: ReceiptText },
@@ -118,9 +121,13 @@ export function NavegacaoPrincipal({
       <GrupoNavegacao
         label="Pessoas e vínculos"
         icon={UsersRound}
-        itens={pessoas.slice(0, 3)}
+        itens={pessoasEVinculos}
       />
-      <NavLink item={{ href: ROTAS.instrumentos, label: "Termos e metas", icon: FileText }} />
+      <GrupoNavegacao
+        label="Instrumentos e lançamentos"
+        icon={FileText}
+        itens={instrumentosELancamentos}
+      />
     </nav>
   );
 }

@@ -259,6 +259,7 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
 @media (hover: hover) and (pointer: fine) {
   .quick-card, .admin-card, .readiness-action { transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out), border-color 160ms var(--ease-out); }
   .quick-card:hover, .admin-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+  .cadastro-section tbody tr:hover { background: #f5faf8; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -308,11 +309,22 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
 .feedback-banner strong { font-size: 11px; }
 .feedback-banner.success { color: #176a4e; border-color: #bfe1cf; background: #eaf7f0; }
 .feedback-banner.error { color: #8f342f; border-color: #efcbc6; background: var(--danger-soft); }
-.cadastro-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-.cadastro-toolbar h2 { margin: 4px 0 0; font-family: Georgia, "Times New Roman", serif; font-size: 22px; }
-.cadastro-toolbar p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
-.cadastro-toolbar .search-field { min-width: min(420px, 42vw); }
-.cadastro-section { margin-top: 16px; scroll-margin-top: 95px; }
+.cadastro-toolbar { position: relative; overflow: hidden; min-height: 116px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border-color: #cce3dd; background: linear-gradient(120deg, #f9fffc 0%, #eff9f5 68%, #e7f5f1 100%); }
+.cadastro-toolbar::after { content: ""; position: absolute; width: 240px; height: 240px; top: -166px; right: 16%; border: 1px solid rgba(8,116,109,.14); border-radius: 50%; box-shadow: 0 0 0 32px rgba(8,116,109,.035), 0 0 0 66px rgba(8,116,109,.022); pointer-events: none; }
+.cadastro-toolbar > * { position: relative; z-index: 1; }
+.cadastro-toolbar h2 { margin: 4px 0 0; font-family: Georgia, "Times New Roman", serif; font-size: 22px; letter-spacing: -.012em; }
+.cadastro-toolbar p { max-width: 720px; margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.cadastro-toolbar .search-field, .cadastro-toolbar .cadastro-filters { min-width: min(420px, 42vw); padding: 4px; border: 1px solid rgba(194,218,212,.92); border-radius: 12px; background: rgba(255,255,255,.92); box-shadow: 0 8px 20px rgba(20,50,54,.055); }
+.cadastro-toolbar .cadastro-filters { display: flex; align-items: center; gap: 6px; }
+.cadastro-toolbar .cadastro-filters .cadastro-search-control { flex: 1 1 auto; }
+.cadastro-section { margin-top: 16px; scroll-margin-top: 104px; }
+.cadastro-section > .panel-header { margin: -2px -2px 18px; padding-bottom: 16px; border-bottom: 1px solid #e8efed; }
+.cadastro-section .table-wrap { overflow: auto; border: 1px solid #e0eae7; border-radius: 12px; background: #fff; }
+.cadastro-section table { min-width: 680px; }
+.cadastro-section thead { background: #f4f8f7; }
+.cadastro-section th { border-bottom-color: #dce8e5; }
+.cadastro-section tbody tr { transition: background 140ms ease; }
+.cadastro-section .empty-cell { padding: 38px 16px; color: var(--muted); background: #fbfcfc; font-size: 11px; }
 .crud-form { margin-bottom: 18px; padding: 15px; display: grid; grid-template-columns: minmax(130px, .65fr) minmax(220px, 1.6fr) minmax(140px, .75fr) auto auto; gap: 10px; align-items: end; border: 1px solid var(--line); border-radius: 10px; background: #f8faf9; }
 .crud-form label { min-width: 0; display: grid; gap: 5px; }
 .crud-form label > span { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
@@ -564,7 +576,7 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
   .quick-grid, .type-grid, .admin-grid { grid-template-columns: repeat(2, 1fr); }
   .login-page { grid-template-columns: 1fr; }
   .cadastro-toolbar { align-items: stretch; flex-direction: column; }
-  .cadastro-toolbar .search-field { min-width: 0; width: 100%; }
+  .cadastro-toolbar .search-field, .cadastro-toolbar .cadastro-filters { min-width: 0; width: 100%; }
   .login-brand { min-height: 390px; padding: 55px 35px; }
   .login-card { margin: 35px auto; }
 }
