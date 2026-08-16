@@ -140,6 +140,26 @@ export default async function MigracoesPage({
         ) : undefined
       }
     >
+      <section className="migracao-overview">
+        <div>
+          <span className="section-kicker">Acervo preservado</span>
+          <h2>Histórico separado da operação oficial</h2>
+          <p>Importações servem para evidência e conciliação. Nenhum resultado do GIW substitui automaticamente uma Folha atual.</p>
+        </div>
+        <div className="migracao-resumo" aria-label="Resumo da migração">
+          <div><span>Mapeamento</span><strong>{pessoasMapeadas}%</strong><small>pessoas com chave local</small></div>
+          <div><span>Conciliação</span><strong>{liquidoConfere && inssConfere && temLegado ? "OK" : "Pendente"}</strong><small>líquido e INSS</small></div>
+          <div><span>Execuções</span><strong>{controle.execucoes.length}</strong><small>dry-runs e aplicações</small></div>
+        </div>
+      </section>
+
+      <nav className="consulta-nav" aria-label="Navegação da migração">
+        <a href="#comparacao">Comparação</a>
+        <a href="#cobertura">Cobertura</a>
+        <a href="#execucoes">Execuções</a>
+        {resumo && <a href="#reconciliacao">Conciliação</a>}
+      </nav>
+
       {erro && (
         <section className="alert-box danger">
           <AlertTriangle size={22} />
@@ -153,7 +173,7 @@ export default async function MigracoesPage({
         </section>
       )}
 
-      <section className="panel cadastro-section">
+      <section id="comparacao" className="panel cadastro-section">
         <div className="panel-header">
           <div>
             <span className="section-kicker">Competência de comparação</span>
@@ -192,7 +212,7 @@ export default async function MigracoesPage({
         </form>
       </section>
 
-      <section className="panel">
+      <section id="cobertura" className="panel">
         <div className="panel-header">
           <div>
             <span className="section-kicker">Cadeia de dependências</span>
@@ -256,7 +276,7 @@ export default async function MigracoesPage({
         </div>
       </section>
 
-      <section className="panel">
+      <section id="execucoes" className="panel">
         <div className="panel-header">
           <div>
             <span className="section-kicker">Trilha operacional</span>
@@ -354,7 +374,7 @@ export default async function MigracoesPage({
             </div>
           </section>
 
-          <section className="panel">
+          <section id="reconciliacao" className="panel">
             <div className="panel-header">
               <div>
                 <span className="section-kicker">Reconciliação financeira</span>
