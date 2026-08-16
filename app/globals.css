@@ -130,6 +130,22 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
 .campanha-card > small { margin-top: 4px; color: var(--muted); font-size: 10px; }
 .campanha-card .status-badge { margin-top: 13px; }
 .campanha-card-acao { margin-top: auto; padding-top: 14px; display: inline-flex; align-items: center; gap: 5px; color: var(--teal-dark); font-size: 10px; font-weight: 800; }
+.obrigacao-overview { position: relative; overflow: hidden; margin-bottom: 16px; padding: clamp(22px, 3vw, 30px); display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(260px, .85fr); gap: 24px; border: 1px solid #d0e4df; border-radius: var(--radius-card); background: linear-gradient(125deg, #fafffd 0%, #f0f8f6 72%, #eaf5f2 100%); box-shadow: 0 10px 28px rgba(24,52,68,.05); }
+.obrigacao-overview::after { content: ""; position: absolute; width: 260px; height: 260px; right: 25%; bottom: -186px; border: 1px solid rgba(8,116,109,.12); border-radius: 50%; box-shadow: 0 0 0 34px rgba(8,116,109,.03), 0 0 0 68px rgba(8,116,109,.018); pointer-events: none; }
+.obrigacao-overview > * { position: relative; z-index: 1; }
+.obrigacao-overview h2 { max-width: 670px; margin: 6px 0 7px; color: var(--teal-dark); font-family: Georgia, "Times New Roman", serif; font-size: clamp(24px, 3vw, 32px); line-height: 1.1; letter-spacing: -.022em; }
+.obrigacao-overview > div > p { max-width: 690px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.obrigacao-metricas { margin: 21px 0 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.obrigacao-metricas .metric-card { padding: 13px; background: rgba(255,255,255,.76); box-shadow: none; }
+.obrigacao-metricas .metric-icon { width: 34px; height: 34px; }
+.obrigacao-proxima-acao { align-self: stretch; padding: 19px; display: flex; flex-direction: column; align-items: flex-start; border: 1px solid rgba(10,78,73,.18); border-radius: 14px; color: #ebf8f4; background: linear-gradient(155deg, #16434a 0%, #0b6e67 100%); box-shadow: 0 12px 24px rgba(11,74,72,.13); }
+.obrigacao-proxima-acao > span { color: #a9dcd3; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.obrigacao-proxima-acao strong { margin-top: 12px; font-family: Georgia, "Times New Roman", serif; font-size: 21px; line-height: 1.15; }
+.obrigacao-proxima-acao p { margin: 7px 0 18px; color: #c3ded8; font-size: 11px; line-height: 1.55; }
+.obrigacao-proxima-acao .button { width: 100%; margin-top: auto; color: #e9faf6; border-color: rgba(221,250,242,.28); background: rgba(255,255,255,.1); }
+.obrigacao-proxima-acao .button:hover { background: rgba(255,255,255,.17); }
+.obrigacao-acao { border-color: #c9e2dc; background: linear-gradient(120deg, #ffffff, #f8fcfa); }
+.obrigacao-detalhe { scroll-margin-top: 104px; }
 .person-hero { margin-bottom: 14px; }
 .readiness-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
 .readiness-grid > * { min-height: 44px; padding: 9px 11px; display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--muted); font-size: 10px; font-weight: 750; }
@@ -204,7 +220,7 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
 .workflow small { margin-top: 3px; color: var(--muted); font-size: 9px; line-height: 1.35; }
 .process-panel { margin: 16px 0; }
 .process-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin: 0; padding: 0; list-style: none; }
-.process-steps.obligation-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.process-steps.obligation-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .process-steps li { min-width: 0; min-height: 66px; padding: 12px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px; border: 1px solid var(--line); border-radius: 10px; background: #f8faf9; color: var(--muted); }
 .process-steps li > span { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 8px; background: #e8eeee; }
 .process-steps strong, .process-steps small { display: block; }
@@ -591,6 +607,7 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
   .workflow li::after { left: 14px; top: 29px; bottom: -12px; width: 1px; height: auto; }
   .fechamento-hero { grid-template-columns: 1fr; }
   .fechamento-proxima-acao { min-height: 0; }
+  .obrigacao-overview { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 900px) {
@@ -610,6 +627,7 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
   .cadastro-toolbar { align-items: stretch; flex-direction: column; }
   .cadastro-toolbar .search-field, .cadastro-toolbar .cadastro-filters { min-width: 0; width: 100%; }
   .fechamento-controles, .campanha-cards { grid-template-columns: 1fr; }
+  .obrigacao-metricas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .login-brand { min-height: 390px; padding: 55px 35px; }
   .login-card { margin: 35px auto; }
 }
@@ -633,6 +651,7 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
   .fechamento-resumo > div { border-right: 0; border-bottom: 1px solid #dce9e5; }
   .fechamento-resumo > div:last-child { border-bottom: 0; }
   .fechamento-form { grid-template-columns: 1fr; }
+  .obrigacao-metricas { grid-template-columns: 1fr; }
   .readiness-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .topbar { height: 70px; gap: 10px; padding: 0 13px; }
   .page-heading h1 { margin-top: 0; overflow: hidden; font-size: 20px; text-overflow: ellipsis; white-space: nowrap; }

@@ -108,6 +108,33 @@ export default async function ObrigacoesPage({
     );
   const gps = documentoVerificado("GPS");
   const documentoPagamento = gps;
+  const proximaAcao = !diagnostico.apta_apuracao
+    ? {
+        titulo: "Aguarde o fechamento das folhas",
+        detalhe: `${diagnostico.folhas_pendentes} folha(s) ainda precisam ser fechadas antes da apuração previdenciária.`,
+        href: "/folhas",
+        rotulo: "Abrir folhas mensais",
+      }
+    : !obrigacaoAtual
+      ? {
+          titulo: "Apure a competência",
+          detalhe: "As folhas estão fechadas e os valores podem ser consolidados para as memórias GPS individuais.",
+          href: "#apurar-obrigacao",
+          rotulo: "Ir para apuração",
+        }
+      : !gps
+        ? {
+            titulo: "Registre as GPS oficiais",
+            detalhe: "A apuração está disponível. Confira as memórias individuais e registre os documentos oficiais por prestador.",
+            href: `/obrigacoes/${obrigacaoAtual.id}/gps/registro`,
+            rotulo: "Registrar GPS oficiais",
+          }
+        : {
+            titulo: "Documentação conferida",
+            detalhe: "As GPS desta competência foram registradas e seguem disponíveis para consulta e auditoria.",
+            href: "#detalhes-obrigacao",
+            rotulo: "Ver detalhes da apuração",
+          };
 
   return (
     <AppShell
@@ -132,38 +159,48 @@ export default async function ObrigacoesPage({
         </section>
       )}
 
-      <section className="metrics-grid" aria-label="Resumo previdenciário">
-        <MetricCard
-          label="Folhas fechadas"
-          value={`${diagnostico.folhas_fechadas}/${diagnostico.folhas_total}`}
-          detail={
-            diagnostico.folhas_pendentes
-              ? `${diagnostico.folhas_pendentes} pendente(s)`
-              : "nenhuma folha pendente"
-          }
-          icon={CheckCircle2}
-          tone={diagnostico.folhas_pendentes ? "amber" : "teal"}
-        />
-        <MetricCard
-          label="Prestadores apuráveis"
-          value={String(diagnostico.itens_fechados)}
-          detail={`competência ${competencia(competenciaSelecionada)}`}
-          icon={Calculator}
-          tone="blue"
-        />
-        <MetricCard
-          label="INSS dos segurados"
-          value={moeda(diagnostico.inss_segurado)}
-          detail="conforme memórias das folhas fechadas"
-          icon={ReceiptText}
-        />
-        <MetricCard
-          label="Documento para pagar"
-          value={documentoPagamento ? "Registrado" : "Pendente"}
-          detail="GPS individual por prestador"
-          icon={FileCheck2}
-          tone={documentoPagamento ? "teal" : "amber"}
-        />
+      <section className="obrigacao-overview">
+        <div>
+          <span className="section-kicker">Competência {competencia(competenciaSelecionada)}</span>
+          <h2>Previdência sem perder a trilha da Folha.</h2>
+          <p>
+            A apuração acompanha os processamentos fechados e preserva a memória GPS individual de cada prestador elegível.
+          </p>
+          <section className="metrics-grid obrigacao-metricas" aria-label="Resumo previdenciário">
+            <MetricCard
+              label="Folhas fechadas"
+              value={`${diagnostico.folhas_fechadas}/${diagnostico.folhas_total}`}
+              detail={
+                diagnostico.folhas_pendentes
+                  ? `${diagnostico.folhas_pendentes} pendente(s)`
+                  : "nenhuma folha pendente"
+              }
+              icon={CheckCircle2}
+              tone={diagnostico.folhas_pendentes ? "amber" : "teal"}
+            />
+            <MetricCard
+              label="Prestadores apuráveis"
+              value={String(diagnostico.itens_fechados)}
+              detail={`competência ${competencia(competenciaSelecionada)}`}
+              icon={Calculator}
+              tone="blue"
+            />
+            <MetricCard
+              label="INSS dos segurados"
+              value={moeda(diagnostico.inss_segurado)}
+              detail="conforme memórias das folhas fechadas"
+              icon={ReceiptText}
+            />
+          </section>
+        </div>
+        <aside className="obrigacao-proxima-acao" aria-label="Próxima ação">
+          <span>Próxima ação</span>
+          <strong>{proximaAcao.titulo}</strong>
+          <p>{proximaAcao.detalhe}</p>
+          <Link className="button secondary" href={proximaAcao.href}>
+            {proximaAcao.rotulo} <FileCheck2 size={16} />
+          </Link>
+        </aside>
       </section>
 
       <section className="panel process-panel" aria-label="Etapas da obrigação">
@@ -212,7 +249,7 @@ export default async function ObrigacoesPage({
         </ol>
       </section>
 
-      <section className="panel cadastro-section">
+      <section className="panel cadastro-section obrigacao-acao" id="apurar-obrigacao">
         <div className="panel-header">
           <div>
             <span className="section-kicker">Folhas fechadas</span>
@@ -244,7 +281,11 @@ export default async function ObrigacoesPage({
       </section>
 
       {guiasGps.map((item) => (
-        <section className="panel" key={item.id}>
+        <section
+          className="panel obrigacao-detalhe"
+          id={item.id === obrigacaoAtual?.id ? "detalhes-obrigacao" : undefined}
+          key={item.id}
+        >
           <div className="panel-header">
             <div>
               <span className="section-kicker">{competencia(item.competencia)} · Guias GPS</span>
