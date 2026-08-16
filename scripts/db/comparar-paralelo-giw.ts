@@ -67,6 +67,59 @@ async function compararCompetencia(
 ) {
   const data = `${competencia}-01`;
   const pool = getPool();
+  // Uma GPS física é consolidada por pessoa para toda a organização. No replay
+  // HML, porém, o namespace delimita somente alguns Termos: associar a GPS pelo
+  // seu item representativo excluiria fontes válidas de outro item da mesma
+  // guia. Para a comparação isolada, cada fonte congelada é considerada uma vez.
+  const gpsNovaQuery = namespaceReplay
+    ? pool.query<LinhaGpsParalelaGiw>(
+        `select distinct on (item.id)
+                chave.legacy_id "pessoaLegacyId",
+                guia.identificador,
+                item.valor_inss::text principal,
+                item.valor_inss::text total
+           from guia_gps_individual guia
+           cross join lateral jsonb_array_elements_text(
+             guia.snapshot -> 'folhaItemIds'
+           ) fonte(folha_item_id)
+           join folha_item item on item.id = fonte.folha_item_id::uuid
+           join prestador_vinculo vinculo
+             on vinculo.id = item.vinculo_id and vinculo.empresa_id = item.empresa_id
+           join termo
+             on termo.id = vinculo.termo_id and termo.empresa_id = vinculo.empresa_id
+           join prestador prestador
+             on prestador.id = vinculo.prestador_id and prestador.empresa_id = vinculo.empresa_id
+           join legado_chave chave
+             on chave.empresa_id = guia.empresa_id and chave.origem = 'GIW'
+            and chave.entidade = 'pessoas' and chave.destino_tabela = 'pessoa'
+            and chave.destino_id = prestador.pessoa_id
+          where guia.empresa_id = $1 and guia.competencia = $2::date
+            and guia.status <> 'CANCELADA' and item.valor_inss > 0
+            and termo.numero like ('HML-GIW-' || $3 || '-%')
+          order by item.id, guia.id`,
+        [empresaId, data, namespaceReplay],
+      )
+    : pool.query<LinhaGpsParalelaGiw>(
+        `select chave.legacy_id "pessoaLegacyId", guia.identificador,
+                guia.principal::text principal, guia.total::text total
+           from guia_gps_individual guia
+           join obrigacao_fiscal_item obrigacao_item
+             on obrigacao_item.id = guia.obrigacao_item_id
+           join folha_item item on item.id = obrigacao_item.folha_item_id
+           join prestador_vinculo vinculo
+             on vinculo.id = item.vinculo_id and vinculo.empresa_id = item.empresa_id
+           join termo
+             on termo.id = vinculo.termo_id and termo.empresa_id = vinculo.empresa_id
+           join prestador prestador
+             on prestador.id = vinculo.prestador_id and prestador.empresa_id = vinculo.empresa_id
+           join legado_chave chave
+             on chave.empresa_id = guia.empresa_id and chave.origem = 'GIW'
+            and chave.entidade = 'pessoas' and chave.destino_tabela = 'pessoa'
+            and chave.destino_id = prestador.pessoa_id
+          where guia.empresa_id = $1 and guia.competencia = $2::date
+            and guia.status <> 'CANCELADA'`,
+        [empresaId, data],
+      );
   const [folhaLegado, folhaNova, gpsLegado, gpsNova] = await Promise.all([
     pool.query<LinhaFolhaParalelaGiw>(
       `select i.pessoa_legacy_id "pessoaLegacyId",
@@ -119,28 +172,7 @@ async function compararCompetencia(
           and tipo = 'GPS'`,
       [empresaId, data],
     ),
-    pool.query<LinhaGpsParalelaGiw>(
-      `select chave.legacy_id "pessoaLegacyId", guia.identificador,
-              guia.principal::text principal, guia.total::text total
-         from guia_gps_individual guia
-         join obrigacao_fiscal_item obrigacao_item
-           on obrigacao_item.id = guia.obrigacao_item_id
-         join folha_item item on item.id = obrigacao_item.folha_item_id
-         join prestador_vinculo vinculo
-           on vinculo.id = item.vinculo_id and vinculo.empresa_id = item.empresa_id
-         join termo
-           on termo.id = vinculo.termo_id and termo.empresa_id = vinculo.empresa_id
-         join prestador prestador
-           on prestador.id = vinculo.prestador_id and prestador.empresa_id = vinculo.empresa_id
-         join legado_chave chave
-           on chave.empresa_id = guia.empresa_id and chave.origem = 'GIW'
-          and chave.entidade = 'pessoas' and chave.destino_tabela = 'pessoa'
-          and chave.destino_id = prestador.pessoa_id
-        where guia.empresa_id = $1 and guia.competencia = $2::date
-          and guia.status <> 'CANCELADA'
-          and ($3::text is null or termo.numero like ('HML-GIW-' || $3 || '-%'))`,
-      [empresaId, data, namespaceReplay],
-    ),
+    gpsNovaQuery,
   ]);
   const folha = compararFolhaParalelaGiw(folhaLegado.rows, folhaNova.rows);
   const gps = compararGpsParalelaGiw(gpsLegado.rows, gpsNova.rows);

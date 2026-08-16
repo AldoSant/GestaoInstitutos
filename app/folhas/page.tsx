@@ -145,9 +145,14 @@ export default async function FolhasPage() {
                     <td>{moeda(item.irrf)}</td>
                     <td><strong>{moeda(item.liquido)}</strong></td>
                     <td>
-                      <Link className="text-link" href={`/folhas/${item.id}`}>
-                        {proximaAcao(item.status)} <ArrowRight size={15} />
-                      </Link>
+                      <div className="table-actions">
+                        <Link className="text-link" href={`/folhas/${item.id}`}>
+                          {proximaAcao(item.status)} <ArrowRight size={15} />
+                        </Link>
+                        <Link className="text-link muted" href={`/folhas/${item.id}/consulta`}>
+                          Consultar
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}

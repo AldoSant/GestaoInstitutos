@@ -9,6 +9,7 @@ import { exigirAdministrador } from "@/lib/autorizacao";
 import { rotaAplicacao } from "@/lib/base-path";
 import { validarEnquadramentoPrevidenciario } from "@/lib/enquadramento-previdenciario";
 import { destinoInternoSeguro } from "@/lib/bloqueios-orientados";
+import { mensagemOperacional } from "@/lib/mensagem-operacional";
 import { validarPerfilRecolhimento } from "@/lib/perfil-recolhimento";
 
 function competenciaValida(valor: string) {
@@ -53,7 +54,10 @@ export async function concluirConfiguracaoInicial(formData: FormData) {
     ) {
       erro = "Já existe um enquadramento publicado para parte desta vigência.";
     } else {
-      erro = error instanceof Error ? error.message : "Não foi possível concluir a configuração.";
+      erro = mensagemOperacional(
+        error,
+        "Não foi possível concluir a configuração.",
+      );
     }
   }
   if (erro) {
@@ -108,7 +112,10 @@ export async function concluirPerfilRecolhimento(formData: FormData) {
     ) {
       erro = "Já existe uma regra de recolhimento publicada para parte desta vigência.";
     } else {
-      erro = error instanceof Error ? error.message : "Não foi possível salvar a regra de recolhimento.";
+      erro = mensagemOperacional(
+        error,
+        "Não foi possível salvar a regra de recolhimento.",
+      );
     }
   }
   if (erro) {

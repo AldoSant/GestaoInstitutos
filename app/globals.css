@@ -180,6 +180,48 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
 .guided-actions strong, .guided-actions p { display: block; }
 .guided-actions strong { font-size: 11px; }
 .guided-actions p { margin: 3px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.jornada-resumo { margin: 16px 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff; }
+.jornada-resumo > div { padding: 15px 18px; border-right: 1px solid var(--line); }
+.jornada-resumo > div:last-child { border-right: 0; }
+.jornada-resumo span { display: block; color: var(--muted); font-size: 10px; }
+.jornada-resumo strong { display: block; margin-top: 5px; color: var(--teal-dark); font-family: Georgia, "Times New Roman", serif; font-size: 18px; }
+.jornada-fluxo { margin: 16px 0; }
+.jornada-etapas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.jornada-etapas li { min-width: 0; padding: 12px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 9px; border: 1px solid var(--line); border-radius: 10px; background: #f8faf9; color: var(--muted); }
+.jornada-etapas li > span { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: #e8eeee; font-size: 11px; font-weight: 700; }
+.jornada-etapas strong, .jornada-etapas small { display: block; }
+.jornada-etapas strong { color: var(--ink); font-size: 11px; }
+.jornada-etapas small { margin-top: 2px; font-size: 9px; }
+.jornada-etapas li.concluida { border-color: #c8e4d7; background: #f2faf6; color: #176a4e; }
+.jornada-etapas li.concluida > span { background: #dcefe5; }
+.jornada-etapas li.atual { border-color: #d9b875; background: #fffaf0; box-shadow: inset 0 0 0 1px #f0dfbc; color: #905208; }
+.jornada-etapas li.atual > span { background: #fff0d2; }
+.jornada-etapas li.pendente { border-style: dashed; }
+.jornada-card { margin: 16px 0; padding: clamp(22px, 4vw, 38px); display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 13px 16px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.jornada-card > svg { margin-top: 3px; color: var(--teal-dark); }
+.jornada-card h2 { margin: 2px 0 6px; font-family: Georgia, "Times New Roman", serif; font-size: clamp(22px, 3vw, 29px); color: var(--teal-dark); }
+.jornada-card p { margin: 0; color: var(--muted); max-width: 67ch; line-height: 1.55; }
+.jornada-card.alerta { border-color: #e8c6a3; background: #fffaf5; }
+.jornada-card.alerta > svg { color: #9a5518; }
+.jornada-acoes { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 6px; }
+.jornada-form, .jornada-valores, .jornada-alerta { grid-column: 1 / -1; }
+.jornada-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; margin-top: 10px; padding-top: 20px; border-top: 1px solid var(--line); }
+.jornada-form fieldset { grid-column: 1 / -1; margin: 0; padding: 12px; display: flex; flex-wrap: wrap; gap: 10px 18px; border: 1px solid var(--line); border-radius: 9px; }
+.jornada-form legend { padding: 0 4px; color: var(--muted); font-size: 10px; }
+.jornada-form fieldset label { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.jornada-form button { justify-self: start; }
+.jornada-valores { margin: 4px 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.jornada-valores > div { padding: 13px; border-right: 1px solid var(--line); }
+.jornada-valores > div:last-child { border-right: 0; }
+.jornada-valores dt { color: var(--muted); font-size: 10px; }
+.jornada-valores dd { margin: 5px 0 0; color: var(--teal-dark); font-family: Georgia, "Times New Roman", serif; font-size: 15px; font-weight: 700; }
+.jornada-alerta { padding: 13px; display: flex; align-items: center; gap: 11px; border: 1px solid #e8c6a3; border-radius: 10px; background: #fffaf5; }
+.jornada-alerta > div { margin-right: auto; }
+.jornada-alerta strong, .jornada-alerta p { display: block; }
+.jornada-alerta strong { color: #7a4516; font-size: 11px; }
+.jornada-alerta p { margin-top: 3px; font-size: 10px; }
+.table-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.text-link.muted { color: var(--muted); font-size: 10px; }
 .folha-pj-guidance { margin-top: 16px; border-color: #c8e4d7; background: #f4faf7; }
 .quick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
 .quick-card { min-width: 0; padding: 15px 17px; display: grid; grid-template-columns: auto 1fr auto; gap: 11px; align-items: center; border: 1px solid var(--line); border-radius: 11px; background: #fff; color: var(--teal); }
@@ -454,6 +496,10 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
 @media (max-width: 1180px) {
   .process-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .process-steps.obligation-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .jornada-etapas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .jornada-valores { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .jornada-valores > div:nth-child(2n) { border-right: 0; }
+  .jornada-valores > div:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
   .readiness-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
   .detail-summary { grid-template-columns: repeat(3, 1fr); }
@@ -493,6 +539,17 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
   .process-steps { grid-template-columns: 1fr; }
   .process-steps.obligation-steps { grid-template-columns: 1fr; }
   .guided-actions { align-items: flex-start; flex-wrap: wrap; }
+  .jornada-resumo, .jornada-etapas { grid-template-columns: 1fr; }
+  .jornada-resumo > div { border-right: 0; border-bottom: 1px solid var(--line); }
+  .jornada-resumo > div:last-child { border-bottom: 0; }
+  .jornada-card { grid-template-columns: 1fr; }
+  .jornada-card > svg { display: none; }
+  .jornada-acoes { grid-column: 1; }
+  .jornada-form { grid-template-columns: 1fr; }
+  .jornada-valores { grid-template-columns: 1fr; }
+  .jornada-valores > div { border-right: 0; border-bottom: 1px solid var(--line); }
+  .jornada-valores > div:last-child { border-bottom: 0; }
+  .jornada-alerta { align-items: flex-start; flex-wrap: wrap; }
   .readiness-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .topbar { height: 70px; gap: 10px; padding: 0 13px; }
   .page-heading h1 { margin-top: 0; overflow: hidden; font-size: 20px; text-overflow: ellipsis; white-space: nowrap; }

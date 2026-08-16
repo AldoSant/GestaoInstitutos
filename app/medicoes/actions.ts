@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { salvarMedicaoMensal } from "@/db/medicoes";
+import { mensagemOperacional } from "@/lib/mensagem-operacional";
 
 function destino(competencia: string, mensagem: string, erro = false) {
   const params = new URLSearchParams({
@@ -35,10 +36,7 @@ export async function salvarMedicao(formData: FormData) {
       observacao: String(formData.get("observacao") ?? ""),
     });
   } catch (error) {
-    erro =
-      error instanceof Error
-        ? error.message
-        : "Não foi possível registrar a medição.";
+    erro = mensagemOperacional(error, "Não foi possível registrar a medição.");
   }
   revalidatePath("/medicoes");
   revalidatePath("/folhas");

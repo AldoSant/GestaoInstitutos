@@ -9,6 +9,7 @@ import { exigirAdministrador } from "@/lib/autorizacao";
 import { validarEnquadramentoPrevidenciario } from "@/lib/enquadramento-previdenciario";
 import { validarPerfilRecolhimento } from "@/lib/perfil-recolhimento";
 import { rotaAplicacao } from "@/lib/base-path";
+import { mensagemOperacional } from "@/lib/mensagem-operacional";
 
 export async function salvarEnquadramento(formData: FormData) {
   await exigirAdministrador();
@@ -38,7 +39,7 @@ export async function salvarEnquadramento(formData: FormData) {
       ) {
         erro = "Já existe enquadramento publicado sobrepondo essa vigência.";
       } else {
-        erro = error instanceof Error ? error.message : "Não foi possível publicar.";
+        erro = mensagemOperacional(error, "Não foi possível publicar.");
       }
     }
   }
@@ -74,7 +75,7 @@ export async function salvarPerfilRecolhimento(formData: FormData) {
       ) {
         erro = "Já existe perfil de recolhimento publicado sobrepondo essa vigência.";
       } else {
-        erro = error instanceof Error ? error.message : "Não foi possível publicar.";
+        erro = mensagemOperacional(error, "Não foi possível publicar.");
       }
     }
   }
