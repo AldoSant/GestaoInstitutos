@@ -482,11 +482,11 @@ async function executar() {
   }
   if (!executarDeVerdade) return;
 
-  // Cada espelho é materializado em um Termo isolado. A consolidação mensal
-  // produtiva já possui smoke próprio; ativá-la aqui misturaria esses Vínculos
-  // descartáveis com cenários anteriores da HML e deixaria de medir o cálculo
-  // individual que consta no relatório do GIW.
-  process.env.FOLHA_CONSOLIDADA_PRODUTIVA = "false";
+  // Cada espelho é materializado em um Termo isolado, mas o GIW consolida
+  // retenções mensais da mesma pessoa entre os Vínculos. O replay precisa
+  // usar a mesma regra do produto para que a comparação histórica seja
+  // representativa; o namespace do Termo impede que cenários distintos se
+  // confundam na análise posterior.
 
   // A medição possui chave (vínculo, competência) e salvarMedicaoMensal faz
   // upsert auditável. Em HML isso permite retomar um replay interrompido e
