@@ -3,8 +3,6 @@ import { notFound } from "next/navigation";
 import {
   AlertTriangle,
   ArrowLeft,
-  Calculator,
-  CheckCircle2,
   ClipboardCheck,
   CreditCard,
   FileText,
@@ -13,6 +11,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { BloqueioOrientado } from "@/components/bloqueio-orientado";
+import { FolhaJornadaProgresso } from "@/components/folha-jornada-progresso";
 import { ProcessingAutoRefresh } from "@/components/processing-auto-refresh";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { diagnosticarConsolidacaoMensal } from "@/db/consolidacoes";
@@ -119,50 +118,6 @@ export default async function FolhaDetalhePage({
     { proventos: 0, inss: 0, irrf: 0, liquido: 0 },
   );
   const etapaAtual = !calculada ? 1 : !aprovadaPeloRh ? 2 : !fechada ? 3 : 4;
-  const etapas = [
-    {
-      titulo: "Cálculo",
-      detalhe: calculada ? "Processamento concluído" : "Em processamento",
-      icone: Calculator,
-      concluida: calculada,
-    },
-    {
-      titulo: "Conferência do RH",
-      detalhe: aprovadaPeloRh
-        ? "Revisão aprovada"
-        : conferenciaAtual
-          ? "Correções solicitadas"
-          : "Pendente",
-      icone: ClipboardCheck,
-      concluida: aprovadaPeloRh,
-    },
-    {
-      titulo: "Fechamento",
-      detalhe: fechada ? "Memória congelada" : "Pendente",
-      icone: LockKeyhole,
-      concluida: fechada,
-    },
-    {
-      titulo: "Pagamentos",
-      detalhe: fechada
-        ? `${pagamentosAptos}/${dados.itens.length} conta(s) apta(s)`
-        : "Após o fechamento",
-      icone: CreditCard,
-      concluida: false,
-    },
-    {
-      titulo: "Obrigações",
-      detalhe: "Após pagamentos",
-      icone: FileText,
-      concluida: false,
-    },
-    {
-      titulo: "Concluído",
-      detalhe: "Encerramento operacional",
-      icone: CheckCircle2,
-      concluida: false,
-    },
-  ];
 
   return (
     <AppShell
@@ -206,26 +161,7 @@ export default async function FolhaDetalhePage({
         </div>
       </section>
 
-      <section className="jornada-fluxo" aria-label="Etapas do processamento">
-        <ol className="jornada-etapas jornada-etapas-completa">
-          {etapas.map((etapa, indice) => {
-            const Icone = etapa.icone;
-            const numero = indice + 1;
-            const classe = etapa.concluida
-              ? "concluida"
-              : numero === etapaAtual
-                ? "atual"
-                : "pendente";
-            return (
-              <li key={etapa.titulo} className={classe}>
-                <span>{etapa.concluida ? <CheckCircle2 size={16} /> : numero}</span>
-                <div><strong>{etapa.titulo}</strong><small>{etapa.detalhe}</small></div>
-                <Icone size={17} />
-              </li>
-            );
-          })}
-        </ol>
-      </section>
+      <FolhaJornadaProgresso etapaAtual={etapaAtual} />
 
       {etapaAtual === 1 && (
         <section className={`jornada-card ${processamentoFalhou ? "alerta" : ""}`}>

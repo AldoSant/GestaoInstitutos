@@ -282,11 +282,19 @@ export default async function FolhaDetalhePage({
           </div>
         </section>
 
-        <section className="panel process-panel" aria-label="Etapas da folha">
+        <nav className="consulta-nav" aria-label="Seções da consulta">
+          <a href="#status-operacional">Situação</a>
+          <a href="#bases-rubricas">Bases e rubricas</a>
+          <a href="#prestadores-calculados">Prestadores</a>
+          <a href="#conferencia-arquivo">Conferência</a>
+          <a href="#auditoria">Auditoria</a>
+        </nav>
+
+        <section className="panel process-panel" id="status-operacional" aria-label="Etapas da folha">
           <div className="panel-header">
             <div>
               <span className="section-kicker">Fluxo desta folha</span>
-              <h2>Próximo passo operacional</h2>
+              <h2>Situação operacional da revisão</h2>
               <p>
                 A revisão {folha.revisao} percorre cálculo, conferência, fechamento
                 e preparação dos pagamentos.
@@ -599,7 +607,7 @@ export default async function FolhaDetalhePage({
           </section>
         )}
 
-        <section className="panel">
+        <section className="panel" id="bases-rubricas">
           <div className="panel-header">
             <div>
               <span className="section-kicker">Resumo fiscal e contábil</span>
@@ -671,7 +679,7 @@ export default async function FolhaDetalhePage({
           </div>
         </section>
 
-        <section className="panel">
+        <section className="panel" id="prestadores-calculados">
           <div className="panel-header">
             <div><span className="section-kicker">Memória individual</span><h2>Prestadores calculados</h2><p>Valores e rubricas congelados nesta revisão.</p></div>
             {folha.hash_resultado && <StatusBadge tone="info">Hash {folha.hash_resultado.slice(0, 12)}…</StatusBadge>}
@@ -726,7 +734,7 @@ export default async function FolhaDetalhePage({
           </div>
         </section>
 
-        <section className="panel">
+        <section className="panel" id="conferencia-arquivo">
           <div className="panel-header">
             <div>
               <span className="section-kicker">Conferência por arquivo</span>
@@ -992,7 +1000,7 @@ export default async function FolhaDetalhePage({
           </div>
         </section>
 
-        <section className="panel">
+        <section className="panel" id="auditoria">
           <div className="panel-header"><div><span className="section-kicker">Auditoria</span><h2>Histórico de estados</h2></div></div>
           <div className="table-wrap">
             <table>

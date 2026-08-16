@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CheckCircle2, FileText, ReceiptText, ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { BloqueioOrientado } from "@/components/bloqueio-orientado";
+import { FolhaJornadaProgresso } from "@/components/folha-jornada-progresso";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { carregarFolha } from "@/db/folhas";
 import { diagnosticarCompetenciaObrigacao, listarObrigacoes } from "@/db/obrigacoes";
@@ -49,11 +50,7 @@ export default async function ObrigacoesDaFolhaPage({
     >
       {erro && <BloqueioOrientado bloqueio={orientarBloqueio({ erro, competencia, retorno: `/folhas/${folhaId}/obrigacoes` })} />}
       {sucesso && <section className="feedback-banner success" role="status"><strong>Operação concluída</strong><span>{sucesso}</span></section>}
-      <section className="jornada-fluxo" aria-label="Etapas do processamento">
-        <ol className="jornada-etapas jornada-etapas-completa">
-          {["Cálculo", "Conferência RH", "Fechamento", "Pagamentos", "Obrigações", "Concluído"].map((titulo, indice) => <li key={titulo} className={indice < 4 ? "concluida" : indice === 4 ? "atual" : "pendente"}><span>{indice < 4 ? <CheckCircle2 size={16} /> : indice + 1}</span><div><strong>{titulo}</strong><small>{indice < 4 ? "Concluído" : indice === 4 ? "Em andamento" : "Após as obrigações"}</small></div></li>)}
-        </ol>
-      </section>
+      <FolhaJornadaProgresso etapaAtual={5} />
       <section className="jornada-card">
         <ReceiptText size={24} />
         <div>
