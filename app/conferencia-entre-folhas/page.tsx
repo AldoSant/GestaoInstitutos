@@ -122,6 +122,40 @@ export default async function ConsolidacoesPage({
       (conflito) => !hashesResolvidos.has(conflito.hash_fontes),
     ).length ?? 0;
   const pronto = Boolean(diagnostico) && pendentes === 0;
+  const proximaAcao = !diagnostico
+    ? {
+        titulo: "Analise a competência",
+        detalhe: "Carregue as fontes atuais para identificar pessoas presentes em mais de um vínculo.",
+        destino: "#preparo-conferencia",
+        rotulo: "Analisar competência",
+      }
+    : diagnostico.conflitos.length === 0
+      ? {
+          titulo: "Nenhum conflito em aberto",
+          detalhe: "A competência não possui pessoa ativa em múltiplos vínculos. Você pode voltar à rotina de Folha.",
+          destino: retorno,
+          rotulo: "Voltar à Folha",
+        }
+      : casosAtuais.length === 0
+        ? {
+            titulo: "Congele as fontes atuais",
+            detalhe: "Registre o responsável para iniciar uma análise que continue válida somente para este conjunto de fontes.",
+            destino: "#congelar-conferencia",
+            rotulo: "Congelar diagnóstico",
+          }
+        : pendentes > 0
+          ? {
+              titulo: `Resolva ${pendentes} caso${pendentes === 1 ? "" : "s"}`,
+              detalhe: "As decisões do RH precisam corresponder aos hashes atuais antes de qualquer simulação fiscal.",
+              destino: "#casos-conferencia",
+              rotulo: "Abrir casos em análise",
+            }
+          : {
+              titulo: "Avance para as simulações",
+              detalhe: "Todos os conflitos atuais possuem decisão. Casos elegíveis podem seguir para a memória de rateio controlada.",
+              destino: `/conferencia-entre-folhas/simulacoes?competencia=${encodeURIComponent(competencia)}&retorno=${encodeURIComponent(retorno)}`,
+              rotulo: "Abrir simulações",
+            };
 
   return (
     <AppShell
@@ -175,22 +209,30 @@ export default async function ConsolidacoesPage({
         </section>
       )}
 
-      <section className="panel cadastro-section">
-        <div className="panel-header">
-          <div>
-            <span className="section-kicker">Competência analisada</span>
-            <h2>Antecipar conflitos antes da Folha</h2>
-            <p>
-              Localiza a mesma pessoa em mais de um Termo ou Meta, versiona
-              as fontes e preserva a decisão responsável do RH.
-            </p>
+      <section className="conferencia-overview" id="preparo-conferencia">
+        <div>
+          <span className="section-kicker">Competência analisada</span>
+          <h2>Antecipe conflitos antes que eles alcancem a Folha.</h2>
+          <p>
+            A análise localiza a mesma pessoa em mais de um Termo ou Meta, versiona as fontes e preserva a decisão responsável do RH.
+          </p>
+          <div className="conferencia-resumo" aria-label="Resumo da conferência">
+            <div><span>Pessoas ativas</span><strong>{diagnostico?.pessoas ?? "—"}</strong></div>
+            <div><span>Vínculos ativos</span><strong>{diagnostico?.vinculos ?? "—"}</strong></div>
+            <div><span>Multi-lote</span><strong>{diagnostico?.pessoasMultilote ?? "—"}</strong></div>
+            <div><span>Pendentes</span><strong>{pendentes}</strong></div>
           </div>
-          <StatusBadge tone={pronto ? "success" : "warning"}>
-            {pronto ? <CheckCircle2 size={14} /> : <GitMerge size={14} />}
-            {pronto ? "Pronto para conferência" : `${pendentes} pendente(s)`}
-          </StatusBadge>
         </div>
-        <form method="get" className="crud-form">
+        <aside className="conferencia-proxima-acao" aria-label="Próxima ação">
+          <span>Próxima ação</span>
+          <strong>{proximaAcao.titulo}</strong>
+          <p>{proximaAcao.detalhe}</p>
+          <a className="button secondary" href={proximaAcao.destino}>
+            {proximaAcao.rotulo} <GitMerge size={16} />
+          </a>
+        </aside>
+        <div className="conferencia-controles">
+        <form method="get" className="crud-form conferencia-form">
           <label>
             <span>Competência</span>
             <input
@@ -205,7 +247,7 @@ export default async function ConsolidacoesPage({
           </button>
         </form>
         {diagnostico && diagnostico.pessoasMultilote > 0 && (
-          <form action={congelarDiagnostico} className="crud-form">
+          <form id="congelar-conferencia" action={congelarDiagnostico} className="crud-form conferencia-form">
             <input type="hidden" name="competencia" value={competencia} />
             <input type="hidden" name="retorno" value={retorno} />
             <label>
@@ -223,29 +265,12 @@ export default async function ConsolidacoesPage({
             </button>
           </form>
         )}
+        </div>
       </section>
 
       {diagnostico && (
         <>
-          <section className="detail-summary">
-            <div>
-              <span>Pessoas ativas</span>
-              <strong>{diagnostico.pessoas}</strong>
-            </div>
-            <div>
-              <span>Vínculos ativos</span>
-              <strong>{diagnostico.vinculos}</strong>
-            </div>
-            <div>
-              <span>Pessoas multi-lote</span>
-              <strong>{diagnostico.pessoasMultilote}</strong>
-            </div>
-            <div>
-              <span>Decisões pendentes</span>
-              <strong>{pendentes}</strong>
-            </div>
-          </section>
-
+          <section className="conferencia-conflitos" id="conflitos-conferencia">
           {diagnostico.conflitos.map((pessoa) => (
             <section className="panel" key={pessoa.pessoa_id}>
               <div className="panel-header">
@@ -342,10 +367,17 @@ export default async function ConsolidacoesPage({
               </div>
             </section>
           )}
+          </section>
         </>
       )}
 
-      <section className="panel">
+      <nav className="consulta-nav" aria-label="Seções da conferência">
+        <a href="#conflitos-conferencia">Conflitos atuais</a>
+        <a href="#casos-conferencia">Casos e decisões</a>
+        <a href="#limite-conferencia">Limites do processo</a>
+      </nav>
+
+      <section className="panel" id="casos-conferencia">
         <div className="panel-header">
           <div>
             <span className="section-kicker">Trilha persistente</span>
@@ -468,7 +500,7 @@ export default async function ConsolidacoesPage({
         )}
       </section>
 
-      <section className="alert-box warning">
+      <section className="alert-box warning" id="limite-conferencia">
         <AlertTriangle size={22} />
         <div>
           <strong>A decisão não executa rateio tributário</strong>

@@ -165,6 +165,28 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
 .demonstrativo-competencia label { min-width: 185px; display: grid; gap: 6px; }
 .demonstrativo-competencia input { width: 100%; height: 39px; padding: 0 10px; border: 1px solid #cfe1dc; border-radius: var(--radius-control); outline: 0; background: rgba(255,255,255,.86); color: var(--ink); font: inherit; font-size: 12px; }
 .demonstrativo-competencia input:focus { border-color: #6eaaa4; box-shadow: 0 0 0 3px rgba(12,116,109,.09); }
+.conferencia-overview { position: relative; overflow: hidden; margin-bottom: 16px; padding: clamp(22px, 3vw, 30px); display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(260px, .85fr); gap: 24px; border: 1px solid #d3e5e0; border-radius: var(--radius-card); background: linear-gradient(125deg, #fbfffd 0%, #f0f8f5 72%, #eaf5f1 100%); box-shadow: 0 10px 28px rgba(24,52,68,.05); }
+.conferencia-overview::after { content: ""; position: absolute; width: 260px; height: 260px; left: 39%; bottom: -194px; border: 1px solid rgba(8,116,109,.12); border-radius: 50%; box-shadow: 0 0 0 34px rgba(8,116,109,.03), 0 0 0 68px rgba(8,116,109,.018); pointer-events: none; }
+.conferencia-overview > * { position: relative; z-index: 1; }
+.conferencia-overview h2 { max-width: 670px; margin: 6px 0 7px; color: var(--teal-dark); font-family: Georgia, "Times New Roman", serif; font-size: clamp(24px, 3vw, 32px); line-height: 1.1; letter-spacing: -.022em; }
+.conferencia-overview > div > p { max-width: 690px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.conferencia-resumo { width: min(100%, 640px); margin-top: 21px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden; border: 1px solid #d6e7e2; border-radius: 12px; background: rgba(255,255,255,.7); }
+.conferencia-resumo > div { min-width: 0; padding: 12px 14px; border-right: 1px solid #dce9e5; }
+.conferencia-resumo > div:last-child { border-right: 0; }
+.conferencia-resumo span, .conferencia-resumo strong { display: block; }
+.conferencia-resumo span { color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; }
+.conferencia-resumo strong { margin-top: 4px; color: var(--teal-dark); font-family: Georgia, "Times New Roman", serif; font-size: 21px; }
+.conferencia-proxima-acao { align-self: stretch; padding: 19px; display: flex; flex-direction: column; align-items: flex-start; border: 1px solid rgba(10,78,73,.18); border-radius: 14px; color: #ebf8f4; background: linear-gradient(155deg, #16434a 0%, #0b6e67 100%); box-shadow: 0 12px 24px rgba(11,74,72,.13); }
+.conferencia-proxima-acao > span { color: #a9dcd3; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.conferencia-proxima-acao strong { margin-top: 12px; font-family: Georgia, "Times New Roman", serif; font-size: 21px; line-height: 1.15; }
+.conferencia-proxima-acao p { margin: 7px 0 18px; color: #c3ded8; font-size: 11px; line-height: 1.55; }
+.conferencia-proxima-acao .button { width: 100%; margin-top: auto; color: #e9faf6; border-color: rgba(221,250,242,.28); background: rgba(255,255,255,.1); }
+.conferencia-proxima-acao .button:hover { background: rgba(255,255,255,.17); }
+.conferencia-controles { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.conferencia-form { min-width: 0; margin: 0; grid-template-columns: minmax(0, 1fr) auto; border-color: #d4e6e1; background: rgba(255,255,255,.78); }
+.conferencia-form .button { white-space: nowrap; }
+.conferencia-conflitos { display: grid; gap: 16px; }
+.conferencia-conflitos > .panel { margin: 0; }
 .person-hero { margin-bottom: 14px; }
 .readiness-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
 .readiness-grid > * { min-height: 44px; padding: 9px 11px; display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--muted); font-size: 10px; font-weight: 750; }
@@ -628,6 +650,7 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
   .fechamento-proxima-acao { min-height: 0; }
   .obrigacao-overview { grid-template-columns: 1fr; }
   .demonstrativo-overview { grid-template-columns: 1fr; }
+  .conferencia-overview { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 900px) {
@@ -649,6 +672,7 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
   .fechamento-controles, .campanha-cards { grid-template-columns: 1fr; }
   .obrigacao-metricas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .demonstrativo-metricas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .conferencia-controles { grid-template-columns: 1fr; }
   .login-brand { min-height: 390px; padding: 55px 35px; }
   .login-card { margin: 35px auto; }
 }
@@ -676,6 +700,10 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
   .demonstrativo-metricas { grid-template-columns: 1fr; }
   .demonstrativo-competencia { align-items: stretch; flex-direction: column; }
   .demonstrativo-competencia label { min-width: 0; }
+  .conferencia-resumo { grid-template-columns: 1fr; }
+  .conferencia-resumo > div { border-right: 0; border-bottom: 1px solid #dce9e5; }
+  .conferencia-resumo > div:last-child { border-bottom: 0; }
+  .conferencia-form { grid-template-columns: 1fr; }
   .readiness-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .topbar { height: 70px; gap: 10px; padding: 0 13px; }
   .page-heading h1 { margin-top: 0; overflow: hidden; font-size: 20px; text-overflow: ellipsis; white-space: nowrap; }
