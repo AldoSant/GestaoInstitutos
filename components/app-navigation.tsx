@@ -92,7 +92,7 @@ export function Logo() {
   return (
     <Link href="/" className="brand" aria-label="Veredas Gestão de Institutos — início">
       <Image
-        src={caminhoAplicacao("/veredas/veredas-lockup-silver.png")}
+        src={caminhoAplicacao("/veredas/veredas-lockup-silver.svg")}
         alt="Veredas"
         width={136}
         height={40}

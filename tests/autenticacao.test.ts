@@ -36,8 +36,8 @@ test("normaliza caminhos com e sem base path", () => {
   assert.equal(caminhoAplicacao("/login"), "/gestao-institutos/login");
   assert.equal(caminhoAplicacao("/gestao-institutos/login"), "/gestao-institutos/login");
   assert.equal(
-    caminhoAplicacao("/veredas/veredas-lockup-silver.png"),
-    "/gestao-institutos/veredas/veredas-lockup-silver.png",
+    caminhoAplicacao("/veredas/veredas-lockup-silver.svg"),
+    "/gestao-institutos/veredas/veredas-lockup-silver.svg",
   );
   assert.equal(rotaAplicacao("/login"), "/login");
   assert.equal(rotaAplicacao("/gestao-institutos/login"), "/login");

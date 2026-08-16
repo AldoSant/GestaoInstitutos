@@ -14,7 +14,7 @@ export default async function LoginPage({
       <section className="login-brand">
         <Image
           className="login-veredas-logo"
-          src={caminhoAplicacao("/veredas/veredas-lockup-silver.png")}
+          src={caminhoAplicacao("/veredas/veredas-lockup-silver.svg")}
           alt="Veredas"
           width={220}
           height={64}
