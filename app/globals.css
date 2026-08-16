@@ -1446,3 +1446,146 @@ td { color: #2a3442; border-bottom-color: #e7e8ea; }
   .assistente-progresso li { min-width: 118px; }
   .assistente-card { padding: 26px 20px; }
 }
+
+/* Veredas shape contract ---------------------------------------------------
+   A shape must communicate its role.  Surfaces are subtly squared, controls
+   are tighter, grouped grids are flush, and only compact status indicators
+   are pills.  Keeping this at the end of the cascade also retires the
+   rounded legacy primitives that still appear in older workspaces. */
+:root {
+  --radius-surface: 4px;
+  --radius-control: 2px;
+  --radius-pill: 999px;
+}
+
+/* Standalone surfaces */
+:is(
+  .panel,
+  .hero-row,
+  .fechamento-hero,
+  .obrigacao-overview,
+  .demonstrativo-overview,
+  .conferencia-overview,
+  .simulacao-overview,
+  .jornada-card,
+  .assistente-card,
+  .login-card,
+  .modal-card,
+  .empty-state,
+  .memory-detail,
+  .workflow-panel,
+  .critical-panel,
+  .admin-intro,
+  .quick-card,
+  .admin-card,
+  .regime-card,
+  .current-profile,
+  .parameter-list,
+  .parameter-form,
+  .onboarding-hero,
+  .migracao-overview,
+  .ajuda-hero,
+  .onboarding-choice,
+  .onboarding-action-note,
+  .onboarding-complete,
+  .campanha-card,
+  .processing-ticket,
+  .processing-lane-empty,
+  .jornada-fluxo,
+  .assistente-form,
+  .assistente-selecao,
+  .assistente-resumo-selecao,
+  .assistente-alerta,
+  .alert-box,
+  .feedback-banner,
+  .guided-actions,
+  .jornada-alerta,
+  .simulacao-modo
+) {
+  border-radius: var(--radius-surface);
+}
+
+/* Bounded groups retain a single outer contour; their children stay flush. */
+:is(
+  .metrics-grid,
+  .jornada-resumo,
+  .detail-summary,
+  .fechamento-resumo,
+  .conferencia-resumo,
+  .simulacao-resumo,
+  .assistente-progresso,
+  .assistente-conferencia,
+  .process-steps,
+  .consulta-nav,
+  .cadastro-section .table-wrap,
+  .migracao-resumo,
+  .type-grid,
+  .check-list,
+  .technical-reference
+) {
+  border-radius: var(--radius-surface);
+}
+
+:is(
+  .metric-card,
+  .admin-card,
+  .process-steps li,
+  .jornada-etapas li,
+  .jornada-etapas li > span
+) {
+  border-radius: 0;
+}
+
+/* Inputs and actionable controls are one compact family. */
+:is(
+  .button,
+  .context-button,
+  .competencia-switcher,
+  .row-action,
+  .icon-button,
+  .modal-close,
+  .nav-children,
+  .nav-children .nav-link,
+  .account-menu-panel,
+  .mobile-menu-panel,
+  .search-field,
+  .search-field button,
+  .cadastro-filters,
+  .cadastro-search-control,
+  .inline-filters,
+  .filter,
+  .summary-strip,
+  .crud-form,
+  .crud-form .checkbox-field,
+  .role-fields,
+  .jornada-form fieldset,
+  .jornada-alerta,
+  .readiness-grid > *,
+  .process-steps li > span,
+  .metric-icon,
+  .metric-icon.blue,
+  .metric-icon.amber,
+  .metric-icon.slate,
+  .quick-card > svg:first-child,
+  .admin-card-icon,
+  .current-profile-icon,
+  .onboarding-hero-icon,
+  .onboarding-choice-icon,
+  .ajuda-hero-icon,
+  .ajuda-passos li > span
+) {
+  border-radius: var(--radius-control);
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  border-radius: var(--radius-control);
+}
+
+/* Pills and circles are intentional semantic exceptions, never card styling. */
+.status-badge { border-radius: var(--radius-pill); }
+
+@media (max-width: 760px) {
+  .modal-card { border-radius: var(--radius-surface) var(--radius-surface) 0 0; }
+}

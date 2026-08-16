@@ -8,6 +8,20 @@ async function semEstouroHorizontal(page: Page) {
   expect(dimensoes.conteudo).toBeLessThanOrEqual(dimensoes.viewport);
 }
 
+async function esperarContratoDeFormas(page: Page) {
+  await expect.poll(() => page.evaluate(() => {
+    const raio = (seletor: string) => {
+      const elemento = document.querySelector<HTMLElement>(seletor);
+      return elemento ? getComputedStyle(elemento).borderRadius : null;
+    };
+    return {
+      cartao: raio(".login-card"),
+      campo: raio(".login-form input"),
+      acao: raio(".login-form .button"),
+    };
+  })).toEqual({ cartao: "4px", campo: "2px", acao: "2px" });
+}
+
 test("login público entrega a identidade Veredas sem ruptura visual", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("login");
@@ -19,10 +33,12 @@ test("login público entrega a identidade Veredas sem ruptura visual", async ({ 
   )).toBeGreaterThan(0);
   await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
   await expect(page.getByLabel("Login")).toBeFocused();
+  await esperarContratoDeFormas(page);
   await semEstouroHorizontal(page);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await semEstouroHorizontal(page);
   await expect(logo).toBeVisible();
   await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible();
+  await esperarContratoDeFormas(page);
 });
