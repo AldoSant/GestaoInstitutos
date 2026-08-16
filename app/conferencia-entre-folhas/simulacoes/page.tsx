@@ -128,6 +128,9 @@ export default async function SimulacoesConsolidacaoPage({
   const homologadas = simulacoes.filter(
     (simulacao) => simulacao.status === "HOMOLOGADA",
   ).length;
+  const emHomologacao = simulacoes.filter(
+    (simulacao) => simulacao.status === "EM_HOMOLOGACAO",
+  ).length;
   let ativacao: ReturnType<typeof avaliarAtivacaoConsolidacaoProdutiva> = {
     ativa: false,
     motivo: "configuração inválida",
@@ -144,6 +147,45 @@ export default async function SimulacoesConsolidacaoPage({
         ? error.message
         : "A ativação produtiva está configurada incorretamente.");
   }
+  const simulacaoEmDecisao = simulacoes.find((simulacao) =>
+    ["SIMULADA", "EM_HOMOLOGACAO"].includes(simulacao.status),
+  );
+  const proximaAcao = simulacaoEmDecisao?.status === "EM_HOMOLOGACAO"
+    ? {
+        titulo: "Registre a decisão do RH",
+        detalhe: "A memória foi enviada para validação. A decisão exige responsável, evidência e estado terminal explícito.",
+        destino: `#simulacao-${simulacaoEmDecisao.id}`,
+        rotulo: "Abrir decisão pendente",
+      }
+    : simulacaoEmDecisao
+      ? {
+          titulo: "Envie a memória ao RH",
+          detalhe: "A versão calculada permanece apenas como simulação até ser formalmente encaminhada para homologação.",
+          destino: `#simulacao-${simulacaoEmDecisao.id}`,
+          rotulo: "Abrir memória calculada",
+        }
+      : elegiveis.length > 0
+        ? {
+            titulo: "Calcule a versão atual",
+            detalhe: "Os casos resolvidos possuem as condições para entrar no motor de simulação controlada.",
+            destino: "#casos-aptos-simulacao",
+            rotulo: "Ver casos aptos",
+          }
+        : homologadas > 0
+          ? {
+              titulo: "Memória homologada disponível",
+              detalhe: ativacao.ativa
+                ? "A integração produtiva continua sujeita às fontes atuais e às demais travas da Folha."
+                : "A homologação permanece como evidência; esta competência ainda não está habilitada para consumo produtivo.",
+              destino: "#versoes-simulacao",
+              rotulo: "Consultar memória",
+            }
+          : {
+              titulo: "Resolva casos antes de simular",
+              detalhe: "Apenas conflitos congelados e resolvidos pelo RH podem entrar no cálculo de rateio.",
+              destino: `/conferencia-entre-folhas?competencia=${encodeURIComponent(competencia)}&retorno=${encodeURIComponent(retorno)}`,
+              rotulo: "Voltar aos casos mensais",
+            };
 
   return (
     <AppShell
@@ -197,27 +239,44 @@ export default async function SimulacoesConsolidacaoPage({
         </section>
       )}
 
-      <section className={`alert-box ${ativacao.ativa ? "success" : "warning"}`}>
-        {ativacao.ativa ? (
-          <CheckCircle2 size={22} />
-        ) : (
-          <FileLock2 size={22} />
-        )}
+      <section className="simulacao-overview">
         <div>
-          <strong>
-            {ativacao.ativa
-              ? "Consumo produtivo habilitado nesta competência"
-              : "Consumo produtivo bloqueado"}
-          </strong>
+          <span className="section-kicker">Memória de rateio · competência</span>
+          <h2>Simule, valide e só então leve o resultado à Folha.</h2>
           <p>
-            {ativacao.ativa
-              ? "Somente uma simulação aprovada e ainda atual pode alimentar a Folha. Mudança de fonte, regra, enquadramento ou Vínculo interrompe o processamento, e o fechamento exige todas as Folhas da Pessoa."
-              : "“Aprovada pelo RH” registra a decisão, mas não produz efeito financeiro enquanto empresa e competência não forem habilitadas na implantação."}
+            O motor só considera casos congelados e resolvidos. Cada versão preserva fontes, resultado e decisão do RH.
           </p>
+          <div className="simulacao-resumo" aria-label="Resumo das simulações">
+            <div><span>Versões calculadas</span><strong>{simulacoes.length}</strong></div>
+            <div><span>Em validação</span><strong>{emHomologacao}</strong></div>
+            <div><span>Homologadas</span><strong>{homologadas}</strong></div>
+            <div><span>Consumo na Folha</span><strong>{ativacao.ativa ? "Habilitado" : "Bloqueado"}</strong></div>
+          </div>
+          <div id="limites-simulacao" className={`simulacao-modo ${ativacao.ativa ? "ativo" : "bloqueado"}`}>
+            {ativacao.ativa ? <CheckCircle2 size={18} /> : <FileLock2 size={18} />}
+            <span>
+              <strong>{ativacao.ativa ? "Modo produtivo controlado" : "Modo de simulação"}</strong>
+              <small>{ativacao.ativa ? `Habilitado desde ${ativacao.inicio}. Fontes, regras, enquadramento e vínculos continuam sendo revalidados.` : `Não alimenta Folhas nesta competência: ${ativacao.motivo}.`}</small>
+            </span>
+          </div>
         </div>
+        <aside className="simulacao-proxima-acao" aria-label="Próxima ação">
+          <span>Próxima ação</span>
+          <strong>{proximaAcao.titulo}</strong>
+          <p>{proximaAcao.detalhe}</p>
+          <a className="button secondary" href={proximaAcao.destino}>
+            {proximaAcao.rotulo} <Calculator size={16} />
+          </a>
+        </aside>
       </section>
 
-      <section className="panel cadastro-section">
+      <nav className="consulta-nav" aria-label="Seções das simulações">
+        <a href="#casos-aptos-simulacao">Casos aptos</a>
+        <a href="#versoes-simulacao">Memórias calculadas</a>
+        <a href="#limites-simulacao">Limites do consumo</a>
+      </nav>
+
+      <section className="panel cadastro-section" id="casos-aptos-simulacao">
         <div className="panel-header">
           <div>
             <span className="section-kicker">Competência</span>
@@ -284,33 +343,9 @@ export default async function SimulacoesConsolidacaoPage({
         )}
       </section>
 
-      <section className="detail-summary">
-        <div>
-          <span>Versões calculadas</span>
-          <strong>{simulacoes.length}</strong>
-        </div>
-        <div>
-          <span>Em validação pelo RH</span>
-          <strong>
-            {
-              simulacoes.filter(
-                (simulacao) => simulacao.status === "EM_HOMOLOGACAO",
-              ).length
-            }
-          </strong>
-        </div>
-        <div>
-          <span>Aprovadas pelo RH</span>
-          <strong>{homologadas}</strong>
-        </div>
-        <div>
-          <span>Integração na Folha</span>
-          <strong>{ativacao.ativa ? "Habilitada" : "Bloqueada"}</strong>
-        </div>
-      </section>
-
+      <section className="simulacao-versoes" id="versoes-simulacao">
       {simulacoes.map((simulacao) => (
-        <section className="panel" key={simulacao.id}>
+        <section className="panel simulacao-versao" id={`simulacao-${simulacao.id}`} key={simulacao.id}>
           <div className="panel-header">
             <div>
               <span className="section-kicker">
@@ -467,6 +502,7 @@ export default async function SimulacoesConsolidacaoPage({
           )}
         </section>
       ))}
+      </section>
     </AppShell>
   );
 }
