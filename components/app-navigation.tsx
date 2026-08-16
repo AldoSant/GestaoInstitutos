@@ -9,6 +9,7 @@ import {
   CircleHelp,
   Database,
   FileCheck2,
+  FileLock2,
   FileText,
   Gauge,
   Link2,
@@ -116,6 +117,9 @@ export function NavegacaoPrincipal({
       />
       <NavLink
         item={{ href: ROTAS.obrigacoes, label: "Obrigações e GPS", icon: FileCheck2 }}
+      />
+      <NavLink
+        item={{ href: ROTAS.fechamentoMensal, label: "Fechamento consolidado", icon: FileLock2 }}
       />
       <span className="nav-section-label nav-section-label-secondary">Base operacional</span>
       <GrupoNavegacao
