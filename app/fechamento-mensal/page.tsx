@@ -61,6 +61,11 @@ function dataHora(valor: Date | string | null) {
   }).format(new Date(valor));
 }
 
+function rotuloCompetencia(valor: string) {
+  const [ano, mes] = valor.split("-");
+  return ano && mes ? `${mes}/${ano}` : valor;
+}
+
 export default async function HomologacoesPage({
   searchParams,
 }: {
@@ -127,6 +132,36 @@ export default async function HomologacoesPage({
     : undefined;
   const aprovada =
     versaoAtual?.status === "APROVADA" && diagnostico?.resumo.pronta;
+  const bloqueios = diagnostico?.resumo.bloqueios.length ?? 0;
+  const proximaAcao = !diagnostico
+    ? {
+        titulo: "Atualize o diagnóstico",
+        detalhe: "Carregue os controles da competência para iniciar a conferência.",
+        destino: "#preparo-fechamento",
+      }
+    : bloqueios > 0
+      ? {
+          titulo: `Resolva ${bloqueios} bloqueio${bloqueios === 1 ? "" : "s"}`,
+          detalhe: "A aprovação só fica disponível quando todos os controles obrigatórios estiverem conformes.",
+          destino: "#checklist-fechamento",
+        }
+      : !versaoAtual
+        ? {
+            titulo: "Congele a evidência",
+            detalhe: "Registre o responsável para preservar esta versão dos controles antes da decisão final.",
+            destino: "#congelar-fechamento",
+          }
+        : aprovada
+          ? {
+              titulo: "Competência aprovada",
+              detalhe: "A decisão está associada às fontes atuais e permanece disponível no histórico auditável.",
+              destino: "#historico-fechamento",
+            }
+          : {
+              titulo: "Registre a decisão final",
+              detalhe: "A versão congelada está pronta para análise, aprovação ou rejeição formal.",
+              destino: "#decisao-fechamento",
+            };
 
   return (
     <AppShell
@@ -169,30 +204,30 @@ export default async function HomologacoesPage({
         </section>
       )}
 
-      <section className="panel cadastro-section">
-        <div className="panel-header">
-          <div>
-            <span className="section-kicker">Dossiê da competência</span>
-            <h2>Unificar os controles de fechamento</h2>
-            <p>
-              O diagnóstico é recalculado a partir do PostgreSQL. O congelamento
-              preserva hashes e contagens para revisão e assinatura do RH.
-            </p>
+      <section className="fechamento-hero" id="preparo-fechamento">
+        <div className="fechamento-hero-copy">
+          <span className="section-kicker">Dossiê da competência</span>
+          <h2>Decida com os controles certos à vista.</h2>
+          <p>
+            O diagnóstico é recalculado a partir do PostgreSQL. O congelamento
+            preserva hashes e contagens para revisão e assinatura do RH.
+          </p>
+          <div className="fechamento-resumo" aria-label="Resumo do fechamento">
+            <div><span>Controles</span><strong>{diagnostico?.resumo.total ?? "—"}</strong></div>
+            <div><span>Conformes</span><strong>{diagnostico?.resumo.conformes ?? "—"}</strong></div>
+            <div><span>Bloqueios</span><strong>{bloqueios}</strong></div>
           </div>
-          <StatusBadge
-            tone={diagnostico?.resumo.pronta ? "success" : "danger"}
-          >
-            {diagnostico?.resumo.pronta ? (
-              <CheckCircle2 size={14} />
-            ) : (
-              <AlertTriangle size={14} />
-            )}
-            {diagnostico?.resumo.pronta
-              ? "Todos os controles conformes"
-              : `${diagnostico?.resumo.bloqueios.length ?? 0} bloqueio(s)`}
-          </StatusBadge>
         </div>
-        <form method="get" className="crud-form">
+        <aside className="fechamento-proxima-acao" aria-label="Próxima ação">
+          <span>Próxima ação</span>
+          <strong>{proximaAcao.titulo}</strong>
+          <p>{proximaAcao.detalhe}</p>
+          <a href={proximaAcao.destino} className="button secondary">
+            Ver o que precisa ser feito <ArrowRight size={16} />
+          </a>
+        </aside>
+        <div className="fechamento-controles">
+          <form method="get" className="crud-form fechamento-form">
           <label>
             <span>Competência</span>
             <input
@@ -207,7 +242,7 @@ export default async function HomologacoesPage({
           </button>
         </form>
         {diagnostico && (
-          <form action={congelarCompetencia} className="crud-form">
+          <form id="congelar-fechamento" action={congelarCompetencia} className="crud-form fechamento-form">
             <input type="hidden" name="competencia" value={competencia} />
             <label>
               <span>Responsável pelo congelamento</span>
@@ -224,9 +259,10 @@ export default async function HomologacoesPage({
             </button>
           </form>
         )}
+        </div>
       </section>
 
-      <section className="panel">
+      <section className="panel campanha-fechamento">
         <div className="panel-header">
           <div>
             <span className="section-kicker">Campanha obrigatória</span>
@@ -258,79 +294,35 @@ export default async function HomologacoesPage({
             /3 aprovadas
           </StatusBadge>
         </div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Competência</th>
-                <th>Controles vivos</th>
-                <th>Versão atual</th>
-                <th>Decisão</th>
-                <th>Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {campanha.map((item) => (
-                <tr key={item.competencia}>
-                  <td>
-                    <strong>{item.competencia}</strong>
-                  </td>
-                  <td>
-                    {item.diagnostico.resumo.conformes}/
-                    {item.diagnostico.resumo.total}
-                    <small>
-                      {item.diagnostico.resumo.bloqueios.length} bloqueio(s)
-                    </small>
-                  </td>
-                  <td>{item.versaoAtual?.versao ?? "Não congelada"}</td>
-                  <td>
-                    <StatusBadge
-                      tone={
-                        item.versaoAtual
-                          ? tomVersao(item.versaoAtual.status)
-                          : "neutral"
-                      }
-                    >
-                      {item.versaoAtual?.status.replaceAll("_", " ") ??
-                        "SEM VERSÃO"}
-                    </StatusBadge>
-                  </td>
-                  <td>
-                    <Link
-                      href={`/fechamento-mensal?competencia=${item.competencia}`}
-                    >
-                      Abrir competência
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="campanha-cards">
+          {campanha.map((item) => {
+            const itemAprovada =
+              item.diagnostico.resumo.pronta &&
+              item.versaoAtual?.status === "APROVADA";
+            const itemSelecionada = item.competencia === competencia;
+            return (
+              <Link
+                key={item.competencia}
+                className={`campanha-card${itemSelecionada ? " selecionada" : ""}`}
+                href={`/fechamento-mensal?competencia=${item.competencia}`}
+                aria-current={itemSelecionada ? "page" : undefined}
+              >
+                <span className="campanha-card-periodo">{rotuloCompetencia(item.competencia)}</span>
+                <strong>{item.diagnostico.resumo.conformes}/{item.diagnostico.resumo.total} controles</strong>
+                <small>{item.diagnostico.resumo.bloqueios.length} bloqueio(s) em aberto</small>
+                <StatusBadge tone={itemAprovada ? "success" : item.versaoAtual ? tomVersao(item.versaoAtual.status) : "neutral"}>
+                  {itemAprovada ? "Aprovada" : item.versaoAtual?.status.replaceAll("_", " ") ?? "Sem versão"}
+                </StatusBadge>
+                <span className="campanha-card-acao">Abrir competência <ArrowRight size={15} /></span>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
       {diagnostico && (
         <>
-          <section className="detail-summary">
-            <div>
-              <span>Controles</span>
-              <strong>{diagnostico.resumo.total}</strong>
-            </div>
-            <div>
-              <span>Conformes</span>
-              <strong>{diagnostico.resumo.conformes}</strong>
-            </div>
-            <div>
-              <span>Bloqueios</span>
-              <strong>{diagnostico.resumo.bloqueios.length}</strong>
-            </div>
-            <div>
-              <span>Versão atual</span>
-              <strong>{versaoAtual?.versao ?? "—"}</strong>
-            </div>
-          </section>
-
-          <section className="panel">
+          <section className="panel" id="checklist-fechamento">
             <div className="panel-header">
               <div>
                 <span className="section-kicker">
@@ -399,7 +391,7 @@ export default async function HomologacoesPage({
       )}
 
       {versaoAtual && (
-        <section className="panel cadastro-section">
+        <section className="panel cadastro-section" id="decisao-fechamento">
           <div className="panel-header">
             <div>
               <span className="section-kicker">
@@ -465,7 +457,7 @@ export default async function HomologacoesPage({
         </section>
       )}
 
-      <section className="panel">
+      <section className="panel" id="historico-fechamento">
         <div className="panel-header">
           <div>
             <span className="section-kicker">Histórico preservado</span>
