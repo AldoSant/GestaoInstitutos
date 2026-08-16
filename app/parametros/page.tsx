@@ -126,7 +126,13 @@ export default async function ParametrosPage({
         </section>
       )}
 
-      <section className="panel cadastro-section social-security-section">
+      <nav className="consulta-nav" aria-label="Seções dos parâmetros fiscais">
+        <a href="#enquadramento-previdenciario">Enquadramento</a>
+        <a href="#perfil-recolhimento">Recolhimento</a>
+        <a href="#regras-fiscais">Regras fiscais</a>
+      </nav>
+
+      <section className="panel cadastro-section social-security-section" id="enquadramento-previdenciario">
         <div className="panel-header">
           <div>
             <span className="section-kicker">Contratante e contribuinte individual</span>
@@ -232,7 +238,7 @@ export default async function ParametrosPage({
         </div>
       </section>
 
-      <section className="panel cadastro-section">
+      <section className="panel cadastro-section" id="perfil-recolhimento">
         <div className="panel-header">
           <div>
             <span className="section-kicker">Emissão e conferência</span>
@@ -288,7 +294,7 @@ export default async function ParametrosPage({
       {publicarNovo && <EnquadramentoForm regimeInicial={regimeInicial} />}
       {publicarPerfil && <PerfilRecolhimentoForm />}
 
-      <section className="rule-summary">
+      <section className="rule-summary" id="regras-fiscais">
         <article>
           <ShieldCheck />
           <span>

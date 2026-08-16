@@ -17,6 +17,7 @@ import {
   LogOut,
   ReceiptText,
   ShieldCheck,
+  Settings2,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
@@ -105,6 +106,7 @@ export function Logo() {
 }
 
 export function NavegacaoPrincipal({
+  administrador = false,
 }: {
   administrador?: boolean;
 }) {
@@ -132,6 +134,14 @@ export function NavegacaoPrincipal({
         icon={FileText}
         itens={instrumentosELancamentos}
       />
+      {administrador && (
+        <>
+          <span className="nav-section-label nav-admin-label">Administração</span>
+          <NavLink
+            item={{ href: ROTAS.administracao, label: "Configuração e histórico", icon: Settings2 }}
+          />
+        </>
+      )}
     </nav>
   );
 }
