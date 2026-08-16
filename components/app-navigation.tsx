@@ -18,6 +18,7 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
+import { caminhoAplicacao } from "@/lib/base-path";
 import { ROTAS } from "@/lib/rotas";
 
 type ItemNavegacao = {
@@ -91,7 +92,7 @@ export function Logo() {
   return (
     <Link href="/" className="brand" aria-label="Veredas Gestão de Institutos — início">
       <Image
-        src="/veredas/veredas-lockup-silver.png"
+        src={caminhoAplicacao("/veredas/veredas-lockup-silver.png")}
         alt="Veredas"
         width={136}
         height={40}

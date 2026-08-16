@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { caminhoAplicacao } from "@/lib/base-path";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,8 +9,8 @@ export const metadata: Metadata = {
   },
   description: "Plataforma Veredas para gestão de folha, cadastros e obrigações dos institutos.",
   icons: {
-    icon: "/veredas/favicon.png",
-    shortcut: "/veredas/favicon.png",
+    icon: caminhoAplicacao("/veredas/favicon.png"),
+    shortcut: caminhoAplicacao("/veredas/favicon.png"),
   },
 };
 

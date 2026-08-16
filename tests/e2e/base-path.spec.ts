@@ -7,6 +7,9 @@ test.skip(!login || !senha, "Defina E2E_LOGIN e E2E_PASSWORD.");
 
 test("login respeita exatamente um prefixo de implantação", async ({ page }) => {
   await page.goto("login");
+  await expect.poll(async () => page.getByRole("img", { name: "Veredas" }).evaluate(
+    (imagem) => (imagem as HTMLImageElement).naturalWidth,
+  )).toBeGreaterThan(0);
   await page.getByLabel("Login").fill(login!);
   await page.getByLabel("Senha").fill(senha!);
   await page.getByRole("button", { name: "Entrar" }).click();

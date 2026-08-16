@@ -50,7 +50,7 @@ test("jornada mensal redesenhada mantém contexto e rotas de consulta", async ({
         page.getByRole("heading", { level: 1, name: etapa.titulo }),
       ).toBeVisible();
       await expect(
-        page.locator(`.sidebar a.nav-link[href="${etapa.href}"]`),
+        page.locator(`.app-bar a.nav-link[href="${etapa.href}"]`),
       ).toContainText(etapa.menu);
       await expect(page.getByRole("link", { name: etapa.acao })).toBeVisible();
       await expect(page.locator(".feedback-banner.error")).toHaveCount(0);

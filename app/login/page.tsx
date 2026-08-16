@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
+import { caminhoAplicacao } from "@/lib/base-path";
 import { entrar } from "./actions";
 
 export default async function LoginPage({
@@ -13,7 +14,7 @@ export default async function LoginPage({
       <section className="login-brand">
         <Image
           className="login-veredas-logo"
-          src="/veredas/veredas-lockup-silver.png"
+          src={caminhoAplicacao("/veredas/veredas-lockup-silver.png")}
           alt="Veredas"
           width={220}
           height={64}
