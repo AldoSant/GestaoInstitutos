@@ -1,16 +1,24 @@
 import { expect, test, type Page } from "playwright/test";
+import { COOKIE_SESSAO, criarTokenSessao } from "../../lib/sessao";
 
-const login = process.env.E2E_LOGIN;
-const senha = process.env.E2E_PASSWORD;
-
-test.skip(!login || !senha, "Defina E2E_LOGIN e E2E_PASSWORD.");
+test.skip(!process.env.AUTH_SECRET, "Defina AUTH_SECRET para a sessão de teste.");
 
 async function autenticar(page: Page) {
   await page.goto("login");
   await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
-  await page.getByLabel("Login").fill(login!);
-  await page.getByLabel("Senha").fill(senha!);
-  await page.getByRole("button", { name: "Entrar" }).click();
+  await page.context().addCookies([
+    {
+      name: COOKIE_SESSAO,
+      value: criarTokenSessao({
+        login: "E2E_REDESIGN_HML",
+        perfil: "ADMINISTRADOR",
+      }),
+      url: new URL("/", page.url()).toString(),
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
+  await page.goto("");
   await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
 }
 
