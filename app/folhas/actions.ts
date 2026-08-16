@@ -14,6 +14,7 @@ import {
   tentarNovamenteProcessamentoFolha,
 } from "@/db/folhas";
 import { registrarHomologacaoFolha } from "@/db/homologacoes";
+import { apurarRetencoesSegurados } from "@/db/obrigacoes";
 import { rotaAplicacao } from "@/lib/base-path";
 import { mensagemOperacional } from "@/lib/mensagem-operacional";
 
@@ -202,4 +203,26 @@ export async function cancelar(formData: FormData) {
       Boolean(erro),
     ),
   );
+}
+
+/** Apura a obrigação a partir da jornada, sem abandonar o contexto da Folha. */
+export async function apurarObrigacaoDaJornada(formData: FormData) {
+  const folhaId = String(formData.get("folhaId") ?? "");
+  const competencia = String(formData.get("competencia") ?? "");
+  let erro = "";
+  let sucesso = "";
+  try {
+    const empresa = await resolverEmpresaAtiva();
+    const resultado = await apurarRetencoesSegurados({
+      empresaId: empresa.id,
+      competencia,
+    });
+    sucesso = `Apuração preparada com ${resultado.itens} item(ns) de ${resultado.folhas} Folha(s) fechada(s).`;
+  } catch (error) {
+    erro = mensagem(error);
+  }
+  revalidatePath("/obrigacoes");
+  revalidatePath(`/folhas/${folhaId}`);
+  const params = new URLSearchParams({ [erro ? "erro" : "sucesso"]: erro || sucesso });
+  redirect(rotaAplicacao(`/folhas/${folhaId}/obrigacoes?${params.toString()}`));
 }

@@ -187,6 +187,7 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
 .jornada-resumo strong { display: block; margin-top: 5px; color: var(--teal-dark); font-family: Georgia, "Times New Roman", serif; font-size: 18px; }
 .jornada-fluxo { margin: 16px 0; }
 .jornada-etapas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.jornada-etapas-completa { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .jornada-etapas li { min-width: 0; padding: 12px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 9px; border: 1px solid var(--line); border-radius: 10px; background: #f8faf9; color: var(--muted); }
 .jornada-etapas li > span { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: #e8eeee; font-size: 11px; font-weight: 700; }
 .jornada-etapas strong, .jornada-etapas small { display: block; }
@@ -496,7 +497,7 @@ td small { margin-top: 3px; color: #596c72; font-size: 9px; }
 @media (max-width: 1180px) {
   .process-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .process-steps.obligation-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .jornada-etapas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .jornada-etapas, .jornada-etapas-completa { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .jornada-valores { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .jornada-valores > div:nth-child(2n) { border-right: 0; }
   .jornada-valores > div:nth-child(-n+2) { border-bottom: 1px solid var(--line); }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CreditCard, Download, FileText } from "lucide-react";
+import { AppShell } from "@/components/app-shell";
 import { PrintButton } from "@/components/print-button";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { carregarFolha } from "@/db/folhas";
@@ -78,7 +79,11 @@ export default async function RelacaoPagamentosPage({
   const liberada = folhaFechada && relacao.pronta;
 
   return (
-    <main className="print-document">
+    <AppShell title="Pagamentos" eyebrow={`Passo 4 de 6 · ${competencia(folha.competencia)}`} organization={empresa.nomeFantasia ?? empresa.razaoSocial} actions={<Link className="button secondary" href={`/folhas/${folha.id}/consulta`}><FileText size={16} /> Ver consulta completa</Link>}>
+      <section className="jornada-fluxo" aria-label="Etapas do processamento"><ol className="jornada-etapas jornada-etapas-completa">{["Cálculo", "Conferência RH", "Fechamento", "Pagamentos", "Obrigações", "Concluído"].map((titulo, indice) => <li key={titulo} className={indice < 3 ? "concluida" : indice === 3 ? "atual" : "pendente"}><span>{indice < 3 ? <CheckCircle2 size={16} /> : indice + 1}</span><div><strong>{titulo}</strong><small>{indice < 3 ? "Concluído" : indice === 3 ? "Em andamento" : "A seguir"}</small></div></li>)}</ol></section>
+      <section className="jornada-card"><CreditCard size={24} /><div><span className="section-kicker">Relação financeira</span><h2>{liberada ? "Relação pronta para autorização" : "Conferir pendências bancárias"}</h2><p>{liberada ? "A relação foi validada contra os dados congelados da Folha. A autorização e a execução bancária continuam fora do sistema." : "Regularize as contas pendentes antes de autorizar qualquer movimentação. O espelho pode ser usado para a conferência interna."}</p></div><dl className="jornada-valores"><div><dt>Contas aptas</dt><dd>{relacao.aptos}/{relacao.linhas.length}</dd></div><div><dt>Pendências</dt><dd>{relacao.pendentes}</dd></div><div><dt>Total líquido</dt><dd>{moedaCentavos(relacao.totalLiquidoCentavos)}</dd></div><div><dt>Situação</dt><dd>{liberada ? "Pronta" : "Pendente"}</dd></div></dl><div className="jornada-acoes"><a className="button secondary" href={caminhoAplicacao(`/folhas/${folha.id}/pagamentos/espelho`)}><Download size={16} /> Baixar espelho CSV</a><PrintButton label="Imprimir relação" /><Link className="button primary" href={`/folhas/${folha.id}/obrigacoes`}>Continuar para obrigações</Link></div></section>
+      <details className="panel"><summary>Ver relação detalhada para conferência</summary>
+      <div className="print-document">
       <nav className="print-toolbar" aria-label="Ações da relação">
         <Link className="button secondary" href={rotaAplicacao(`/folhas/${folha.id}`)}>
           <ArrowLeft size={16} /> Voltar à Folha
@@ -242,6 +247,7 @@ export default async function RelacaoPagamentosPage({
           Folha e possui hash próprio no cabeçalho HTTP de download.
         </p>
       </article>
-    </main>
+      </div></details>
+    </AppShell>
   );
 }

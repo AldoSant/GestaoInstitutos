@@ -150,6 +150,18 @@ export default async function FolhaDetalhePage({
       icone: CreditCard,
       concluida: false,
     },
+    {
+      titulo: "Obrigações",
+      detalhe: "Após pagamentos",
+      icone: FileText,
+      concluida: false,
+    },
+    {
+      titulo: "Concluído",
+      detalhe: "Encerramento operacional",
+      icone: CheckCircle2,
+      concluida: false,
+    },
   ];
 
   return (
@@ -195,7 +207,7 @@ export default async function FolhaDetalhePage({
       </section>
 
       <section className="jornada-fluxo" aria-label="Etapas do processamento">
-        <ol className="jornada-etapas">
+        <ol className="jornada-etapas jornada-etapas-completa">
           {etapas.map((etapa, indice) => {
             const Icone = etapa.icone;
             const numero = indice + 1;
@@ -219,7 +231,7 @@ export default async function FolhaDetalhePage({
         <section className={`jornada-card ${processamentoFalhou ? "alerta" : ""}`}>
           {processamentoFalhou ? <AlertTriangle size={24} /> : <RefreshCw size={24} />}
           <div>
-            <span className="section-kicker">Passo 1 de 4</span>
+            <span className="section-kicker">Passo 1 de 6</span>
             <h2>{estadoProcessamento?.titulo ?? "Calculando o processamento"}</h2>
             <p>{estadoProcessamento?.texto ?? "A Folha está na fila e será calculada automaticamente."}</p>
           </div>
@@ -249,7 +261,7 @@ export default async function FolhaDetalhePage({
         <section className="jornada-card">
           <ClipboardCheck size={24} />
           <div>
-            <span className="section-kicker">Passo 2 de 4</span>
+            <span className="section-kicker">Passo 2 de 6</span>
             <h2>Conferência do RH</h2>
             <p>Confirme cadastros, valores e rubricas desta revisão antes de fechar.</p>
           </div>
@@ -302,7 +314,7 @@ export default async function FolhaDetalhePage({
         <section className="jornada-card">
           <LockKeyhole size={24} />
           <div>
-            <span className="section-kicker">Passo 3 de 4</span>
+            <span className="section-kicker">Passo 3 de 6</span>
             <h2>Fechar esta revisão</h2>
             <p>A aprovação do RH foi registrada. O fechamento congela a memória e libera os pagamentos.</p>
           </div>
@@ -325,7 +337,7 @@ export default async function FolhaDetalhePage({
         <section className="jornada-card">
           <CreditCard size={24} />
           <div>
-            <span className="section-kicker">Passo 4 de 4</span>
+            <span className="section-kicker">Passo 4 de 6</span>
             <h2>Preparar pagamentos</h2>
             <p>A Folha está fechada. Gere a relação bancária e trate as contas pendentes antes da liberação.</p>
           </div>
@@ -337,7 +349,7 @@ export default async function FolhaDetalhePage({
           </dl>
           <div className="jornada-acoes">
             <Link className="button primary" href={`/folhas/${folha.id}/pagamentos`}>
-              <CreditCard size={16} /> Abrir pagamentos
+              <CreditCard size={16} /> Continuar para pagamentos
             </Link>
             <Link className="button secondary" href={`/folhas/${folha.id}/consulta`}>
               <FileText size={16} /> Ver consulta completa
