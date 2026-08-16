@@ -51,7 +51,7 @@ export default async function FolhasPage() {
     folhas = await listarFolhas(empresa.id);
   } catch {
     return (
-      <AppShell title="Processamentos mensais" eyebrow="PF, PJ e GPS" organization="Não configurada">
+      <AppShell title="Folha mensal" eyebrow="Processamento e conferência" organization="Não configurada">
         <section className="alert-box danger">
           <Database size={22} />
           <div>
@@ -70,8 +70,8 @@ export default async function FolhasPage() {
 
   return (
       <AppShell
-        title="Processamentos mensais"
-        eyebrow="PF, PJ e GPS"
+        title="Folha mensal"
+        eyebrow="Processamento e conferência"
         organization={empresa.nomeFantasia ?? empresa.razaoSocial}
         actions={
           <Link href="/folhas/nova" className="button primary">

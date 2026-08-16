@@ -29,7 +29,7 @@ test("jornada não destrutiva do MVP publicado", async ({ page }) => {
   await test.step("consultar o fluxo mensal da folha", async () => {
     await page.goto("folhas");
     await expect(
-      page.getByRole("heading", { name: "Processamentos mensais" }),
+      page.getByRole("heading", { name: "Folha mensal" }),
     ).toBeVisible();
     await expect(page.getByText("Competências processadas")).toBeVisible();
     await expect(page.getByRole("link", { name: /Novo processamento/i })).toBeVisible();
@@ -51,7 +51,7 @@ test("jornada não destrutiva do MVP publicado", async ({ page }) => {
   await test.step("consultar obrigações e o caminho de recolhimento", async () => {
     await page.goto("obrigacoes");
     await expect(
-      page.getByRole("heading", { name: "Guias GPS" }),
+      page.getByRole("heading", { name: "Obrigações e GPS" }),
     ).toBeVisible();
     await expect(
       page.getByText("Da folha fechada ao documento para pagamento"),

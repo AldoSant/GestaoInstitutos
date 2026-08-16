@@ -135,13 +135,13 @@ test("módulos técnicos e paralelos ficam fora da superfície operacional", asy
 test("menu, títulos e URLs usam a mesma linguagem operacional", async ({ page }) => {
   await autenticar(page);
   const destinos = [
-    { href: "/folhas", menu: "Processamentos mensais", titulo: "Processamentos mensais" },
+    { href: "/folhas", menu: "Folha mensal", titulo: "Folha mensal" },
     { href: "/cadastros", menu: "Cadastros", titulo: "Cadastros" },
     { href: "/termos-e-metas", menu: "Termos e metas", titulo: "Termos e metas" },
     {
       href: "/obrigacoes",
-      menu: "Guias GPS",
-      titulo: "Guias GPS",
+      menu: "Obrigações e GPS",
+      titulo: "Obrigações e GPS",
     },
   ] as const;
 

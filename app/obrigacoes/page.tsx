@@ -85,7 +85,7 @@ export default async function ObrigacoesPage({
     ]);
   } catch {
     return (
-      <AppShell title="Guias GPS" eyebrow="Apuração previdenciária" organization="Não configurada">
+      <AppShell title="Obrigações e GPS" eyebrow="Apuração previdenciária" organization="Não configurada">
         <BloqueioOrientado bloqueio={{
           titulo: "Não foi possível carregar a apuração",
           causa: "As informações desta competência não ficaram disponíveis agora.",
@@ -138,7 +138,7 @@ export default async function ObrigacoesPage({
 
   return (
     <AppShell
-      title="Guias GPS"
+      title="Obrigações e GPS"
       eyebrow="Previdência de prestadores"
       organization={empresa.nomeFantasia ?? empresa.razaoSocial}
       notice={{
