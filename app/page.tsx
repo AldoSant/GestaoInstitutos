@@ -290,7 +290,7 @@ export default async function Home({
           </div>
         </article>
 
-        <aside className={`panel ${concluida ? "" : "critical-panel"}`}>
+        <aside className={`panel next-action-card ${concluida ? "" : "critical-panel"}`}>
           <div className="critical-icon">
             {concluida ? (
               <CheckCircle2 size={22} />
@@ -299,7 +299,7 @@ export default async function Home({
             )}
           </div>
           <span className="section-kicker">
-            {concluida ? "GPS registrada" : "Próximo passo"}
+            {concluida ? "Competência concluída" : "Sua próxima ação"}
           </span>
           <h3>{bloqueio.titulo}</h3>
           <p>{bloqueio.texto}</p>
@@ -390,7 +390,7 @@ export default async function Home({
         </ol>
       </section>
 
-      <section className="quick-grid">
+      <section className="quick-grid" aria-label="Acessos operacionais">
         <Link href="/prestadores" className="quick-card">
           <UsersRound />
           <span>
@@ -415,14 +415,6 @@ export default async function Home({
           <span>
             <strong>Conferir obrigações</strong>
             <small>Apuração, documentos e pagamento</small>
-          </span>
-          <ArrowRight />
-        </Link>
-        <Link href="/obrigacoes" className="quick-card">
-          <FileCheck2 />
-          <span>
-            <strong>Preparar GPS</strong>
-            <small>Memórias individuais e registro das guias</small>
           </span>
           <ArrowRight />
         </Link>
