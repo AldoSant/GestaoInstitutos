@@ -1458,6 +1458,19 @@ td { color: #2a3442; border-bottom-color: #e7e8ea; }
   --radius-pill: 999px;
 }
 
+/*
+   The first redesign pass intentionally re-used the existing component
+   markup.  Those components still carry old, component-specific radii, so a
+   curated list alone leaves a different corner treatment on every route.
+   Establish a compact default for every named application primitive first;
+   the role-specific rules below then promote only real surfaces to 4px.
+   This makes new and legacy screens obey the same system without changing
+   their data, behaviour, or DOM structure.
+*/
+:where(.app-frame, .login-page) [class] {
+  border-radius: var(--radius-control);
+}
+
 /* Standalone surfaces */
 :is(
   .panel,
@@ -1584,7 +1597,8 @@ textarea {
 }
 
 /* Pills and circles are intentional semantic exceptions, never card styling. */
-.status-badge { border-radius: var(--radius-pill); }
+:is(.status-badge) { border-radius: var(--radius-pill); }
+:is(.avatar, .workflow li > span) { border-radius: 50%; }
 
 @media (max-width: 760px) {
   .modal-card { border-radius: var(--radius-surface) var(--radius-surface) 0 0; }
