@@ -106,24 +106,21 @@ export function NavegacaoPrincipal({
 }) {
   return (
     <nav className="nav-list" aria-label="Navegação principal">
-      <span className="nav-section-label">Operação</span>
-      <NavLink item={{ href: ROTAS.inicio, label: "Visão geral", icon: Gauge }} />
+      <span className="nav-section-label">Rotina mensal</span>
+      <NavLink item={{ href: ROTAS.inicio, label: "Visão do mês", icon: Gauge }} />
+      <NavLink
+        item={{ href: ROTAS.folhaMensal, label: "Folha mensal", icon: BadgeDollarSign }}
+      />
+      <NavLink
+        item={{ href: ROTAS.obrigacoes, label: "Obrigações e GPS", icon: FileCheck2 }}
+      />
+      <span className="nav-section-label nav-section-label-secondary">Base operacional</span>
       <GrupoNavegacao
-        label="Cadastros"
+        label="Pessoas e vínculos"
         icon={UsersRound}
         itens={pessoas.slice(0, 3)}
       />
       <NavLink item={{ href: ROTAS.instrumentos, label: "Termos e metas", icon: FileText }} />
-      <NavLink
-        item={{ href: ROTAS.folhaMensal, label: "Processamentos mensais", icon: BadgeDollarSign }}
-      />
-      <NavLink
-        item={{
-          href: ROTAS.obrigacoes,
-          label: "Guias GPS",
-          icon: FileCheck2,
-        }}
-      />
     </nav>
   );
 }
@@ -144,10 +141,10 @@ export function BarraLateral({
   return (
     <aside className="sidebar">
       <Logo />
-      <div className="tenant-card">
+      <div className="tenant-card" aria-label={`Organização ativa: ${organization}`}>
         <Building2 size={17} />
         <span>
-          <small>Organização</small>
+          <small>Organização ativa</small>
           <strong>{organization}</strong>
         </span>
       </div>

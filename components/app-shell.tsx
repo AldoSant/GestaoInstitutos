@@ -71,7 +71,7 @@ export async function AppShell({
       />
 
       <div className="main-column">
-        <header className="topbar">
+        <header className="topbar" aria-label="Contexto da página">
           <details className="mobile-menu">
             <summary aria-label="Abrir menu">
               <Menu size={22} />
