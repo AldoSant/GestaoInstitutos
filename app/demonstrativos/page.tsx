@@ -129,6 +129,45 @@ export default async function DemonstrativosPage({
     conferenciaAtual?.resultado === "APROVADA" &&
     conferenciaAtual.hash_resultado === demonstrativo.hash_resultado &&
     conferenciaAtual.revisao === demonstrativo.revisao;
+  const demonstrativoHref = (adicionais: Record<string, string> = {}) =>
+    `/demonstrativos?${new URLSearchParams({ competencia, ...adicionais }).toString()}`;
+  const proximaAcao = !demonstrativo
+    ? {
+        titulo: "Prepare a competência",
+        detalhe: "Traga os pagamentos PF das Folhas fechadas e as guias da organização para iniciar a relação mensal.",
+        tipo: "preparar" as const,
+      }
+    : fechado
+      ? {
+          titulo: "Demonstrativo fechado",
+          detalhe: "A revisão atual está preservada. Consulte o dossiê ou abra uma nova revisão somente se houver evidência de correção.",
+          tipo: "link" as const,
+          href: `/demonstrativos/${demonstrativo.id}/relatorio`,
+          rotulo: "Abrir dossiê",
+        }
+      : podeFechar
+        ? {
+            titulo: "Feche o demonstrativo",
+            detalhe: "A conferência aprovada corresponde à revisão e ao hash atuais. O fechamento vai congelar esse conteúdo.",
+            tipo: "link" as const,
+            href: demonstrativoHref({ fechar: "1" }),
+            rotulo: "Confirmar fechamento",
+          }
+        : conferenciaAtual?.resultado === "REJEITADA"
+          ? {
+              titulo: "Ajuste e confira novamente",
+              detalhe: "A última conferência foi rejeitada. Revise pagamentos, retenções e guias antes de registrar uma nova decisão.",
+              tipo: "link" as const,
+              href: "#pagamentos-demonstrativo",
+              rotulo: "Revisar pagamentos",
+            }
+          : {
+              titulo: "Registre a conferência",
+              detalhe: "Valide pagamentos, retenções e guias na revisão atual antes de solicitar o fechamento do demonstrativo.",
+              tipo: "link" as const,
+              href: demonstrativoHref({ conferir: "1" }),
+              rotulo: "Iniciar conferência",
+            };
 
   return (
     <AppShell
@@ -349,16 +388,62 @@ export default async function DemonstrativosPage({
         </ModalShell>
       )}
 
-      <section className="cadastro-toolbar panel">
-        <div>
+      <section className="demonstrativo-overview">
+        <div className="demonstrativo-overview-copy">
           <span className="section-kicker">Competência financeira</span>
-          <h2>Pagamentos, retenções e guias</h2>
-          <p>Gere novamente o rascunho sempre que uma Folha PF fechada mudar.</p>
+          <h2>Conferência financeira, pronta para decisão.</h2>
+          <p>Pagamentos PF nascem das Folhas fechadas; PJ é documentado; guias permanecem obrigações da organização.</p>
+          <section className="metrics-grid demonstrativo-metricas" aria-label="Resumo do demonstrativo">
+            <MetricCard
+              label="Valor bruto"
+              value={moeda(demonstrativo?.total_bruto)}
+              detail={`${dados.pagamentos.length} pagamento(s)`}
+              icon={Calculator}
+            />
+            <MetricCard
+              label="Retenções"
+              value={moeda(demonstrativo?.total_retencoes)}
+              detail="vinculadas aos pagamentos"
+              icon={ReceiptText}
+              tone="amber"
+            />
+            <MetricCard
+              label="Valor líquido"
+              value={moeda(demonstrativo?.total_liquido)}
+              detail="bruto menos retenções"
+              icon={UsersRound}
+              tone="blue"
+            />
+            <MetricCard
+              label="Guias vinculadas"
+              value={String(dados.guias.length)}
+              detail={`${dados.pendencias} classificação(ões) pendente(s)`}
+              icon={FileCheck2}
+              tone="slate"
+            />
+          </section>
         </div>
+        <aside className="demonstrativo-proxima-acao" aria-label="Próxima ação">
+          <span>Próxima ação</span>
+          <strong>{proximaAcao.titulo}</strong>
+          <p>{proximaAcao.detalhe}</p>
+          {proximaAcao.tipo === "preparar" ? (
+            <form action={gerarRascunhoDemonstrativo}>
+              <input type="hidden" name="competencia" value={competencia} />
+              <button className="button secondary" type="submit">
+                <RefreshCw size={16} /> Preparar competência
+              </button>
+            </form>
+          ) : (
+            <Link className="button secondary" href={proximaAcao.href}>
+              {proximaAcao.rotulo} <FileCheck2 size={16} />
+            </Link>
+          )}
+        </aside>
         <form
           action={caminhoAplicacao("/demonstrativos")}
           method="get"
-          className="search-field"
+          className="demonstrativo-competencia"
         >
           <label className="sr-only" htmlFor="competencia-demonstrativo">
             Competência
@@ -369,41 +454,17 @@ export default async function DemonstrativosPage({
             type="month"
             defaultValue={competencia}
           />
-          <button type="submit">Abrir</button>
+          <button className="button secondary" type="submit">Abrir competência</button>
         </form>
       </section>
 
-      <section className="metrics-grid" aria-label="Resumo do demonstrativo">
-        <MetricCard
-          label="Valor bruto"
-          value={moeda(demonstrativo?.total_bruto)}
-          detail={`${dados.pagamentos.length} pagamento(s)`}
-          icon={Calculator}
-        />
-        <MetricCard
-          label="Retenções"
-          value={moeda(demonstrativo?.total_retencoes)}
-          detail="vinculadas aos pagamentos"
-          icon={ReceiptText}
-          tone="amber"
-        />
-        <MetricCard
-          label="Valor líquido"
-          value={moeda(demonstrativo?.total_liquido)}
-          detail="bruto menos retenções"
-          icon={UsersRound}
-          tone="blue"
-        />
-        <MetricCard
-          label="Guias vinculadas"
-          value={String(dados.guias.length)}
-          detail={`${dados.pendencias} classificação(ões) pendente(s)`}
-          icon={FileCheck2}
-          tone="slate"
-        />
-      </section>
+      <nav className="consulta-nav" aria-label="Seções do demonstrativo">
+        <a href="#pagamentos-demonstrativo">Pagamentos</a>
+        {demonstrativo && <a href="#conferencia-demonstrativo">Conferência</a>}
+        <a href="#guias-demonstrativo">Guias</a>
+      </nav>
 
-      <section className="panel cadastro-section">
+      <section className="panel cadastro-section" id="pagamentos-demonstrativo">
         <div className="panel-header">
           <div>
             <span className="section-kicker">Rascunho da competência</span>
@@ -531,7 +592,7 @@ export default async function DemonstrativosPage({
       </section>
 
       {demonstrativo && (
-        <section className="panel cadastro-section">
+        <section className="panel cadastro-section" id="conferencia-demonstrativo">
           <div className="panel-header">
             <div>
               <span className="section-kicker">Decisão e integridade</span>
@@ -659,7 +720,7 @@ export default async function DemonstrativosPage({
         </section>
       )}
 
-      <section className="panel cadastro-section">
+      <section className="panel cadastro-section" id="guias-demonstrativo">
         <div className="panel-header">
           <div>
             <span className="section-kicker">Recolhimentos</span>
