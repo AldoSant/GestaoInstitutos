@@ -1,8 +1,10 @@
 import type { NextConfig } from "next";
 
 const basePath = process.env.NEXT_BASE_PATH;
+const distDir = process.env.NEXT_DIST_DIR;
 
 const nextConfig: NextConfig = {
+  ...(distDir ? { distDir } : {}),
   output: "standalone",
   async headers() {
     return [

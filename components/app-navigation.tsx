@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   BadgeDollarSign,
-  Building2,
   ChevronDown,
-  CircleHelp,
   Database,
   FileCheck2,
   FileLock2,
@@ -14,14 +13,11 @@ import {
   Gauge,
   Link2,
   ListChecks,
-  LogOut,
   ReceiptText,
-  ShieldCheck,
   Settings2,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
-import { sair } from "@/app/login/actions";
 import { ROTAS } from "@/lib/rotas";
 
 type ItemNavegacao = {
@@ -93,14 +89,16 @@ function GrupoNavegacao({
 
 export function Logo() {
   return (
-    <Link href="/" className="brand" aria-label="Gestão Institutos — início">
-      <span className="brand-mark">
-        <ShieldCheck size={22} />
-      </span>
-      <span>
-        <strong>Gestão Institutos</strong>
-        <small>Folha e obrigações</small>
-      </span>
+    <Link href="/" className="brand" aria-label="Veredas Gestão de Institutos — início">
+      <Image
+        src="/veredas/veredas-lockup-silver.png"
+        alt="Veredas"
+        width={136}
+        height={40}
+        priority
+        unoptimized
+      />
+      <span className="brand-product">Gestão de Institutos</span>
     </Link>
   );
 }
@@ -112,7 +110,6 @@ export function NavegacaoPrincipal({
 }) {
   return (
     <nav className="nav-list" aria-label="Navegação principal">
-      <span className="nav-section-label">Rotina mensal</span>
       <NavLink item={{ href: ROTAS.inicio, label: "Visão do mês", icon: Gauge }} />
       <NavLink
         item={{ href: ROTAS.folhaMensal, label: "Folha mensal", icon: BadgeDollarSign }}
@@ -123,7 +120,6 @@ export function NavegacaoPrincipal({
       <NavLink
         item={{ href: ROTAS.fechamentoMensal, label: "Fechamento consolidado", icon: FileLock2 }}
       />
-      <span className="nav-section-label nav-section-label-secondary">Base operacional</span>
       <GrupoNavegacao
         label="Pessoas e vínculos"
         icon={UsersRound}
@@ -134,61 +130,7 @@ export function NavegacaoPrincipal({
         icon={FileText}
         itens={instrumentosELancamentos}
       />
-      {administrador && (
-        <>
-          <span className="nav-section-label nav-admin-label">Administração</span>
-          <NavLink
-            item={{ href: ROTAS.administracao, label: "Configuração e histórico", icon: Settings2 }}
-          />
-        </>
-      )}
+      {administrador && <NavLink item={{ href: ROTAS.administracao, label: "Administração", icon: Settings2 }} />}
     </nav>
-  );
-}
-
-export function BarraLateral({
-  organization,
-  login,
-  perfil,
-  iniciais,
-  administrador,
-}: {
-  organization: string;
-  login: string;
-  perfil: string;
-  iniciais: string;
-  administrador: boolean;
-}) {
-  return (
-    <aside className="sidebar">
-      <Logo />
-      <div className="tenant-card" aria-label={`Organização ativa: ${organization}`}>
-        <Building2 size={17} />
-        <span>
-          <small>Organização ativa</small>
-          <strong>{organization}</strong>
-        </span>
-      </div>
-      <NavegacaoPrincipal administrador={administrador} />
-      <div className="sidebar-bottom">
-        <Link href={ROTAS.ajuda} className="nav-link">
-          <CircleHelp size={19} />
-          <span>Ajuda</span>
-        </Link>
-        <form action={sair}>
-          <button type="submit" className="nav-link logout-button">
-            <LogOut size={19} />
-            <span>Sair</span>
-          </button>
-        </form>
-        <div className="operator">
-          <span className="avatar">{iniciais}</span>
-          <span>
-            <strong>{login}</strong>
-            <small>{perfil}</small>
-          </span>
-        </div>
-      </div>
-    </aside>
   );
 }

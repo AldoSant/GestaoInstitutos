@@ -1,11 +1,9 @@
 import { cookies } from "next/headers";
-import { Menu } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, Menu } from "lucide-react";
 import type { ReactNode } from "react";
-import {
-  BarraLateral,
-  Logo,
-  NavegacaoPrincipal,
-} from "@/components/app-navigation";
+import { Logo, NavegacaoPrincipal } from "@/components/app-navigation";
+import { sair } from "@/app/login/actions";
 import { CompetenciaSwitcher } from "@/components/competencia-switcher";
 import { resolverEmpresaAtiva } from "@/db/cadastros";
 import { listarCompetenciasDisponiveis } from "@/db/competencias";
@@ -15,6 +13,7 @@ import {
   primeiraCompetencia,
 } from "@/lib/competencia";
 import { COOKIE_SESSAO, lerTokenSessao } from "@/lib/sessao";
+import { ROTAS } from "@/lib/rotas";
 
 function iniciais(login: string) {
   const partes = login
@@ -62,34 +61,58 @@ export async function AppShell({
 
   return (
     <div className="app-frame">
-      <BarraLateral
-        organization={organization}
-        login={login}
-        perfil={perfil}
-        iniciais={iniciais(login)}
-        administrador={administrador}
-      />
+      <header className="app-bar" aria-label="Navegação da aplicação">
+        <Logo />
+        <div className="desktop-navigation">
+          <NavegacaoPrincipal administrador={administrador} />
+        </div>
+        <div className="app-bar-context">
+          <div className="organization-context" title={organization}>
+            <span>Organização</span>
+            <strong>{organization}</strong>
+          </div>
+          <CompetenciaSwitcher
+            competencias={competencias}
+            selecionada={selecionada}
+          />
+          <details className="account-menu">
+            <summary aria-label="Abrir opções da conta">
+              <span className="avatar">{iniciais(login)}</span>
+              <ChevronDown size={14} />
+            </summary>
+            <div className="account-menu-panel">
+              <div className="account-menu-identity">
+                <strong>{login}</strong>
+                <span>{perfil}</span>
+              </div>
+              <Link href={ROTAS.ajuda}>Ajuda e orientação</Link>
+              <form action={sair}>
+                <button type="submit">Sair da conta</button>
+              </form>
+            </div>
+          </details>
+        </div>
+        <details className="mobile-menu">
+          <summary aria-label="Abrir menu">
+            <Menu size={22} />
+          </summary>
+          <div className="mobile-menu-panel">
+            <NavegacaoPrincipal administrador={administrador} />
+          </div>
+        </details>
+      </header>
 
       <div className="main-column">
         <header className="topbar" aria-label="Contexto da página">
-          <details className="mobile-menu">
-            <summary aria-label="Abrir menu">
-              <Menu size={22} />
-            </summary>
-            <div className="mobile-menu-panel">
-              <Logo />
-              <NavegacaoPrincipal administrador={administrador} />
-            </div>
-          </details>
+          <div className="page-context-line" aria-hidden="true">
+            <span />
+            <small>Gestão de Institutos</small>
+          </div>
           <div className="page-heading">
             {eyebrow && <span>{eyebrow}</span>}
             <h1>{title}</h1>
           </div>
           <div className="topbar-actions">
-            <CompetenciaSwitcher
-              competencias={competencias}
-              selecionada={selecionada}
-            />
             {actions}
           </div>
         </header>

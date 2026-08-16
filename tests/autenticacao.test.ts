@@ -76,6 +76,16 @@ test("proxy redireciona HTML e responde 401 para chamadas não HTML", () => {
   assert.equal(api.status, 401);
 });
 
+test("proxy libera ativos públicos de marca sem abrir rotas operacionais", () => {
+  const ativo = proxy(new NextRequest("http://localhost/veredas/veredas-lockup-silver.png"));
+  assert.equal(ativo.status, 200);
+  const ativoComBase = proxy(new NextRequest(
+    "http://localhost/gestao-institutos/veredas/veredas-lockup-silver.png",
+    { nextConfig: { basePath: "/gestao-institutos" } },
+  ));
+  assert.equal(ativoComBase.status, 200);
+});
+
 test("proxy aceita sessão válida e tira usuário autenticado do login", () => {
   process.env.AUTH_SECRET = "segredo-de-teste-com-mais-de-trinta-e-dois-bytes";
   const token = criarTokenSessao({ login: "admin", perfil: "ADMINISTRADOR" });

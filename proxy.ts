@@ -4,8 +4,19 @@ import { rotaModuloAdormecida } from "@/lib/operacao-enxuta";
 import { COOKIE_SESSAO, lerTokenSessao } from "@/lib/sessao";
 
 export function proxy(request: NextRequest) {
-  const sessao = lerTokenSessao(request.cookies.get(COOKIE_SESSAO)?.value);
   const basePath = request.nextUrl.basePath || basePathAplicacao();
+  const pathnameInterno = basePath && request.nextUrl.pathname.startsWith(basePath)
+    ? request.nextUrl.pathname.slice(basePath.length) || "/"
+    : request.nextUrl.pathname;
+  // A identidade visual também compõe a tela de login. Estes arquivos são
+  // estáticos e não expõem dados operacionais, portanto não exigem sessão.
+  if (
+    pathnameInterno.startsWith("/veredas/") ||
+    pathnameInterno === "/favicon.svg"
+  ) {
+    return NextResponse.next();
+  }
+  const sessao = lerTokenSessao(request.cookies.get(COOKIE_SESSAO)?.value);
   const loginPath = caminhoAplicacao("/login", basePath);
   const homePath = caminhoAplicacao("/", basePath);
   const pathnameLogin = request.nextUrl.basePath ? "/login" : loginPath;
@@ -32,9 +43,6 @@ export function proxy(request: NextRequest) {
     destino.search = "";
     return NextResponse.redirect(destino);
   }
-  const pathnameInterno = basePath && request.nextUrl.pathname.startsWith(basePath)
-    ? request.nextUrl.pathname.slice(basePath.length) || "/"
-    : request.nextUrl.pathname;
   if (sessao && rotaModuloAdormecida(pathnameInterno)) {
     const destino = request.nextUrl.clone();
     destino.pathname = pathnameHome;
@@ -46,5 +54,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/((?!api/health(?:/|$)|_next/static|_next/image|favicon\\.svg$).*)"],
+  matcher: ["/", "/((?!api/health(?:/|$)|_next/static|_next/image|favicon\\.svg$|veredas/).*)"],
 };

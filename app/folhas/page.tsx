@@ -67,6 +67,26 @@ export default async function FolhasPage() {
   ).length;
   const emConferencia = folhas.filter((item) => item.status === "ABERTA").length;
   const fechadas = folhas.filter((item) => item.status === "FECHADA").length;
+  const filas = [
+    {
+      chave: "preparo",
+      titulo: "Em preparação",
+      descricao: "Lotes aguardando cálculo ou memória de processamento.",
+      itens: folhas.filter((item) => ["RASCUNHO", "PROCESSANDO"].includes(item.status)),
+    },
+    {
+      chave: "conferencia",
+      titulo: "Decisão do RH",
+      descricao: "Revisões calculadas que exigem conferência antes do fechamento.",
+      itens: folhas.filter((item) => item.status === "ABERTA"),
+    },
+    {
+      chave: "fechadas",
+      titulo: "Encaminhadas",
+      descricao: "Folhas com memória congelada, prontas para pagamentos e obrigações.",
+      itens: folhas.filter((item) => item.status === "FECHADA"),
+    },
+  ];
 
   return (
       <AppShell
@@ -101,66 +121,60 @@ export default async function FolhasPage() {
             icon={LockKeyhole}
           />
         </section>
-        <section className="panel">
-          <div className="panel-header">
+        <section className="processamento-board" aria-label="Quadro de processamentos">
+          <header className="processamento-board-header">
             <div>
-              <span className="section-kicker">Histórico</span>
-              <h2>Competências processadas</h2>
-              <p>Cada lote reúne PF e PJ do instrumento. GPS é preparada somente para retenções PF.</p>
+              <span className="section-kicker">Acompanhar a operação</span>
+              <h2>Processamentos por próximo passo</h2>
+              <p>Cada lote avança pela conferência, fechamento, pagamentos e obrigações sem perder sua consulta completa.</p>
             </div>
             <StatusBadge tone={folhas.length ? "success" : "neutral"}>
               {folhas.length} lote(s)
             </StatusBadge>
-          </div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Competência</th><th>Instrumento</th><th>Status</th>
-                  <th>Prestadores</th><th>Proventos</th><th>INSS</th>
-                  <th>IRRF</th><th>Líquido</th><th>Próximo passo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {folhas.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <strong>{competencia(item.competencia)}</strong>
+          </header>
+          <div className="processing-lanes">
+            {filas.map((fila) => (
+              <section className={`processing-lane ${fila.chave}`} key={fila.chave}>
+                <header>
+                  <span>{fila.itens.length}</span>
+                  <div>
+                    <h3>{fila.titulo}</h3>
+                    <p>{fila.descricao}</p>
+                  </div>
+                </header>
+                <div className="processing-lane-items">
+                  {fila.itens.map((item) => (
+                    <article className="processing-ticket" key={item.id}>
+                      <div className="processing-ticket-heading">
+                        <div>
+                          <span className="section-kicker">{competencia(item.competencia)}</span>
+                          <h4>Termo {item.termo_numero} · Meta {item.meta_codigo}</h4>
+                        </div>
+                        <StatusBadge tone={item.status === "FECHADA" ? "success" : item.status === "ABERTA" ? "warning" : "info"}>
+                          {nomeStatus(item.status)}
+                        </StatusBadge>
+                      </div>
+                      <dl>
+                        <div><dt>Prestadores</dt><dd>{item.prestadores}</dd></div>
+                        <div><dt>Líquido</dt><dd>{moeda(item.liquido)}</dd></div>
+                      </dl>
                       <small>Lote #{item.numero} · revisão {item.revisao}</small>
-                    </td>
-                    <td>
-                      Termo {item.termo_numero}
-                      <small>Meta {item.meta_codigo}</small>
-                    </td>
-                    <td>
-                      <StatusBadge
-                        tone={item.status === "FECHADA" ? "success" : item.status === "ABERTA" ? "warning" : "info"}
-                      >
-                        {nomeStatus(item.status)}
-                      </StatusBadge>
-                    </td>
-                    <td>{item.prestadores}</td>
-                    <td>{moeda(item.proventos)}</td>
-                    <td>{moeda(item.inss)}</td>
-                    <td>{moeda(item.irrf)}</td>
-                    <td><strong>{moeda(item.liquido)}</strong></td>
-                    <td>
-                      <div className="table-actions">
-                        <Link className="text-link" href={`/folhas/${item.id}`}>
+                      <div className="processing-ticket-actions">
+                        <Link className="button primary" href={`/folhas/${item.id}`}>
                           {proximaAcao(item.status)} <ArrowRight size={15} />
                         </Link>
                         <Link className="text-link muted" href={`/folhas/${item.id}/consulta`}>
-                          Consultar
+                          Consulta completa
                         </Link>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-                {folhas.length === 0 && (
-                  <tr><td colSpan={9} className="empty-cell">Nenhuma Folha criada.</td></tr>
-                )}
-              </tbody>
-            </table>
+                    </article>
+                  ))}
+                  {fila.itens.length === 0 && (
+                    <div className="processing-lane-empty">Nenhum processamento nesta etapa.</div>
+                  )}
+                </div>
+              </section>
+            ))}
           </div>
         </section>
       </AppShell>

@@ -1,4 +1,5 @@
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import Image from "next/image";
+import { ArrowRight } from "lucide-react";
 import { entrar } from "./actions";
 
 export default async function LoginPage({
@@ -9,7 +10,21 @@ export default async function LoginPage({
   const { erro } = await searchParams;
   return (
     <main className="login-page">
-      <section className="login-brand"><div className="login-mark"><ShieldCheck size={28} /></div><span className="section-kicker">Gestão Institutos</span><h1>Folha de pagamento com clareza do início ao fechamento.</h1><p>Centralize cadastros, cálculos, conferências e obrigações em uma única rotina.</p><ul><li>Dados reais organizados por competência</li><li>Pendências com orientação para correção</li><li>Histórico preservado para conferência</li></ul></section>
+      <section className="login-brand">
+        <Image
+          className="login-veredas-logo"
+          src="/veredas/veredas-lockup-silver.png"
+          alt="Veredas"
+          width={220}
+          height={64}
+          priority
+          unoptimized
+        />
+        <span className="section-kicker">Gestão de Institutos</span>
+        <h1>Um espaço seguro para conduzir a operação inteira.</h1>
+        <p>Folha, cadastros, conferências e obrigações no mesmo fluxo, com rastreabilidade em cada decisão.</p>
+        <ul><li>Informação organizada por competência</li><li>Pendências claras para correção</li><li>Histórico preservado para conferência</li></ul>
+      </section>
       <section className="login-card">
         <span className="section-kicker">Acesso protegido</span>
         <h2>Entrar</h2>

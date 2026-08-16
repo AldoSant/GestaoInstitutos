@@ -3,13 +3,13 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Gestão Institutos",
-    template: "%s · Gestão Institutos",
+    default: "Veredas | Gestão de Institutos",
+    template: "%s | Veredas",
   },
-  description: "Gestão de folha, cadastros e obrigações dos institutos.",
+  description: "Plataforma Veredas para gestão de folha, cadastros e obrigações dos institutos.",
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: "/veredas/favicon.png",
+    shortcut: "/veredas/favicon.png",
   },
 };
 
