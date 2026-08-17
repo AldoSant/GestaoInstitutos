@@ -49,6 +49,19 @@ export function NovoProcessamentoAssistente({
   const setInstrumento = (novoInstrumento: string) => setEstado((atual) => ({ ...atual, instrumento: novoInstrumento }));
   const opcoesDisponiveis = useMemo(() => opcoes.filter((item) => item.selecionavel), [opcoes]);
   const selecionada = opcoesDisponiveis.find((item) => `${item.termoId}:${item.metaId}` === instrumento);
+  const etapasVisiveis = [
+    "Competência",
+    ...(empresaConfigurada ? [] : ["Empresa"]),
+    "Termo e Meta",
+    "Conferência",
+  ];
+  const passoVisivel = empresaConfigurada
+    ? passo === 1
+      ? 1
+      : passo === 3
+        ? 2
+        : 3
+    : passo;
 
   const avancarDaCompetencia = () => setPasso(empresaConfigurada ? 3 : 2);
   const retornarParaCompetencia = () => setPasso(1);
@@ -57,16 +70,10 @@ export function NovoProcessamentoAssistente({
   return (
     <section className="processamento-assistente" aria-label="Assistente de novo processamento">
       <ol className="assistente-progresso" aria-label="Progresso do processamento">
-        {[
-          "Competência",
-          ...(empresaConfigurada ? [] : ["Empresa"]),
-          "Termo e Meta",
-          "Conferência",
-        ].map((rotulo, indice) => {
+        {etapasVisiveis.map((rotulo, indice) => {
           const numero = indice + 1;
-          const atual = empresaConfigurada && numero >= 2 ? numero + 1 : numero;
-          const concluido = atual < passo;
-          return <li key={rotulo} className={atual === passo ? "atual" : concluido ? "concluido" : ""}><span>{concluido ? <CheckCircle2 size={14} /> : indice + 1}</span><small>{rotulo}</small></li>;
+          const concluido = numero < passoVisivel;
+          return <li key={rotulo} className={numero === passoVisivel ? "atual" : concluido ? "concluido" : ""}><span>{concluido ? <CheckCircle2 size={14} /> : numero}</span><small>{rotulo}</small></li>;
         })}
       </ol>
 

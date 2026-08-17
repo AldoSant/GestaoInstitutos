@@ -149,7 +149,7 @@ export default async function FolhaDetalhePage({
         </section>
       )}
 
-      <section className="jornada-resumo" aria-label="Resumo do processamento">
+      <section className="jornada-resumo quiet-journey-summary" aria-label="Resumo do processamento">
         <div>
           <span>Prestadores</span><strong>{dados.itens.length}</strong>
         </div>
@@ -164,7 +164,7 @@ export default async function FolhaDetalhePage({
       <FolhaJornadaProgresso etapaAtual={etapaAtual} />
 
       {etapaAtual === 1 && (
-        <section className={`jornada-card ${processamentoFalhou ? "alerta" : ""}`}>
+        <section className={`jornada-card quiet-journey-decision ${processamentoFalhou ? "alerta" : ""}`}>
           {processamentoFalhou ? <AlertTriangle size={24} /> : <RefreshCw size={24} />}
           <div>
             <span className="section-kicker">Passo 1 de 6</span>
@@ -194,7 +194,7 @@ export default async function FolhaDetalhePage({
       )}
 
       {etapaAtual === 2 && (
-        <section className="jornada-card">
+        <section className="jornada-card quiet-journey-decision">
           <ClipboardCheck size={24} />
           <div>
             <span className="section-kicker">Passo 2 de 6</span>
@@ -247,7 +247,7 @@ export default async function FolhaDetalhePage({
       )}
 
       {etapaAtual === 3 && (
-        <section className="jornada-card">
+        <section className="jornada-card quiet-journey-decision">
           <LockKeyhole size={24} />
           <div>
             <span className="section-kicker">Passo 3 de 6</span>
@@ -270,7 +270,7 @@ export default async function FolhaDetalhePage({
       )}
 
       {etapaAtual === 4 && (
-        <section className="jornada-card">
+        <section className="jornada-card quiet-journey-decision">
           <CreditCard size={24} />
           <div>
             <span className="section-kicker">Passo 4 de 6</span>

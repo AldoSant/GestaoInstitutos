@@ -94,8 +94,8 @@ export function Logo() {
       <Image
         src={caminhoAplicacao("/veredas/veredas-lockup-silver.svg")}
         alt="Veredas"
-        width={136}
-        height={40}
+        width={176}
+        height={88}
         priority
         unoptimized
       />

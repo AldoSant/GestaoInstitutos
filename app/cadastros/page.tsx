@@ -115,11 +115,11 @@ export default async function CadastrosPage({ searchParams }: { searchParams: Se
         eyebrow="Pessoas e estrutura"
         organization="Não configurada"
       >
-        <section className="alert-box danger">
+        <section className="empty-state quiet-empty-state" role="alert">
           <Database size={22} />
           <div>
             <strong>Cadastros indisponíveis</strong>
-            <p>Não foi possível carregar os cadastros. Tente novamente.</p>
+            <p>Não foi possível carregar os cadastros agora. Nenhum dado foi alterado.</p>
           </div>
         </section>
       </AppShell>

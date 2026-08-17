@@ -16,8 +16,18 @@ export function FolhaJornadaProgresso({
   etapaAtual: number;
   concluida?: boolean;
 }) {
+  const etapaSegura = Math.min(Math.max(etapaAtual, 1), etapas.length);
+  const percentual = concluida ? 100 : Math.round((etapaSegura / etapas.length) * 100);
+
   return (
     <section className="jornada-fluxo" aria-label="Etapas do processamento">
+      <div className="jornada-fluxo-cabecalho">
+        <span>{concluida ? "Jornada concluída" : `Etapa ${etapaSegura.toString().padStart(2, "0")} de ${etapas.length.toString().padStart(2, "0")}`}</span>
+        <span>{percentual}%</span>
+      </div>
+      <div className="jornada-fluxo-trilho" aria-hidden="true">
+        <span style={{ width: `${percentual}%` }} />
+      </div>
       <ol className="jornada-etapas jornada-etapas-completa">
         {etapas.map(([titulo, detalhe], indice) => {
           const numero = indice + 1;

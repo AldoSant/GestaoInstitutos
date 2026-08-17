@@ -19,6 +19,7 @@ export function ModalShell({
 }) {
   const router = useRouter();
   const closeRef = useRef<HTMLAnchorElement>(null);
+  const cardRef = useRef<HTMLElement>(null);
   const titleId = useId();
   const descriptionId = useId();
 
@@ -26,13 +27,32 @@ export function ModalShell({
     const overflowAnterior = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     closeRef.current?.focus();
-    const fecharComEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") router.push(closeHref);
+    const manterFocoNoModal = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        router.push(closeHref);
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const focaveis = cardRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focaveis?.length) return;
+
+      const primeiro = focaveis[0];
+      const ultimo = focaveis[focaveis.length - 1];
+      if (event.shiftKey && document.activeElement === primeiro) {
+        event.preventDefault();
+        ultimo.focus();
+      } else if (!event.shiftKey && document.activeElement === ultimo) {
+        event.preventDefault();
+        primeiro.focus();
+      }
     };
-    window.addEventListener("keydown", fecharComEscape);
+    window.addEventListener("keydown", manterFocoNoModal);
     return () => {
       document.body.style.overflow = overflowAnterior;
-      window.removeEventListener("keydown", fecharComEscape);
+      window.removeEventListener("keydown", manterFocoNoModal);
     };
   }, [closeHref, router]);
 
@@ -50,7 +70,7 @@ export function ModalShell({
         aria-hidden="true"
         tabIndex={-1}
       />
-      <section className="modal-card">
+      <section ref={cardRef} className="modal-card" tabIndex={-1}>
         <header className="modal-header">
           <div>
             <span className="section-kicker">Cadastro</span>

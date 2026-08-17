@@ -60,21 +60,26 @@ export async function AppShell({
     .reverse();
 
   return (
-    <div className="app-frame">
-      <header className="app-bar" aria-label="Navegação da aplicação">
+    <div className="app-frame quiet-app-frame">
+      <header className="quiet-app-header" aria-label="Navegação da aplicação">
         <Logo />
-        <div className="desktop-navigation">
-          <NavegacaoPrincipal administrador={administrador} />
-        </div>
-        <div className="app-bar-context">
-          <div className="organization-context" title={organization}>
-            <span>Organização</span>
-            <strong>{organization}</strong>
-          </div>
+        <div className="quiet-app-actions">
           <CompetenciaSwitcher
             competencias={competencias}
             selecionada={selecionada}
           />
+          <details className="quiet-navigation">
+            <summary aria-label="Abrir navegação principal">
+              <Menu size={17} />
+              <span>Menu</span>
+            </summary>
+            <div className="quiet-navigation-panel">
+              <span className="quiet-navigation-organization" title={organization}>
+                {organization}
+              </span>
+              <NavegacaoPrincipal administrador={administrador} />
+            </div>
+          </details>
           <details className="account-menu">
             <summary aria-label="Abrir opções da conta">
               <span className="avatar">{iniciais(login)}</span>
@@ -92,27 +97,19 @@ export async function AppShell({
             </div>
           </details>
         </div>
-        <details className="mobile-menu">
-          <summary aria-label="Abrir menu">
-            <Menu size={22} />
-          </summary>
-          <div className="mobile-menu-panel">
-            <NavegacaoPrincipal administrador={administrador} />
-          </div>
-        </details>
       </header>
 
-      <div className="main-column">
-        <header className="topbar" aria-label="Contexto da página">
+      <div className="main-column quiet-main-column">
+        <header className="quiet-page-header" aria-label="Contexto da página">
           <div className="page-context-line" aria-hidden="true">
             <span />
             <small>Gestão de Institutos</small>
           </div>
-          <div className="page-heading">
+          <div className="quiet-page-heading">
             {eyebrow && <span>{eyebrow}</span>}
             <h1>{title}</h1>
           </div>
-          <div className="topbar-actions">
+          <div className="quiet-page-actions">
             {actions}
           </div>
         </header>

@@ -52,11 +52,11 @@ export default async function FolhasPage() {
   } catch {
     return (
       <AppShell title="Folha mensal" eyebrow="Processamento e conferência" organization="Não configurada">
-        <section className="alert-box danger">
+        <section className="empty-state quiet-empty-state" role="alert">
           <Database size={22} />
           <div>
             <strong>Processamentos indisponíveis</strong>
-            <p>Não foi possível carregar as competências. Tente novamente.</p>
+            <p>Não foi possível carregar as competências agora. Nenhum processamento foi alterado.</p>
           </div>
         </section>
       </AppShell>

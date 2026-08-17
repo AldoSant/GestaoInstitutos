@@ -51,7 +51,7 @@ export default async function ObrigacoesDaFolhaPage({
       {erro && <BloqueioOrientado bloqueio={orientarBloqueio({ erro, competencia, retorno: `/folhas/${folhaId}/obrigacoes` })} />}
       {sucesso && <section className="feedback-banner success" role="status"><strong>Operação concluída</strong><span>{sucesso}</span></section>}
       <FolhaJornadaProgresso etapaAtual={5} />
-      <section className="jornada-card">
+      <section className="jornada-card quiet-journey-decision">
         <ReceiptText size={24} />
         <div>
           <span className="section-kicker">Previdência de prestadores</span>
