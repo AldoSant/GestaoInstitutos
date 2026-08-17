@@ -2057,3 +2057,94 @@ tbody tr:hover { background: rgba(232,234,236,.42); }
 @media (max-width: 760px) {
   .modal-card { border-radius: var(--radius-surface) var(--radius-surface) 0 0; }
 }
+
+/*
+ * Quiet Flow consistency contract
+ *
+ * The application predates the redesign and several individual workspaces
+ * carried their own square-corner rules.  Keep shape, material and type
+ * decisions centralized here so a screen cannot fall back to a competing
+ * visual language merely because it uses an older shared component.
+ */
+:root {
+  --radius-surface: 22px;
+  --radius-section: 18px;
+  --radius-control: 12px;
+  --radius-pill: 999px;
+}
+
+/* Structural surfaces: generous, calm corners. */
+:is(
+  .panel, .workflow-panel, .cadastro-section, .section-card, .process-panel,
+  .processamento-board, .admin-intro, .technical-reference, .parameter-list,
+  .parameter-form, .regime-card, .current-profile, .memory-detail,
+  .simulacao-modo, .detail-summary, .jornada-resumo, .jornada-fluxo,
+  .login-card, .modal-card, .empty-state, .onboarding-complete
+) { border-radius: var(--radius-surface); }
+
+/* Related, smaller surfaces keep the same family rather than a square grid. */
+:is(
+  .metric-card, .quick-card, .admin-card, .processing-ticket, .processing-lane,
+  .campanha-card, .onboarding-choice, .ajuda-card, .table-wrap, .crud-form,
+  .jornada-form, .assistente-form, .assistente-selecao,
+  .assistente-resumo-selecao, .assistente-conferencia, .jornada-alerta,
+  .search-field, .cadastro-filters, .inline-filters, .hero-status,
+  .fechamento-resumo, .conferencia-resumo, .simulacao-resumo,
+  .fechamento-proxima-acao, .demonstrativo-proxima-acao,
+  .conferencia-proxima-acao, .simulacao-proxima-acao, .obrigacao-proxima-acao
+) { border-radius: var(--radius-section); }
+
+/* Controls are deliberately softer than data cells, but never pill-shaped. */
+:is(
+  .button, .context-button, .competencia-switcher, .row-action, .icon-button,
+  .modal-close, .filter, .search-field button, .crud-form input,
+  .crud-form select, .crud-form textarea, .jornada-form input,
+  .jornada-form select, .jornada-form textarea, .assistente-form input,
+  .assistente-form select, .login-form input, .demonstrativo-competencia input
+) { border-radius: var(--radius-control); }
+
+/* Pills have one semantic role only: compact state. */
+.status-badge, .quiet-home-focus-status { border-radius: var(--radius-pill); }
+
+/* Feature surfaces are the quiet, high-contrast anchor on every workspace. */
+:is(
+  .hero-row, .fechamento-hero, .obrigacao-overview, .demonstrativo-overview,
+  .conferencia-overview, .simulacao-overview, .migracao-overview, .ajuda-hero,
+  .onboarding-hero, .person-hero, .cadastro-toolbar, .jornada-card,
+  .assistente-card
+) { border-radius: 26px; }
+
+.login-page {
+  min-height: 100svh;
+  background:
+    radial-gradient(680px 480px at 103% -6%, rgba(191,195,200,.34), transparent 62%),
+    radial-gradient(420px 360px at 45% 105%, rgba(42,52,66,.07), transparent 65%),
+    #f2f2f2;
+}
+.login-brand { border-radius: 0 34px 34px 0; }
+.login-card {
+  border-color: rgba(14,20,36,.11);
+  border-radius: 24px;
+  background: rgba(255,255,255,.72);
+  box-shadow: 0 26px 68px rgba(14,20,36,.10), inset 0 1px 0 rgba(255,255,255,.94);
+  backdrop-filter: blur(20px) saturate(125%);
+}
+.login-form input { min-height: 45px; border-color: rgba(14,20,36,.18); background: rgba(255,255,255,.86); }
+.login-form input:focus { border-color: #2a3442; box-shadow: 0 0 0 4px rgba(42,52,66,.11); outline: 0; }
+.form-error { border-radius: var(--radius-control); }
+
+@media (max-width: 760px) {
+  :is(.hero-row, .fechamento-hero, .obrigacao-overview, .demonstrativo-overview,
+    .conferencia-overview, .simulacao-overview, .migracao-overview, .ajuda-hero,
+    .onboarding-hero, .person-hero, .cadastro-toolbar, .jornada-card,
+    .assistente-card) { border-radius: 21px; }
+  .login-page { grid-template-columns: 1fr; }
+  .login-brand { min-height: 320px; padding: 42px 28px; border-radius: 0 0 26px 26px; }
+  .login-card { width: min(100% - 36px, 460px); margin: 26px auto 42px; border-radius: 20px; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :is(.panel, .workflow-panel, .cadastro-section, .section-card, .process-panel,
+    .metric-card, .login-card, .quiet-home-totals, .quiet-home-action,
+    .quiet-home-timeline, .quiet-home-records) { background: #fff; backdrop-filter: none; }
+}
