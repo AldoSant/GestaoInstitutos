@@ -2106,6 +2106,12 @@ tbody tr:hover { background: rgba(232,234,236,.42); }
 /* Pills have one semantic role only: compact state. */
 .status-badge, .quiet-home-focus-status { border-radius: var(--radius-pill); }
 
+/* Metric groups adapt to their real content; a missing fourth metric must not
+   become an empty tile on an otherwise composed operating screen. */
+.metrics-grid:has(> :nth-child(1):last-child) { grid-template-columns: minmax(0, 1fr); }
+.metrics-grid:has(> :nth-child(2):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.metrics-grid:has(> :nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
 /* Feature surfaces are the quiet, high-contrast anchor on every workspace. */
 :is(
   .hero-row, .fechamento-hero, .obrigacao-overview, .demonstrativo-overview,
@@ -2141,6 +2147,8 @@ tbody tr:hover { background: rgba(232,234,236,.42); }
   .login-page { grid-template-columns: 1fr; }
   .login-brand { min-height: 320px; padding: 42px 28px; border-radius: 0 0 26px 26px; }
   .login-card { width: min(100% - 36px, 460px); margin: 26px auto 42px; border-radius: 20px; }
+  .metrics-grid:has(> :nth-child(3):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metrics-grid:has(> :nth-child(3):last-child) > :last-child { grid-column: 1 / -1; }
 }
 
 @media (prefers-reduced-transparency: reduce) {
