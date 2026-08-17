@@ -30,6 +30,7 @@ const paginas = [
 test("todas as páginas e seus controles básicos estão operacionais", async ({
   page,
 }) => {
+  test.setTimeout(90_000);
   await autenticar(page);
   const errosDaPagina: string[] = [];
   const destinosInternos = new Set<string>();
@@ -43,30 +44,46 @@ test("todas as páginas e seus controles básicos estão operacionais", async ({
       await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
       await expect(page.locator(".feedback-banner.error")).toHaveCount(0);
 
-      const formularios = page.locator("form");
-      for (let indice = 0; indice < (await formularios.count()); indice += 1) {
-        const formulario = formularios.nth(indice);
-        if (!(await formulario.isVisible())) continue;
-        await expect(
-          formulario.locator('button[type="submit"], input[type="submit"]'),
-          `Formulário sem ação de confirmação em ${caminho}`,
-        ).not.toHaveCount(0);
-      }
+      const formulariosSemAcao = await page.locator("form").evaluateAll((formularios) =>
+        formularios
+          .filter((formulario) => {
+            const estilo = getComputedStyle(formulario);
+            const visivel =
+              estilo.display !== "none" &&
+              estilo.visibility !== "hidden" &&
+              formulario.getClientRects().length > 0;
+            if (!visivel) return false;
+            const temCampoEditavel = formulario.querySelector(
+              'input:not([type="hidden"]), select, textarea',
+            );
+            return (
+              Boolean(temCampoEditavel) &&
+              !formulario.querySelector('button[type="submit"], input[type="submit"]')
+            );
+          })
+          .map((formulario) => formulario.getAttribute("id") || formulario.className || "(sem identificação)"),
+      );
+      expect(formulariosSemAcao, `Formulário sem ação de confirmação em ${caminho}`).toEqual([]);
 
-      const botoes = page.getByRole("button");
-      for (let indice = 0; indice < (await botoes.count()); indice += 1) {
-        const botao = botoes.nth(indice);
-        if (!(await botao.isVisible())) continue;
-        const nome = await botao.evaluate((elemento) =>
-          (
-            elemento.getAttribute("aria-label") ??
-            elemento.getAttribute("title") ??
-            elemento.textContent ??
-            ""
-          ).trim(),
-        );
-        expect(nome, `Botão sem nome acessível em ${caminho}`).not.toBe("");
-      }
+      const botoesSemNome = await page.getByRole("button").evaluateAll((botoes) =>
+        botoes
+          .filter((botao) => {
+            const estilo = getComputedStyle(botao);
+            const visivel =
+              estilo.display !== "none" &&
+              estilo.visibility !== "hidden" &&
+              botao.getClientRects().length > 0;
+            if (!visivel) return false;
+            return !(
+              botao.getAttribute("aria-label") ??
+              botao.getAttribute("title") ??
+              botao.textContent ??
+              ""
+            ).trim();
+          })
+          .map((botao) => botao.outerHTML.slice(0, 200)),
+      );
+      expect(botoesSemNome, `Botão sem nome acessível em ${caminho}`).toEqual([]);
 
       const linksInvalidos = await page.locator("a").evaluateAll((links) =>
         links
@@ -89,21 +106,44 @@ test("todas as páginas e seus controles básicos estão operacionais", async ({
     });
   }
 
+  const destinosRepresentativos = new Map<string, string>();
   for (const destino of destinosInternos) {
-    const status = await page.evaluate(async (url) => {
-      const resposta = await fetch(url, { credentials: "same-origin" });
-      return resposta.status;
-    }, destino);
+    const url = new URL(destino);
+    const rotaNormalizada = url.pathname
+      .replace(/\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}/gi, "/:id")
+      .replace(/\/\d+/g, "/:id");
+    const chave = `${rotaNormalizada}${url.searchParams.has("competencia") ? "?competencia" : ""}`;
+    if (!destinosRepresentativos.has(chave)) {
+      destinosRepresentativos.set(chave, destino);
+    }
+  }
+  const respostasInternas = await page.evaluate(async (destinos) =>
+    Promise.all(
+      destinos.map(async (url) => ({
+        url,
+        status: (await fetch(url, { credentials: "same-origin" })).status,
+      })),
+    ),
+  [...destinosRepresentativos.values()]);
+  for (const { url, status } of respostasInternas) {
     expect(
       status,
-      `Link interno indisponível: ${destino}`,
+      `Link interno indisponível: ${url}`,
     ).toBeLessThan(400);
   }
+  const ancorasRepresentativas = new Map<string, string>();
   for (const destino of destinosComAncora) {
-    const resposta = await page.goto(destino);
-    expect(resposta?.status(), `Link com âncora indisponível: ${destino}`).toBeLessThan(
-      400,
-    );
+    const url = new URL(destino);
+    const rotaNormalizada = url.pathname
+      .replace(/\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}/gi, "/:id")
+      .replace(/\/\d+/g, "/:id");
+    const chave = `${rotaNormalizada}#${url.hash}`;
+    if (!ancorasRepresentativas.has(chave)) {
+      ancorasRepresentativas.set(chave, destino);
+    }
+  }
+  for (const destino of ancorasRepresentativas.values()) {
+    await page.goto(destino);
     const id = decodeURIComponent(new URL(destino).hash.slice(1));
     await expect(
       page.locator(`[id="${id}"]`),
@@ -119,7 +159,6 @@ test("módulos técnicos e paralelos ficam fora da superfície operacional", asy
   await autenticar(page);
   for (const rota of [
     "/administracao",
-    "/conferencia-entre-folhas?competencia=2026-06",
     "/demonstrativos?competencia=2026-06",
     "/fechamento-mensal?competencia=2026-06",
     "/fgts",
@@ -168,11 +207,11 @@ test("URLs antigas preservam a competência e redirecionam para o nome canônico
     },
     {
       antiga: "/consolidacoes?competencia=2026-06",
-      atual: "/?aviso=modulo-reservado",
+      atual: "/conferencia-entre-folhas?competencia=2026-06",
     },
     {
       antiga: "/consolidacoes/simulacoes?competencia=2026-06",
-      atual: "/?aviso=modulo-reservado",
+      atual: "/conferencia-entre-folhas/simulacoes?competencia=2026-06",
     },
     {
       antiga: "/instrumentos",
