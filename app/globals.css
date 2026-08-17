@@ -2139,6 +2139,12 @@ tbody tr:hover { background: rgba(232,234,236,.42); }
 .login-form input:focus { border-color: #2a3442; box-shadow: 0 0 0 4px rgba(42,52,66,.11); outline: 0; }
 .form-error { border-radius: var(--radius-control); }
 
+/* The compact header can hide labels in its legacy desktop rail, but the
+   Quiet Flow menu is an explicit navigation surface: icon-only links here
+   would remove both wayfinding and their accessible names. */
+.quiet-navigation-panel .nav-link > span,
+.quiet-navigation-panel .nav-group-label > span { display: inline; }
+
 @media (max-width: 760px) {
   :is(.hero-row, .fechamento-hero, .obrigacao-overview, .demonstrativo-overview,
     .conferencia-overview, .simulacao-overview, .migracao-overview, .ajuda-hero,

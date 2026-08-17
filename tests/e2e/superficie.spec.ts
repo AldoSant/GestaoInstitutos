@@ -148,7 +148,7 @@ test("menu, títulos e URLs usam a mesma linguagem operacional", async ({ page }
   for (const destino of destinos) {
     await page.goto(destino.href);
     await expect(
-      page.locator(`.app-bar a.nav-link[href="${destino.href}"]`),
+      page.locator(`.quiet-navigation a.nav-link[href="${destino.href}"]`),
     ).toContainText(destino.menu);
     await expect(
       page.getByRole("heading", { level: 1, name: destino.titulo }),

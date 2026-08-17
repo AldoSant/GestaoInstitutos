@@ -6,10 +6,10 @@ const senha = process.env.E2E_PASSWORD;
 test.skip(!login || !senha, "Defina E2E_LOGIN e E2E_PASSWORD.");
 
 async function abrirMenu(page: Page) {
-  const menu = page.locator('summary[aria-label="Abrir menu"]');
+  const menu = page.locator('summary[aria-label="Abrir navegação principal"]');
   await expect(menu).toBeVisible();
   await menu.click();
-  const painel = page.locator(".mobile-menu-panel");
+  const painel = page.locator(".quiet-navigation-panel");
   await expect(
     painel.getByRole("navigation", { name: "Navegação principal" }),
   ).toBeVisible();
@@ -92,10 +92,10 @@ test("cabeçalho preserva contexto e não quebra com título longo", async ({
     primeiraFicha.first().click(),
   ]);
 
-  const titulo = page.locator(".page-heading h1");
+  const titulo = page.locator(".quiet-page-heading h1");
   await expect(titulo).toBeVisible();
-  await expect(titulo).toHaveCSS("white-space", "nowrap");
-  await expect(titulo).toHaveCSS("text-overflow", "ellipsis");
+  await expect(titulo).toHaveCSS("white-space", "normal");
+  await expect(titulo).toHaveCSS("overflow", "visible");
 
   const seletor = page.getByRole("combobox", { name: "Competência em foco" });
   await expect(seletor).toBeVisible();

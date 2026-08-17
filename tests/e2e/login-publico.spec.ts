@@ -8,7 +8,10 @@ async function semEstouroHorizontal(page: Page) {
   expect(dimensoes.conteudo).toBeLessThanOrEqual(dimensoes.viewport);
 }
 
-async function esperarContratoDeFormas(page: Page) {
+async function esperarContratoDeFormas(
+  page: Page,
+  esperado: { cartao: string; campo: string; acao: string },
+) {
   await expect.poll(() => page.evaluate(() => {
     const raio = (seletor: string) => {
       const elemento = document.querySelector<HTMLElement>(seletor);
@@ -19,7 +22,7 @@ async function esperarContratoDeFormas(page: Page) {
       campo: raio(".login-form input"),
       acao: raio(".login-form .button"),
     };
-  })).toEqual({ cartao: "4px", campo: "2px", acao: "2px" });
+  })).toEqual(esperado);
 }
 
 test("login público entrega a identidade Veredas sem ruptura visual", async ({ page }) => {
@@ -33,12 +36,20 @@ test("login público entrega a identidade Veredas sem ruptura visual", async ({ 
   )).toBeGreaterThan(0);
   await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
   await expect(page.getByLabel("Login")).toBeFocused();
-  await esperarContratoDeFormas(page);
+  await esperarContratoDeFormas(page, {
+    cartao: "24px",
+    campo: "12px",
+    acao: "12px",
+  });
   await semEstouroHorizontal(page);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await semEstouroHorizontal(page);
   await expect(logo).toBeVisible();
   await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible();
-  await esperarContratoDeFormas(page);
+  await esperarContratoDeFormas(page, {
+    cartao: "20px",
+    campo: "12px",
+    acao: "12px",
+  });
 });
